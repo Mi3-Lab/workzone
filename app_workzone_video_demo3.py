@@ -345,7 +345,8 @@ def state_to_color(state: str) -> Tuple[int, int, int]:
     return (0, 128, 0)           # green
 
 
-def draw_banner(frame: np.ndarray, state: str, score: float) -> np.ndarray:
+# UPDATED: Added clip_active parameter for visualization
+def draw_banner(frame: np.ndarray, state: str, score: float, clip_active: bool = False) -> np.ndarray:
     h, w = frame.shape[:2]
     banner_h = int(0.12 * h)
     color = state_to_color(state)
@@ -361,6 +362,18 @@ def draw_banner(frame: np.ndarray, state: str, score: float) -> np.ndarray:
     y = int(banner_h * 0.72)
 
     cv2.putText(frame, label, (x, y), font, scale, (255, 255, 255), thickness, cv2.LINE_AA)
+
+    # VISUAL: Add CLIP indicator if active
+    if clip_active:
+        clip_label = "CLIP ACTIVE"
+        c_scale = 0.5
+        c_ts, _ = cv2.getTextSize(clip_label, font, c_scale, 1)
+        # Position top right inside banner
+        c_x = w - c_ts[0] - 20
+        c_y = int(banner_h * 0.5)
+        # Draw small background box for clip text
+        cv2.putText(frame, clip_label, (c_x, c_y), font, c_scale, (0, 255, 255), 1, cv2.LINE_AA)
+
     return frame
 
 
@@ -410,8 +423,7 @@ def run_live_preview(
     approach_th: float,
     max_seconds: int,
     run_full_video: bool = False,
-    chart_window: int = 250,
-    chart_every: int = 3,
+    **kwargs
 ):
     cap = cv2.VideoCapture(str(input_path))
     if not cap.isOpened():
@@ -420,10 +432,11 @@ def run_live_preview(
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
-
-    # If you want "real-time feel", keep this.
-    # If you want max speed, set delay=0.0
-    delay = 1.0 / fps if fps > 0 else 0.03
+    
+    # OPTIMIZATION: Fix timing for Stride
+    # If stride=2, we process 1 frame but skip 1. Real time elapsed is 2 frames worth.
+    base_dt = 1.0 / fps if fps > 0 else 0.03
+    target_dt = base_dt * stride
 
     # CLIP embeddings
     pos_emb = neg_emb = None
@@ -442,25 +455,11 @@ def run_live_preview(
     inside_frames = 0
     out_frames = 999999
 
-    # UI placeholders
     frame_placeholder = st.empty()
     info_placeholder = st.empty()
-    plot_placeholder = st.empty()
     progress = st.progress(0)
 
-    # live stop button (works only if we rerender it)
-    stop_slot = st.empty()
-
-    # history for chart
-    hist_t: List[float] = []
-    hist_yolo: List[float] = []
-    hist_fused: List[float] = []
-
-    t0 = time.time()
-    frame_idx = 0
-    processed = 0
-
-    # --- Stop control (create ONCE) ---
+    # Stop control
     if "stop_live" not in st.session_state:
         st.session_state["stop_live"] = False
 
@@ -472,10 +471,15 @@ def run_live_preview(
         if st.button("Reset stop flag", key="reset_live_btn"):
             st.session_state["stop_live"] = False
 
+    t_start_loop = time.time()
+    frame_idx = 0
+    processed = 0
+
     while True:
-        # STOP CONDITIONS
+        loop_start_time = time.time()
+
         if (not run_full_video) and max_seconds > 0:
-            if (time.time() - t0) > float(max_seconds):
+            if (time.time() - t_start_loop) > float(max_seconds):
                 break
 
         ret, frame = cap.read()
@@ -485,6 +489,7 @@ def run_live_preview(
         if st.session_state.get("stop_live", False):
             break
 
+        # Stride skipping
         if stride > 1 and (frame_idx % stride != 0):
             frame_idx += 1
             continue
@@ -496,6 +501,7 @@ def run_live_preview(
             iou=iou,
             verbose=False,
             device=device,
+            half=True, # FP16 optimization
         )
         r = results[0]
 
@@ -508,7 +514,7 @@ def run_live_preview(
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
         yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
 
-        # CLIP (triggered)
+        # CLIP logic
         clip_score_raw = 0.0
         clip_used = 0
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
@@ -518,14 +524,11 @@ def run_live_preview(
                 clip_used = 1
             except Exception:
                 clip_score_raw = 0.0
-                clip_used = 0
 
-        # fuse
         fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw if clip_enabled else yolo_score
         fused = clamp01(fused)
         fused_ema = ema(fused_ema, fused, ema_alpha)
 
-        # state
         state, inside_frames, out_frames = update_state(
             prev_state=state,
             fused_score=float(fused_ema),
@@ -539,57 +542,40 @@ def run_live_preview(
         )
 
         annotated = r.plot()
-        annotated = draw_banner(annotated, state, float(fused_ema))
+        # VISUAL: Pass clip_used to banner
+        annotated = draw_banner(annotated, state, float(fused_ema), clip_active=(clip_used==1))
 
-        # show frame
+        # OPTIMIZATION: Resize for browser performance (max width 1280)
+        disp_h, disp_w = annotated.shape[:2]
+        if disp_w > 1280:
+            scale = 1280 / disp_w
+            annotated = cv2.resize(annotated, (1280, int(disp_h * scale)))
+
         rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(rgb, channels="RGB", width='stretch')
 
-        # compute time
         t_sec = float(frame_idx / fps) if fps > 0 else float(processed)
-
         info_placeholder.markdown(
-            f"**Frame:** {frame_idx} / {total_frames if total_frames>0 else '??'} | "
+            f"**Frame:** {frame_idx} / {total_frames} | "
             f"**t:** {t_sec:.2f}s | **state:** `{state}` | "
             f"**fused_ema:** {float(fused_ema):.2f} | "
-            f"**objs:** {int(feats['total_objs'])} | **clip_used:** {clip_used}"
+            f"**CLIP:** {'ACTIVE' if clip_used else 'OFF'}"
         )
 
-        # update progress
         if total_frames > 0:
             progress.progress(min(frame_idx / total_frames, 1.0))
-
-        # update chart history
-        hist_t.append(t_sec)
-        hist_yolo.append(float(yolo_ema) if yolo_ema is not None else float(yolo_score))
-        hist_fused.append(float(fused_ema) if fused_ema is not None else float(fused))
-
-        # keep chart light
-        if len(hist_t) > chart_window:
-            hist_t = hist_t[-chart_window:]
-            hist_yolo = hist_yolo[-chart_window:]
-            hist_fused = hist_fused[-chart_window:]
-
-        # redraw chart every N processed steps
-        if processed % chart_every == 0:
-            fig, ax = plt.subplots(figsize=(9, 3.0))
-            ax.plot(hist_t, hist_yolo, label="yolo_score_ema", linewidth=1.5)
-            ax.plot(hist_t, hist_fused, label="fused_score_ema", linewidth=2.0)
-            ax.set_ylim(0.0, 1.0)
-            ax.set_xlabel("time (sec)")
-            ax.set_ylabel("score")
-            ax.legend()
-            ax.set_title("Real-time scores (sliding window)")
-            plot_placeholder.pyplot(fig, clear_figure=True)
 
         processed += 1
         frame_idx += 1
 
-        # real-time pacing
-        time.sleep(delay)
+        # OPTIMIZATION: Smart sleep based on Stride
+        process_duration = time.time() - loop_start_time
+        sleep_time = target_dt - process_duration
+        if sleep_time > 0:
+            time.sleep(sleep_time)
 
     cap.release()
-    st.success(f"Live preview finished. Processed steps: {processed}. Last frame idx: {frame_idx}.")
+    st.success(f"Live preview finished. Processed steps: {processed}.")
 
 # ============================================================
 # CORE: PROCESS VIDEO
@@ -617,15 +603,8 @@ def process_video(
     save_video: bool,
 ) -> Dict[str, object]:
     """
-    Runs YOLO frame-by-frame (stride sampling), computes:
-      - yolo_score (logistic of semantic fractions)
-      - optional clip_score (only when triggered)
-      - fused_score = (1-clip_weight)*yolo + clip_weight*clip_sigmoid
-      - EMA smoothing for both
-      - hysteresis state machine to reduce flicker
-    Saves:
-      - annotated mp4 (optional)
-      - timeline csv
+    Runs YOLO frame-by-frame (stride sampling).
+    Fixes the output video speed by adjusting the Writer FPS.
     """
     cap = cv2.VideoCapture(str(input_path))
     if not cap.isOpened():
@@ -644,7 +623,9 @@ def process_video(
     writer = None
     if save_video:
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-        writer = cv2.VideoWriter(str(out_video_path), fourcc, float(fps), (width, height))
+        # FIX: Adjust FPS so video duration matches real time
+        effective_fps = fps / stride
+        writer = cv2.VideoWriter(str(out_video_path), fourcc, float(effective_fps), (width, height))
 
     # CLIP embeddings
     pos_emb = neg_emb = None
@@ -663,9 +644,8 @@ def process_video(
 
     state = "OUT"
     inside_frames = 0
-    out_frames = 999999  # start as "out for a long time"
+    out_frames = 999999
 
-    # progress
     progress = st.progress(0)
     info = st.empty()
 
@@ -689,6 +669,7 @@ def process_video(
             iou=iou,
             verbose=False,
             device=device,
+            half=True, # Optimization
         )
         r = results[0]
 
@@ -700,8 +681,6 @@ def process_video(
 
         # YOLO score
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
-
-        # EMA for yolo
         yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
 
         # CLIP (triggered)
@@ -710,21 +689,14 @@ def process_video(
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
             try:
                 diff = clip_frame_score(clip_bundle, device, frame, pos_emb, neg_emb)
-                # squash diff into [0,1] so it blends nicely
                 clip_score_raw = logistic(diff * 3.0)
                 clip_used = 1
             except Exception:
                 clip_score_raw = 0.0
-                clip_used = 0
 
         # Fuse
-        if clip_enabled:
-            fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw
-        else:
-            fused = yolo_score
-
+        fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw if clip_enabled else yolo_score
         fused = clamp01(fused)
-
         fused_ema = ema(fused_ema, fused, ema_alpha)
 
         # State update
@@ -740,9 +712,9 @@ def process_video(
             approach_th=approach_th,
         )
 
-        # Annotate frame (YOLO boxes + banner)
+        # Annotate & Write
         annotated = r.plot()
-        annotated = draw_banner(annotated, state, float(fused_ema))
+        annotated = draw_banner(annotated, state, float(fused_ema), clip_active=(clip_used==1))
 
         if writer is not None:
             writer.write(annotated)
@@ -754,35 +726,26 @@ def process_video(
             "time_sec": float(time_sec),
             "yolo_score": float(yolo_score),
             "yolo_score_ema": float(yolo_ema) if yolo_ema is not None else float(yolo_score),
-            "clip_score": float(clip_score_raw),
-            "clip_used": int(clip_used),
-            "fused_score": float(fused),
             "fused_score_ema": float(fused_ema) if fused_ema is not None else float(fused),
             "state": str(state),
-            "total_objs": int(feats["total_objs"]),
+            "clip_used": int(clip_used),
+            "clip_score": float(clip_score_raw),
             "count_channelization": int(feats["count_channelization"]),
             "count_workers": int(feats["count_workers"]),
-            "count_vehicles": int(feats["count_vehicles"]),
-            "count_ttc_signs": int(feats["count_ttc_signs"]),
-            "count_message_board": int(feats["count_message_board"]),
         }
         timeline_rows.append(row)
 
         processed += 1
         frame_idx += 1
 
-        # UI updates
-        if total_frames > 0:
-            progress.progress(min(frame_idx / total_frames, 1.0))
-        else:
-            progress.progress(min(processed / 500.0, 1.0))
-
-        info.markdown(
-            f"**Video:** `{input_path.name}`  \n"
-            f"**Frame:** {row['frame']}  | **t:** {row['time_sec']:.2f}s  | "
-            f"**state:** `{row['state']}`  | **fused_ema:** {row['fused_score_ema']:.2f}  "
-            f"| **clip_used:** {row['clip_used']}"
-        )
+        # UI updates (reduce frequency for speed)
+        if processed % 10 == 0:
+            if total_frames > 0:
+                progress.progress(min(frame_idx / total_frames, 1.0))
+            info.markdown(
+                f"**Processing...** Frame {frame_idx}/{total_frames} | "
+                f"State: `{state}` | CLIP used: {clip_used}"
+            )
 
     cap.release()
     if writer is not None:
@@ -796,9 +759,7 @@ def process_video(
         "out_video_path": out_video_path if save_video else None,
         "out_csv_path": out_csv_path,
         "timeline_df": df,
-        "fps": fps,
-        "width": width,
-        "height": height,
+        "fps": fps, # Return original FPS for display metrics
         "processed": processed,
         "total_frames": total_frames,
     }
@@ -823,7 +784,7 @@ def main():
 
     mode = st.sidebar.radio("Run mode", ["Live preview (real time)", "Batch (save outputs)"], index=0)
     max_seconds = st.sidebar.number_input("Live preview max seconds", min_value=5, value=30, step=5)
-    run_full_video = st.sidebar.checkbox("Run full video (ignore max seconds)", value=False)
+    run_full_video = st.sidebar.checkbox("Run full video (ignore max seconds)", value=True)
 
     use_uploaded = st.sidebar.checkbox("Upload YOLO weights (.pt)", value=False)
     uploaded_file = None
@@ -869,7 +830,7 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.header("Optional CLIP (triggered)")
-    use_clip = st.sidebar.checkbox("Enable CLIP fusion", value=False)
+    use_clip = st.sidebar.checkbox("Enable CLIP fusion", value=True)
 
     clip_pos_text = st.sidebar.text_input(
         "CLIP positive prompt",
