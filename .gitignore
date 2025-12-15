@@ -27,6 +27,7 @@ workzone-debug/
 # ---------------------------------
 # Ignore everything inside data
 data/*
+outputs/*
 
 # Keep only demo videos
 !data/demo/
