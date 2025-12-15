@@ -16,7 +16,7 @@ from ultralytics import YOLO
 # ============================================================
 # NOTEBOOK / DEMO NAME
 # ============================================================
-NOTEBOOK_NAME = "Demo 3 (Streamlit: YOLO timeline + optional CLIP fused score + anti-flicker state)"
+NOTEBOOK_NAME = "Demo 3 (Streamlit: YOLO timeline + CLIP fused score + anti-flicker state)"
 
 
 # ============================================================

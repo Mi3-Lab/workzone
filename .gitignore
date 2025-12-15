@@ -28,6 +28,7 @@ workzone-debug/
 # Ignore everything inside data
 data/*
 outputs/*
+alpamayo/*
 
 # Keep only demo videos
 !data/demo/
