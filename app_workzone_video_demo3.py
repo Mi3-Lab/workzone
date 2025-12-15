@@ -409,6 +409,9 @@ def run_live_preview(
     min_out_frames: int,
     approach_th: float,
     max_seconds: int,
+    run_full_video: bool = False,
+    chart_window: int = 250,
+    chart_every: int = 3,
 ):
     cap = cv2.VideoCapture(str(input_path))
     if not cap.isOpened():
@@ -416,6 +419,10 @@ def run_live_preview(
         return
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+
+    # If you want "real-time feel", keep this.
+    # If you want max speed, set delay=0.0
     delay = 1.0 / fps if fps > 0 else 0.03
 
     # CLIP embeddings
@@ -435,25 +442,54 @@ def run_live_preview(
     inside_frames = 0
     out_frames = 999999
 
+    # UI placeholders
     frame_placeholder = st.empty()
     info_placeholder = st.empty()
+    plot_placeholder = st.empty()
+    progress = st.progress(0)
+
+    # live stop button (works only if we rerender it)
+    stop_slot = st.empty()
+
+    # history for chart
+    hist_t: List[float] = []
+    hist_yolo: List[float] = []
+    hist_fused: List[float] = []
 
     t0 = time.time()
     frame_idx = 0
     processed = 0
 
+    # --- Stop control (create ONCE) ---
+    if "stop_live" not in st.session_state:
+        st.session_state["stop_live"] = False
+
+    c_stop1, c_stop2 = st.columns([1, 3])
+    with c_stop1:
+        if st.button("Stop live preview", type="secondary", key="stop_live_btn"):
+            st.session_state["stop_live"] = True
+    with c_stop2:
+        if st.button("Reset stop flag", key="reset_live_btn"):
+            st.session_state["stop_live"] = False
+
     while True:
-        if (time.time() - t0) > max_seconds:
-            break
+        # STOP CONDITIONS
+        if (not run_full_video) and max_seconds > 0:
+            if (time.time() - t0) > float(max_seconds):
+                break
 
         ret, frame = cap.read()
         if not ret:
+            break
+
+        if st.session_state.get("stop_live", False):
             break
 
         if stride > 1 and (frame_idx % stride != 0):
             frame_idx += 1
             continue
 
+        # YOLO inference
         results = yolo_model.predict(
             frame,
             conf=conf,
@@ -472,6 +508,7 @@ def run_live_preview(
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
         yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
 
+        # CLIP (triggered)
         clip_score_raw = 0.0
         clip_used = 0
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
@@ -483,14 +520,12 @@ def run_live_preview(
                 clip_score_raw = 0.0
                 clip_used = 0
 
-        if clip_enabled:
-            fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw
-        else:
-            fused = yolo_score
+        # fuse
+        fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw if clip_enabled else yolo_score
         fused = clamp01(fused)
-
         fused_ema = ema(fused_ema, fused, ema_alpha)
 
+        # state
         state, inside_frames, out_frames = update_state(
             prev_state=state,
             fused_score=float(fused_ema),
@@ -506,23 +541,55 @@ def run_live_preview(
         annotated = r.plot()
         annotated = draw_banner(annotated, state, float(fused_ema))
 
-        # show
+        # show frame
         rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
         frame_placeholder.image(rgb, channels="RGB", width='stretch')
 
+        # compute time
+        t_sec = float(frame_idx / fps) if fps > 0 else float(processed)
+
         info_placeholder.markdown(
-            f"**Frame:** {frame_idx} | **t:** {frame_idx/fps:.2f}s | "
-            f"**state:** `{state}` | **fused_ema:** {float(fused_ema):.2f} | "
+            f"**Frame:** {frame_idx} / {total_frames if total_frames>0 else '??'} | "
+            f"**t:** {t_sec:.2f}s | **state:** `{state}` | "
+            f"**fused_ema:** {float(fused_ema):.2f} | "
             f"**objs:** {int(feats['total_objs'])} | **clip_used:** {clip_used}"
         )
 
+        # update progress
+        if total_frames > 0:
+            progress.progress(min(frame_idx / total_frames, 1.0))
+
+        # update chart history
+        hist_t.append(t_sec)
+        hist_yolo.append(float(yolo_ema) if yolo_ema is not None else float(yolo_score))
+        hist_fused.append(float(fused_ema) if fused_ema is not None else float(fused))
+
+        # keep chart light
+        if len(hist_t) > chart_window:
+            hist_t = hist_t[-chart_window:]
+            hist_yolo = hist_yolo[-chart_window:]
+            hist_fused = hist_fused[-chart_window:]
+
+        # redraw chart every N processed steps
+        if processed % chart_every == 0:
+            fig, ax = plt.subplots(figsize=(9, 3.0))
+            ax.plot(hist_t, hist_yolo, label="yolo_score_ema", linewidth=1.5)
+            ax.plot(hist_t, hist_fused, label="fused_score_ema", linewidth=2.0)
+            ax.set_ylim(0.0, 1.0)
+            ax.set_xlabel("time (sec)")
+            ax.set_ylabel("score")
+            ax.legend()
+            ax.set_title("Real-time scores (sliding window)")
+            plot_placeholder.pyplot(fig, clear_figure=True)
+
         processed += 1
         frame_idx += 1
+
+        # real-time pacing
         time.sleep(delay)
 
     cap.release()
-    st.success(f"Live preview finished. Processed steps: {processed}")
-
+    st.success(f"Live preview finished. Processed steps: {processed}. Last frame idx: {frame_idx}.")
 
 # ============================================================
 # CORE: PROCESS VIDEO
@@ -756,7 +823,7 @@ def main():
 
     mode = st.sidebar.radio("Run mode", ["Live preview (real time)", "Batch (save outputs)"], index=0)
     max_seconds = st.sidebar.number_input("Live preview max seconds", min_value=5, value=30, step=5)
-
+    run_full_video = st.sidebar.checkbox("Run full video (ignore max seconds)", value=False)
 
     use_uploaded = st.sidebar.checkbox("Upload YOLO weights (.pt)", value=False)
     uploaded_file = None
@@ -913,6 +980,7 @@ def main():
             min_out_frames=int(min_out_frames),
             approach_th=float(approach_th),
             max_seconds=int(max_seconds),
+            run_full_video=bool(run_full_video),
         )
         return
 
