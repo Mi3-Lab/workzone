@@ -210,9 +210,9 @@ if __name__ == "__main__":
     tmpl = load_physical_aiavdataset(TEMPLATE_CLIP_ID, t0_us=5_100_000)
 
     run_final_visualization(
-        video_path=Path("/home/wesleyferreiramaia/data/workzone/data/demo/jacksonville.mp4"),
+        video_path=Path("/home/wesleyferreiramaia/data/workzone/data/Construction_Data/EYosemiteAve_NightRain.mp4"),
         model=model,
         processor=processor,
         tmpl=tmpl,
-        out_path=Path("jacksonville_verbose.mp4"),
+        out_path=Path("/home/wesleyferreiramaia/data/workzone/data/Construction_Data/EYosemiteAve_NightRain_verbose.mp4"),
     )
