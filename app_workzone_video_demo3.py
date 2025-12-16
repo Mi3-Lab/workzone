@@ -28,7 +28,7 @@ DEMO_VIDEOS_DIR = DATA_DIR / "demo"
 VIDEOS_COMPRESSED_DIR = DATA_DIR / "videos_compressed"
 
 # Change this default if you want, but keep as your trained workzone model:
-DEFAULT_WEIGHTS_PATH = str((ROOT / "best.pt").resolve()) if (ROOT / "best.pt").exists() else str((ROOT / "bestv12.pt").resolve())
+DEFAULT_WEIGHTS_PATH = str((ROOT / "weights/best.pt").resolve()) if (ROOT / "weights/best.pt").exists() else str((ROOT / "weights/bestv12.pt").resolve())
 
 
 # ============================================================
