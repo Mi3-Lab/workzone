@@ -10,7 +10,7 @@ __version__ = "1.0.0"
 __author__ = "WMaia9"
 __description__ = "Professional AI system for construction zone detection and analysis"
 
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

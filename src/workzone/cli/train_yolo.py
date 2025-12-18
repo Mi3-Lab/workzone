@@ -3,9 +3,9 @@
 import argparse
 from pathlib import Path
 
-from src.workzone.config import YOLOConfig, get_config
-from src.workzone.pipelines.yolo_training import YOLOTrainingPipeline
-from src.workzone.utils.logging_config import setup_logger
+from workzone.config import YOLOConfig, get_config
+from workzone.pipelines.yolo_training import YOLOTrainingPipeline
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

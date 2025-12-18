@@ -6,8 +6,8 @@ from typing import Optional
 import wandb
 from ultralytics import YOLO
 
-from src.workzone.config import YOLOConfig
-from src.workzone.utils.logging_config import setup_logger
+from workzone.config import YOLOConfig
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

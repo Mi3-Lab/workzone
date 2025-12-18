@@ -3,10 +3,10 @@
 import argparse
 from pathlib import Path
 
-from src.workzone.config import YOLOConfig
-from src.workzone.models.yolo_detector import YOLODetector
-from src.workzone.pipelines.video_inference import VideoInferencePipeline
-from src.workzone.utils.logging_config import setup_logger
+from workzone.config import YOLOConfig
+from workzone.models.yolo_detector import YOLODetector
+from workzone.pipelines.video_inference import VideoInferencePipeline
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

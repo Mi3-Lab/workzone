@@ -16,7 +16,7 @@ import streamlit as st
 import torch
 from ultralytics import YOLO
 
-from src.workzone.apps.streamlit_utils import (
+from workzone.apps.streamlit_utils import (
     WORKZONE_CLASSES_10,
     compute_simple_workzone_score,
     draw_workzone_banner,
@@ -25,7 +25,7 @@ from src.workzone.apps.streamlit_utils import (
     load_model_default,
     resolve_device,
 )
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

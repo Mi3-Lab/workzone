@@ -167,36 +167,24 @@ def resolve_device(device_choice: str) -> str:
     Resolve device choice to proper torch device string.
 
     Args:
-        device_choice: Human-readable device choice
+        device_choice: Human-readable device choice ("Auto", "GPU (cuda)", "CPU")
 
     Returns:
-        PyTorch device string
+        PyTorch device string ("cuda" or "cpu")
     """
     import torch
 
     if device_choice == "CPU":
         return "cpu"
-    elif device_choice == "CUDA (GPU)":
+    elif device_choice == "GPU (cuda)":
         if torch.cuda.is_available():
             return "cuda"
         else:
             logger.warning("CUDA not available, falling back to CPU")
             st.warning("CUDA not available, using CPU instead")
             return "cpu"
-    elif device_choice.startswith("CUDA:"):
-        # Extract GPU number
-        try:
-            gpu_id = device_choice.split(":")[1]
-            if torch.cuda.is_available():
-                return f"cuda:{gpu_id}"
-            else:
-                logger.warning("CUDA not available, falling back to CPU")
-                st.warning("CUDA not available, using CPU instead")
-                return "cpu"
-        except Exception:
-            return "cuda" if torch.cuda.is_available() else "cpu"
-    else:
-        return "cpu"
+    else:  # "Auto"
+        return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 # ============================================================

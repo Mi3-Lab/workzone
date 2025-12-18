@@ -322,6 +322,183 @@ def plot_scores(t: List[float], y1: List[float], y2: List[float], title: str) ->
     st.pyplot(fig)
 
 
+def run_live_preview(
+    input_path: Path,
+    yolo_model: YOLO,
+    device: str,
+    conf: float,
+    iou: float,
+    stride: int,
+    ema_alpha: float,
+    use_clip: bool,
+    clip_bundle: Optional[Dict],
+    clip_pos_text: str,
+    clip_neg_text: str,
+    clip_weight: float,
+    clip_trigger_th: float,
+    weights_yolo: Dict[str, float],
+    enter_th: float,
+    exit_th: float,
+    min_inside_frames: int,
+    min_out_frames: int,
+    approach_th: float,
+    max_seconds: int,
+    run_full_video: bool = False,
+) -> None:
+    """Run live preview with real-time rendering."""
+    cap = cv2.VideoCapture(str(input_path))
+    if not cap.isOpened():
+        st.error(f"Could not open video: {input_path}")
+        return
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+
+    # Timing: stride affects playback speed
+    base_dt = 1.0 / fps if fps > 0 else 0.03
+    target_dt = base_dt * stride
+
+    # CLIP embeddings
+    pos_emb = neg_emb = None
+    clip_enabled = False
+    if use_clip and clip_bundle is not None:
+        try:
+            pos_emb, neg_emb = clip_text_embeddings(clip_bundle, device, clip_pos_text, clip_neg_text)
+            clip_enabled = True
+        except Exception as e:
+            logger.warning(f"CLIP text embedding failed: {e}")
+            clip_enabled = False
+
+    yolo_ema = None
+    fused_ema = None
+
+    state = "OUT"
+    inside_frames = 0
+    out_frames = 999999
+
+    frame_placeholder = st.empty()
+    info_placeholder = st.empty()
+    progress = st.progress(0)
+
+    # Stop control
+    if "stop_live" not in st.session_state:
+        st.session_state["stop_live"] = False
+
+    c_stop1, c_stop2 = st.columns([1, 3])
+    with c_stop1:
+        if st.button("Stop live preview", type="secondary", key="stop_live_btn"):
+            st.session_state["stop_live"] = True
+    with c_stop2:
+        if st.button("Reset stop flag", key="reset_live_btn"):
+            st.session_state["stop_live"] = False
+
+    t_start_loop = time.time()
+    frame_idx = 0
+    processed = 0
+
+    while True:
+        loop_start_time = time.time()
+
+        if (not run_full_video) and max_seconds > 0:
+            if (time.time() - t_start_loop) > float(max_seconds):
+                break
+
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if st.session_state.get("stop_live", False):
+            break
+
+        # Stride skipping
+        if stride > 1 and (frame_idx % stride != 0):
+            frame_idx += 1
+            continue
+
+        # YOLO inference
+        results = yolo_model.predict(
+            frame,
+            conf=conf,
+            iou=iou,
+            verbose=False,
+            device=device,
+            half=True,
+        )
+        r = results[0]
+
+        if r.boxes is not None and len(r.boxes) > 0:
+            cls_ids = r.boxes.cls.int().cpu().tolist()
+            names = [yolo_model.names[int(cid)] for cid in cls_ids]
+        else:
+            names = []
+
+        yolo_score, feats = yolo_frame_score(names, weights_yolo)
+        yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
+
+        # CLIP logic (triggered)
+        clip_score_raw = 0.0
+        clip_used = 0
+        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
+            try:
+                diff = clip_frame_score(clip_bundle, device, frame, pos_emb, neg_emb)
+                clip_score_raw = logistic(diff * 3.0)
+                clip_used = 1
+            except Exception as e:
+                logger.warning(f"CLIP frame scoring failed: {e}")
+                clip_score_raw = 0.0
+
+        fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw if clip_enabled else yolo_score
+        fused = clamp01(fused)
+        fused_ema = ema(fused_ema, fused, ema_alpha)
+
+        state, inside_frames, out_frames = update_state(
+            prev_state=state,
+            fused_score=float(fused_ema),
+            inside_frames=inside_frames,
+            out_frames=out_frames,
+            enter_th=enter_th,
+            exit_th=exit_th,
+            min_inside_frames=min_inside_frames,
+            min_out_frames=min_out_frames,
+            approach_th=approach_th,
+        )
+
+        annotated = r.plot()
+        annotated = draw_banner(annotated, state, float(fused_ema), clip_active=(clip_used == 1))
+
+        # Resize for browser performance
+        disp_h, disp_w = annotated.shape[:2]
+        if disp_w > 1280:
+            scale = 1280 / disp_w
+            annotated = cv2.resize(annotated, (1280, int(disp_h * scale)))
+
+        rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
+        frame_placeholder.image(rgb, channels="RGB", width='stretch')
+
+        t_sec = float(frame_idx / fps) if fps > 0 else float(processed)
+        info_placeholder.markdown(
+            f"**Frame:** {frame_idx} / {total_frames} | "
+            f"**t:** {t_sec:.2f}s | **state:** `{state}` | "
+            f"**fused_ema:** {float(fused_ema) if fused_ema else 0.0:.2f} | "
+            f"**CLIP:** {'ACTIVE' if clip_used else 'OFF'}"
+        )
+
+        if total_frames > 0:
+            progress.progress(min(frame_idx / total_frames, 1.0))
+
+        processed += 1
+        frame_idx += 1
+
+        # Smart sleep based on stride
+        process_duration = time.time() - loop_start_time
+        sleep_time = target_dt - process_duration
+        if sleep_time > 0:
+            time.sleep(sleep_time)
+
+    cap.release()
+    st.success(f"Live preview finished. Processed steps: {processed}.")
+
+
 def process_video(
     input_path: Path,
     yolo_model: YOLO,
@@ -533,10 +710,14 @@ def main() -> None:
     st.sidebar.header("Model + Runtime")
 
     device_choice = st.sidebar.radio(
-        "Device", ["CPU", "CUDA (GPU)"], index=1 if torch.cuda.is_available() else 0
+        "Device", ["Auto", "GPU (cuda)", "CPU"], index=0
     )
     device = resolve_device(device_choice)
-    st.sidebar.text(f"Using: {device}")
+    st.sidebar.write(f"Using: **{device}**")
+
+    mode = st.sidebar.radio("Run mode", ["Live preview (real time)", "Batch (save outputs)"], index=0)
+    max_seconds = st.sidebar.number_input("Live preview max seconds", min_value=5, value=30, step=5)
+    run_full_video = st.sidebar.checkbox("Run full video (ignore max seconds)", value=True)
 
     use_uploaded_weights = st.sidebar.checkbox("Upload YOLO weights", value=False)
 
@@ -666,6 +847,34 @@ def main() -> None:
             use_clip = False
 
     # Process
+    if mode == "Live preview (real time)":
+        st.info("Running live preview (real time).")
+        run_live_preview(
+            input_path=video_path,
+            yolo_model=yolo_model,
+            device=device,
+            conf=float(conf),
+            iou=float(iou),
+            stride=int(stride),
+            ema_alpha=float(ema_alpha),
+            use_clip=bool(use_clip),
+            clip_bundle=clip_bundle,
+            clip_pos_text=str(clip_pos_text),
+            clip_neg_text=str(clip_neg_text),
+            clip_weight=float(clip_weight),
+            clip_trigger_th=float(clip_trigger_th),
+            weights_yolo=weights_yolo,
+            enter_th=float(enter_th),
+            exit_th=float(exit_th),
+            min_inside_frames=int(min_inside_frames),
+            min_out_frames=int(min_out_frames),
+            approach_th=float(approach_th),
+            max_seconds=int(max_seconds),
+            run_full_video=bool(run_full_video),
+        )
+        return
+
+    # Batch processing
     with st.spinner("Processing video..."):
         result = process_video(
             input_path=video_path,
