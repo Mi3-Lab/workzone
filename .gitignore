@@ -73,6 +73,9 @@ htmlcov/
 data/Construction_Data/
 data/*.mp4
 data/*.avi
+data/images/
+data/workzone_yolo
+data/annotations/
 outputs/
 *.mp4
 *.avi
