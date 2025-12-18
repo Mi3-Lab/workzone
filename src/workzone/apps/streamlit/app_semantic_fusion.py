@@ -52,6 +52,34 @@ CLIP_MODEL_NAME = "ViT-B-32"
 CLIP_PRETRAINED = "openai"
 
 
+# ------------------------------------------------------------
+# Lightweight context cue + adaptive EMA helpers
+# ------------------------------------------------------------
+def orange_ratio_hsv(frame_bgr: np.ndarray, h_low: int = 5, h_high: int = 25, s_th: int = 80, v_th: int = 50) -> float:
+    """Compute ratio of orange-like pixels in HSV space.
+    Defaults roughly capture traffic-cone/barrier oranges.
+    Returns [0,1]."""
+    if frame_bgr is None or frame_bgr.size == 0:
+        return 0.0
+    hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    mask = (h >= h_low) & (h <= h_high) & (s >= s_th) & (v >= v_th)
+    ratio = float(mask.sum()) / float(mask.size)
+    return clamp01(ratio)
+
+
+def context_boost_from_orange(ratio: float, center: float = 0.08, k: float = 30.0) -> float:
+    """Map orange ratio to a confidence-like score via logistic.
+    "center" is the ratio where output ~0.5; "k" controls slope."""
+    return clamp01(float(logistic(k * (ratio - center))))
+
+
+def adaptive_alpha(evidence: float, alpha_min: float = 0.10, alpha_max: float = 0.50) -> float:
+    """Interpolate EMA alpha based on evidence in [0,1]."""
+    e = clamp01(float(evidence))
+    return float(alpha_min + (alpha_max - alpha_min) * e)
+
+
 @st.cache_resource
 def load_clip_bundle(device: str) -> Tuple[bool, Optional[Dict]]:
     """Load OpenCLIP model and preprocessing."""
@@ -433,7 +461,16 @@ def run_live_preview(
             names = []
 
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
-        yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
+
+        # Evidence combines object presence and score strength
+        total_objs = feats.get("total_objs", 0.0)
+        obj_evidence = clamp01(total_objs / 8.0)
+        score_evidence = clamp01(yolo_score)
+        evidence = clamp01(0.5 * obj_evidence + 0.5 * score_evidence)
+
+        # Adaptive EMA for YOLO score
+        alpha_eff = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
+        yolo_ema = ema(yolo_ema, yolo_score, alpha_eff)
 
         # CLIP logic (triggered)
         clip_score_raw = 0.0
@@ -447,9 +484,29 @@ def run_live_preview(
                 logger.warning(f"CLIP frame scoring failed: {e}")
                 clip_score_raw = 0.0
 
-        fused = (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw if clip_enabled else yolo_score
+        # Start with YOLO-only base
+        fused = yolo_score
+        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
+            fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
+
+        # Lightweight context cue: orange pixels boost when uncertain
+        if kwargs.get("enable_context_boost", False) and (yolo_ema is not None) and (yolo_ema < kwargs.get("context_trigger_below", 0.55)):
+            ratio = orange_ratio_hsv(
+                frame,
+                h_low=int(kwargs.get("orange_h_low", 5)),
+                h_high=int(kwargs.get("orange_h_high", 25)),
+                s_th=int(kwargs.get("orange_s_th", 80)),
+                v_th=int(kwargs.get("orange_v_th", 50)),
+            )
+            ctx_score = context_boost_from_orange(ratio, center=float(kwargs.get("orange_center", 0.08)), k=float(kwargs.get("orange_k", 30.0)))
+            cw = float(kwargs.get("orange_weight", 0.25))
+            fused = (1.0 - cw) * fused + cw * ctx_score
+
         fused = clamp01(fused)
-        fused_ema = ema(fused_ema, fused, ema_alpha)
+
+        # Adaptive EMA for fused score
+        alpha_eff_fused = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
+        fused_ema = ema(fused_ema, fused, alpha_eff_fused)
 
         state, inside_frames, out_frames = update_state(
             prev_state=state,
@@ -598,7 +655,16 @@ def process_video(
 
         # YOLO score
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
-        yolo_ema = ema(yolo_ema, yolo_score, ema_alpha)
+
+        # Evidence combines object presence and score strength
+        total_objs = feats.get("total_objs", 0.0)
+        obj_evidence = clamp01(total_objs / 8.0)
+        score_evidence = clamp01(yolo_score)
+        evidence = clamp01(0.5 * obj_evidence + 0.5 * score_evidence)
+
+        # Adaptive EMA for YOLO score
+        alpha_eff = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
+        yolo_ema = ema(yolo_ema, yolo_score, alpha_eff)
 
         # CLIP (triggered)
         clip_score_raw = 0.0
@@ -611,14 +677,32 @@ def process_video(
             except Exception as e:
                 logger.error(f"CLIP frame score error: {e}")
 
-        # Fuse scores
-        fused = (
-            (1.0 - clip_weight) * yolo_score + clip_weight * clip_score_raw
-            if clip_enabled
-            else yolo_score
-        )
+        # Fuse scores starting from YOLO
+        fused = yolo_score
+        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
+            fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
+
+        # Lightweight context cue: orange pixels boost when uncertain
+        if st.session_state.get("enable_context_boost", False) and (yolo_ema is not None) and (yolo_ema < st.session_state.get("context_trigger_below", 0.55)):
+            ratio = orange_ratio_hsv(
+                frame,
+                h_low=int(st.session_state.get("orange_h_low", 5)),
+                h_high=int(st.session_state.get("orange_h_high", 25)),
+                s_th=int(st.session_state.get("orange_s_th", 80)),
+                v_th=int(st.session_state.get("orange_v_th", 50)),
+            )
+            ctx_score = context_boost_from_orange(
+                ratio,
+                center=float(st.session_state.get("orange_center", 0.08)),
+                k=float(st.session_state.get("orange_k", 30.0)),
+            )
+            cw = float(st.session_state.get("orange_weight", 0.25))
+            fused = (1.0 - cw) * fused + cw * ctx_score
+
         fused = clamp01(fused)
-        fused_ema = ema(fused_ema, fused, ema_alpha)
+        # Adaptive EMA for fused score
+        alpha_eff_fused = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
+        fused_ema = ema(fused_ema, fused, alpha_eff_fused)
 
         # State update
         state, inside_frames, out_frames = update_state(
@@ -773,6 +857,20 @@ def main() -> None:
     clip_weight = st.sidebar.slider("CLIP weight", 0.0, 0.8, 0.35, 0.05)
     clip_trigger_th = st.sidebar.slider("CLIP trigger (YOLO≥)", 0.0, 1.0, 0.45, 0.05)
 
+    st.sidebar.markdown("---")
+    st.sidebar.header("Fusion boosts")
+    enable_context_boost = st.sidebar.checkbox("Enable orange-cue boost on low evidence", value=True)
+    orange_weight = st.sidebar.slider("Orange boost weight", 0.0, 0.6, 0.25, 0.05)
+    context_trigger_below = st.sidebar.slider("Apply boost if YOLO_ema <", 0.0, 1.0, 0.55, 0.05)
+
+    with st.sidebar.expander("Advanced (HSV and shaping)"):
+        orange_h_low = st.slider("Hue low", 0, 179, 5, 1)
+        orange_h_high = st.slider("Hue high", 0, 179, 25, 1)
+        orange_s_th = st.slider("Saturation min", 0, 255, 80, 5)
+        orange_v_th = st.slider("Value min", 0, 255, 50, 5)
+        orange_center = st.slider("Center ratio (0-0.3)", 0.00, 0.30, 0.08, 0.01)
+        orange_k = st.slider("Slope (k)", 1.0, 60.0, 30.0, 1.0)
+
     save_video = st.sidebar.checkbox("Save annotated video", value=True)
 
     # Main area
@@ -871,6 +969,15 @@ def main() -> None:
             approach_th=float(approach_th),
             max_seconds=int(max_seconds),
             run_full_video=bool(run_full_video),
+            enable_context_boost=bool(enable_context_boost),
+            orange_weight=float(orange_weight),
+            context_trigger_below=float(context_trigger_below),
+            orange_h_low=int(orange_h_low),
+            orange_h_high=int(orange_h_high),
+            orange_s_th=int(orange_s_th),
+            orange_v_th=int(orange_v_th),
+            orange_center=float(orange_center),
+            orange_k=float(orange_k),
         )
         return
 

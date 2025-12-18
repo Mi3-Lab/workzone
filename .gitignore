@@ -76,6 +76,9 @@ data/*.avi
 data/images/
 data/workzone_yolo
 data/annotations/
+data/traj_annotations/
+data/traj_annotations_dense/
+data/traj_images/
 outputs/
 *.mp4
 *.avi
