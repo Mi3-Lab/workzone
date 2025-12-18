@@ -19,13 +19,13 @@ ALPAMAYO_SRC = ROOT / "alpamayo" / "src"
 if str(ALPAMAYO_SRC.parent) not in sys.path:
     sys.path.append(str(ALPAMAYO_SRC.parent))
 
-from src.workzone.apps.alpamayo_utils import (
+from workzone.apps.alpamayo_utils import (
     AlpamayoInferenceWorker,
     FrameMailbox,
     ReasoningTextBuffer,
     draw_reasoning_overlay,
 )
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

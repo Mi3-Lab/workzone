@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 import torch
 
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

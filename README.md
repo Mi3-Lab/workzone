@@ -22,6 +22,10 @@ Real-time construction zone detection using YOLO with semantic verification via 
 git clone https://github.com/WMaia9/workzone.git
 cd workzone
 
+# System dependencies (Linux)
+sudo apt update
+sudo apt install -y libgl1 libglib2.0-0 ffmpeg
+
 # Create virtual environment
 python -m venv venv
 source venv/bin/activate
@@ -79,6 +83,10 @@ streamlit run src/workzone/apps/streamlit/app_semantic_fusion.py
 ```
 
 **Features**: Live preview, batch processing, score visualization, CSV export, model upload
+
+Deployment (Streamlit Community Cloud):
+- Place `packages.txt` (apt dependencies) alongside your app. This repo stores it at `src/workzone/apps/streamlit/packages.txt`.
+- Example apt packages used: `libgl1`, `libglib2.0-0`, `ffmpeg`.
 
 ### Vision-Language Apps
 
@@ -190,11 +198,6 @@ MIT License - see [LICENSE](LICENSE) file
 - **OpenAI** - CLIP model
 - **Weights & Biases** - Experiment tracking
 - **ESV Competition** - Competition organizers
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/WMaia9/workzone/issues)
-- **Email**: contact@workzone.dev
 
 ---
 

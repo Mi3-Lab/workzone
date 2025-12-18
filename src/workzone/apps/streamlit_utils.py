@@ -9,7 +9,7 @@ import numpy as np
 import streamlit as st
 from ultralytics import YOLO
 
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 

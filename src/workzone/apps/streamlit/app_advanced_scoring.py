@@ -18,7 +18,7 @@ import streamlit as st
 import torch
 from ultralytics import YOLO
 
-from src.workzone.apps.streamlit_utils import (
+from workzone.apps.streamlit_utils import (
     CHANNELIZATION,
     VEHICLES,
     WORKERS,
@@ -28,7 +28,7 @@ from src.workzone.apps.streamlit_utils import (
     logistic,
     resolve_device,
 )
-from src.workzone.utils.logging_config import setup_logger
+from workzone.utils.logging_config import setup_logger
 
 logger = setup_logger(__name__)
 
