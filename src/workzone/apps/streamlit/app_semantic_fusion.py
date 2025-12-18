@@ -372,6 +372,7 @@ def run_live_preview(
     approach_th: float,
     max_seconds: int,
     run_full_video: bool = False,
+    **kwargs
 ) -> None:
     """Run live preview with real-time rendering."""
     cap = cv2.VideoCapture(str(input_path))
@@ -870,6 +871,17 @@ def main() -> None:
         orange_v_th = st.slider("Value min", 0, 255, 50, 5)
         orange_center = st.slider("Center ratio (0-0.3)", 0.00, 0.30, 0.08, 0.01)
         orange_k = st.slider("Slope (k)", 1.0, 60.0, 30.0, 1.0)
+
+    # Store context boost params in session_state for batch mode
+    st.session_state["enable_context_boost"] = enable_context_boost
+    st.session_state["orange_weight"] = orange_weight
+    st.session_state["context_trigger_below"] = context_trigger_below
+    st.session_state["orange_h_low"] = orange_h_low
+    st.session_state["orange_h_high"] = orange_h_high
+    st.session_state["orange_s_th"] = orange_s_th
+    st.session_state["orange_v_th"] = orange_v_th
+    st.session_state["orange_center"] = orange_center
+    st.session_state["orange_k"] = orange_k
 
     save_video = st.sidebar.checkbox("Save annotated video", value=True)
 

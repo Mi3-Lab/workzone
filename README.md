@@ -4,14 +4,15 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Real-time construction zone detection using YOLO with semantic verification via CLIP and Vision-Language Models. Built for the ESV (Enhanced Safety of Vehicles) competition.
+Real-time construction zone detection using YOLO with semantic verification via CLIP. Built for the ESV (Enhanced Safety of Vehicles) competition and optimized for deployment on edge devices (Jetson Orin).
 
 ## ⚡ Quick Features
 
 - 🚗 **Real-time YOLO detection** - 50-class construction zone object detection
-- 🧠 **Semantic verification** - CLIP + Alpamayo-R1 for contextual understanding
+- 🎨 **Lightweight fusion & smoothing** - Adaptive EMA + orange-cue context boost (no heavy models)
 - 📊 **State machine tracking** - Anti-flicker work zone states (OUT → APPROACHING → INSIDE → EXITING)
-- 🎬 **Interactive apps** - Streamlit web UIs for analysis and visualization
+- 🎬 **Interactive apps** - Streamlit web UIs with live preview and batch processing
+- 💻 **Edge-ready** - Optimized for Jetson Orin; FP16 inference, configurable stride
 - 📈 **Experiment tracking** - Weights & Biases integration
 - 🔧 **Professional codebase** - PEP 8, type hints, comprehensive logging
 
@@ -78,17 +79,28 @@ streamlit run src/workzone/apps/streamlit/app_basic_detection.py
 # Advanced semantic scoring (z-scores, EMA smoothing)
 streamlit run src/workzone/apps/streamlit/app_advanced_scoring.py
 
-# YOLO + CLIP fusion with state machine
+# YOLO + CLIP fusion with adaptive EMA and context boost (RECOMMENDED)
 streamlit run src/workzone/apps/streamlit/app_semantic_fusion.py
 ```
 
-**Features**: Live preview, batch processing, score visualization, CSV export, model upload
+**Features**:
+- **Live preview** (real-time playback with instant feedback)
+- **Batch processing** (save outputs: video + CSV timeline)
+- **Score visualization** (YOLO and fused score curves)
+- **Device selection** (Auto-detect GPU, manual CPU/CUDA)
+- **Fusion boosts**:
+  - ✅ Adaptive EMA smoothing (scales from 0.4× to 1.2× base alpha based on evidence)
+  - ✅ Orange-cue context boost (HSV-based work zone color detection when YOLO is uncertain)
+  - ✅ Tunable HSV thresholds for traffic cone/barrier colors
+- **CSV export** (frame-by-frame scores, states, clip usage)
+- **Model upload** (test with custom YOLO weights)
 
-Deployment (Streamlit Community Cloud):
+### Streamlit Cloud Deployment
+
 - Place `packages.txt` (apt dependencies) alongside your app. This repo stores it at `src/workzone/apps/streamlit/packages.txt`.
-- Example apt packages used: `libgl1`, `libglib2.0-0`, `ffmpeg`.
+- Example apt packages: `libgl1`, `libglib2.0-0`, `ffmpeg`.
 
-### Vision-Language Apps
+### Vision-Language Apps (Optional)
 
 ```bash
 # 10Hz VLA reasoning with overlay
@@ -165,13 +177,19 @@ mypy src/
 
 ## 📊 Performance
 
-| Model | Size | FPS (batch=1) | GPU Memory |
-|-------|------|---------------|-----------|
-| YOLOv12s | 960×960 | ~85 | 2.4GB |
-| YOLOv12s | 960×960 (batch=8) | ~150 | 8.5GB |
-| YOLOv8s | 640×640 (batch=32) | ~240 | 12GB |
+| Model | Size | FPS (batch=1) | GPU Memory | Notes |
+|-------|------|---------------|-----------|-------|
+| YOLOv12s | 960×960 | ~85 | 2.4GB | RTX 4090, FP16 |
+| YOLOv12s | 960×960 (stride=2) | ~150 | 2.4GB | Real-time on Orin estimate |
+| YOLOv8s | 640×640 (batch=32) | ~240 | 12GB | Batch mode, A100 |
 
-**Latency (single frame, GPU)**: ~15ms total (12ms inference + 2ms preprocessing + 1ms postprocessing)
+**Latency (single frame, GPU)**:
+- YOLO inference: ~12ms (960×960, FP16)
+- Orange cue: <1ms
+- CLIP (optional, triggered): ~30ms
+- Total: 12–42ms depending on trigger
+
+**Fusion model**: Adaptive EMA + lightweight context boost (no additional latency vs. base YOLO)
 
 ## 🤝 Contributing
 
@@ -194,11 +212,11 @@ MIT License - see [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - **Ultralytics** - YOLOv8/v11/v12
-- **NVIDIA** - Alpamayo-R1 VLM
-- **OpenAI** - CLIP model
+- **OpenAI** - CLIP model for semantic verification
 - **Weights & Biases** - Experiment tracking
 - **ESV Competition** - Competition organizers
+- **Streamlit** - Interactive web applications
 
 ---
 
-**Built for the ESV Competition** 🏆
+**Built for the ESV Competition** 🏆 | **Edge-ready for Jetson Orin** 🚀
