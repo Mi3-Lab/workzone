@@ -1,0 +1,72 @@
+# WorkZone Project Configuration
+# This is a YAML configuration file for the WorkZone AI system
+# Environment variables can override these values
+
+project:
+  name: "workzone"
+  description: "AI-powered construction zone detection and monitoring"
+  version: "1.0.0"
+  competition: "ESV (Embodied Scene Understanding for Vehicles)"
+
+device:
+  type: "cuda"  # cuda or cpu
+  id: 0
+
+yolo:
+  # Model configuration
+  model_name: "yolo12s"
+  model_path: null  # Set to override model_name
+  
+  # Training parameters
+  imgsz: 960
+  epochs: 300
+  batch_size: 35
+  learning_rate: 0.001
+  workers: 8
+  
+  # Inference parameters
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  pretrained: true
+  
+  # Data
+  data_yaml: "data/workzone_yolo/workzone_yolo.yaml"
+
+vla:
+  # Vision-Language Model configuration
+  model_id: "nvidia/Alpamayo-R1-10B"
+  inference_cadence: 0.1  # 10Hz (0.1 seconds per inference)
+  dtype: "bfloat16"
+  temperature: 0.6
+  top_p: 0.8
+  max_generation_length: 128
+  num_traj_samples: 1
+
+processing:
+  # Video and frame processing
+  video_fps: 30
+  frame_width: 1920
+  frame_height: 1080
+  resize_width: 512
+  resize_height: 384
+  frame_queue_size: 5
+  enable_threading: true
+  num_workers: 4
+
+data:
+  # Data paths
+  data_root: "data"
+  construction_data: "data/Construction_Data"
+  weights_dir: "weights"
+  output_dir: "outputs"
+
+wandb:
+  # Weights & Biases tracking
+  enabled: true
+  project: "workzone-yolo"
+  entity: null  # Set your W&B username
+
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: null  # Set to enable file logging

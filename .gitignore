@@ -6,6 +6,26 @@ __pycache__/
 *.pyo
 *.pyd
 *.pyc
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
 # ---------------------------------
 # Virtual environments
@@ -13,26 +33,56 @@ __pycache__/
 .venv/
 venv/
 env/
-workzone/
-workzone-yolo-v12/
-workzone-debug/
+ENV/
+env.bak/
+venv.bak/
+ar1_venv/
+
+# ---------------------------------
+# IDE and editors
+# ---------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+
+# ---------------------------------
+# Testing
+# ---------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
 
 # ---------------------------------
 # Jupyter
 # ---------------------------------
 .ipynb_checkpoints/
+.jupyter/
 
 # ---------------------------------
 # Data
 # ---------------------------------
-# Ignore everything inside data
-data/*
-outputs/*
-alpamayo/*
+data/Construction_Data/
+data/*.mp4
+data/*.avi
+outputs/
+*.mp4
+*.avi
+*.mkv
 
-# Keep only demo videos
-!data/demo/
-!data/demo/*.mp4
+# ---------------------------------
+# Model weights (too large)
+# ---------------------------------
+weights/*.pt
+!weights/.gitkeep
 
 # ---------------------------------
 # Training outputs and artifacts
@@ -41,13 +91,37 @@ runs/
 runs_workzone/
 models/
 workzone_yolo/
+lightning_logs/
 
 # ---------------------------------
 # Logs and cache
 # ---------------------------------
 *.log
+logs/
 wandb/
 .cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ---------------------------------
+# Environment files
+# ---------------------------------
+.env
+.env.local
+.env.*.local
+
+# ---------------------------------
+# OS specific
+# ---------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 .tmp/
 *.tmp
 
