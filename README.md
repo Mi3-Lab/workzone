@@ -9,12 +9,11 @@ Real-time construction zone detection using YOLO with semantic verification via 
 ## ⚡ Quick Features
 
 - 🚗 **Real-time YOLO detection** - 50-class construction zone object detection
-- 🎨 **Lightweight fusion & smoothing** - Adaptive EMA + orange-cue context boost (no heavy models)
+- 🎨 **Lightweight fusion & smoothing** - Adaptive EMA + orange-cue context boost
 - 📊 **State machine tracking** - Anti-flicker work zone states (OUT → APPROACHING → INSIDE → EXITING)
 - 🎬 **Interactive apps** - Streamlit web UIs with live preview and batch processing
 - 💻 **Edge-ready** - Optimized for Jetson Orin; FP16 inference, configurable stride
 - 📈 **Experiment tracking** - Weights & Biases integration
-- 🔧 **Professional codebase** - PEP 8, type hints, comprehensive logging
 
 ## 🚀 Installation
 
