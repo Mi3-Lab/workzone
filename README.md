@@ -139,6 +139,18 @@ python -m src.workzone.apps.alpamayo.alpamayo_threaded \
   --video data/demo/boston_workzone_short.mp4
 ```
 
+#### Quick Run (Short Commands)
+
+After `pip install -e .`, you can use short CLI commands:
+
+```bash
+# 10Hz inspector
+workzone-alpamayo-inspector --video data/demo/boston_workzone_short.mp4 --output alpamayo_output.mp4
+
+# Zero-lag threaded player
+workzone-alpamayo-threaded --video data/demo/boston_workzone_short.mp4
+```
+
 ## 📁 Project Structure
 
 ```

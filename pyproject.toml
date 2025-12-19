@@ -64,6 +64,8 @@ Issues = "https://github.com/WMaia9/workzone/issues"
 [project.scripts]
 workzone-train = "workzone.cli.train_yolo:main"
 workzone-infer = "workzone.cli.infer_video:main"
+workzone-alpamayo-inspector = "workzone.apps.alpamayo.alpamayo_10hz_inspector:main"
+workzone-alpamayo-threaded = "workzone.apps.alpamayo.alpamayo_threaded:main"
 
 [tool.setuptools]
 packages = ["workzone"]
