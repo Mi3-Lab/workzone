@@ -78,6 +78,9 @@ results = pipeline.process()
 Three production-ready Streamlit apps for interactive analysis:
 
 ```bash
+# Activate environment
+source venv/bin/activate
+
 # Basic YOLO detection with simple scoring
 streamlit run src/workzone/apps/streamlit/app_basic_detection.py
 
@@ -107,14 +110,33 @@ streamlit run src/workzone/apps/streamlit/app_semantic_fusion.py
 
 ### Vision-Language Apps (Optional)
 
+#### Alpamayo Setup
+
 ```bash
-# 10Hz VLA reasoning with overlay
-python src/workzone/apps/alpamayo/alpamayo_10hz_inspector.py \
-  --video data/demo/sample.mp4 --output output.mp4
+# Clone NVLabs Alpamayo (once)
+git clone https://github.com/NVlabs/alpamayo.git
+
+# Activate environment
+source venv/bin/activate
+
+# Install flash-attn (compatible wheels)
+pip install flash-attn --no-build-isolation
+
+# Install Alpamayo package (will install compatible Torch/Transformers)
+pip install -e ./alpamayo
+```
+
+#### Run Inspectors
+
+```bash
+# 10Hz VLA reasoning with overlay (press 'q' to quit)
+python -m src.workzone.apps.alpamayo.alpamayo_10hz_inspector \
+  --video data/demo/boston_workzone_short.mp4 \
+  --output alpamayo_output.mp4
 
 # Zero-lag threaded VLA player
-python src/workzone/apps/alpamayo/alpamayo_threaded.py \
-  --video data/demo/sample.mp4
+python -m src.workzone.apps.alpamayo.alpamayo_threaded \
+  --video data/demo/boston_workzone_short.mp4
 ```
 
 ## 📁 Project Structure
