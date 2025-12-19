@@ -24,14 +24,20 @@ cd workzone
 
 # System dependencies (Linux)
 sudo apt update
-sudo apt install -y libgl1 libglib2.0-0 ffmpeg
+sudo apt install -y libgl1 libglib2.0-0 libsm6 libxext6 ffmpeg
 
 # Create virtual environment
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
-# Install (development mode)
-pip install -e ".[dev]"
+# Upgrade pip
+pip install --upgrade pip setuptools wheel
+
+# Install requirements
+pip install -r requirements.txt
+
+# Install package in development mode
+pip install -e .
 ```
 
 ## 📖 Usage
