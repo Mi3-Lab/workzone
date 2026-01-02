@@ -8,6 +8,9 @@ help:
 	@echo "  make install-dev       Install with development dependencies"
 	@echo "  make train             Train YOLO model"
 	@echo "  make infer             Run inference on video"
+	@echo "  make app-semantic-fusion  Run the Semantic Fusion Streamlit app"
+	@echo "  make app-basic-detection  Run the Basic Detection Streamlit app"
+	@echo "  make app-advanced-scoring Run the Advanced Scoring Streamlit app"
 	@echo "  make test              Run all tests"
 	@echo "  make test-coverage     Run tests with coverage report"
 	@echo "  make lint              Run linting checks"
@@ -29,6 +32,15 @@ infer:
 		--video data/Construction_Data/EYosemiteAve_NightFog.mp4 \
 		--model weights/best.pt \
 		--output results/output.mp4
+
+app-semantic-fusion:
+	streamlit run src/workzone/apps/streamlit/app_semantic_fusion.py
+
+app-basic-detection:
+	streamlit run src/workzone/apps/streamlit/app_basic_detection.py
+
+app-advanced-scoring:
+	streamlit run src/workzone/apps/streamlit/app_advanced_scoring.py
 
 test:
 	pytest tests/ -v
