@@ -70,16 +70,17 @@ htmlcov/
 # ---------------------------------
 # Data
 # ---------------------------------
-data/Construction_Data/
-data/*.mp4
-data/*.avi
-data/images/
-data/workzone_yolo
-data/annotations/
-data/traj_annotations/
-data/traj_annotations_dense/
-data/traj_images/
+# Ignore all data folder contents except demo
+data/*
+!data/demo/
+!data/demo/**
+
+# Ignore outputs
 outputs/
+alpamayo/
+workzone-yolo-v12/
+
+# Ignore video files
 *.mp4
 *.avi
 *.mkv
