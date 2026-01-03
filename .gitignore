@@ -48,6 +48,34 @@ ar1_venv/
 *~
 .DS_Store
 .project
+
+# ---------------------------------
+# Results and outputs (large files)
+# ---------------------------------
+results/
+outputs/
+*.mp4
+*.avi
+*.mov
+*.mkv
+/data/videos_compressed/
+/data/demo/
+
+# ---------------------------------
+# Model weights
+# ---------------------------------
+weights/
+*.pt
+!weights/.gitkeep
+
+# ---------------------------------
+# Logs and runtime
+# ---------------------------------
+*.log
+.streamlit/
+wandb/
+.run/
+
 .pydevproject
 .settings/
 
