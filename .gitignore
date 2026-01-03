@@ -80,10 +80,16 @@ outputs/
 alpamayo/
 workzone-yolo-v12/
 
-# Ignore video files
+# Ignore video files (except demo videos)
 *.mp4
 *.avi
 *.mkv
+!data/demo/**/*.mp4
+!data/demo/**/*.avi
+!data/demo/**/*.mkv
+!data/03_demo/**/*.mp4
+!data/03_demo/**/*.avi
+!data/03_demo/**/*.mkv
 
 # ---------------------------------
 # Model weights (too large)

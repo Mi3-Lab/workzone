@@ -1,0 +1,175 @@
+# Multi-Cue AND + Temporal Persistence Configuration
+# Phase 1.1 - Work Zone Detection System
+
+# ===================================
+# CUE TAXONOMY
+# ===================================
+# Map YOLO classes to logical cue groups
+# Each group represents independent evidence of work zone
+
+cue_groups:
+  CHANNELIZATION:
+    classes:
+      - Cone
+      - Drum
+      - Barricade
+      - Barrier
+      - Fence
+      - Tubular Marker
+      - Vertical Panel
+    description: "Physical traffic control devices that channel/redirect traffic"
+  
+  SIGNAGE:
+    classes:
+      - Temporary Traffic Control Sign
+      - "Temporary Traffic Control Sign: left arrow"
+      - "Temporary Traffic Control Sign: right arrow"
+      - "Temporary Traffic Control Sign: up arrow"
+      - "Temporary Traffic Control Sign: left chevron"
+      - "Temporary Traffic Control Sign: right lane ends sign"
+      - "Temporary Traffic Control Sign: two lane shift arrows"
+      - "Temporary Traffic Control Sign: right chevron"
+      - "Temporary Traffic Control Sign: lane shift arrow"
+      - "Temporary Traffic Control Sign: up diagonal right arrow"
+      - "Temporary Traffic Control Sign: left lane ends sign"
+      - "Temporary Traffic Control Sign: bent left arrow"
+      - "Temporary Traffic Control Sign: flagger"
+      - "Temporary Traffic Control Sign: bent right arrow"
+      - "Temporary Traffic Control Sign: no left turn"
+      - "Temporary Traffic Control Sign: pedestrian: right arrow"
+      - "Temporary Traffic Control Sign: pedestrian: left arrow"
+      - "Temporary Traffic Control Sign: up diagonal left arrow"
+      - "Temporary Traffic Control Sign: pedestrian"
+      - "Temporary Traffic Control Sign: no right turn"
+      - "Temporary Traffic Control Sign: bi-directional arrow"
+      - "Temporary Traffic Control Sign: two upward diagonal arrows"
+      - "Temporary Traffic Control Sign: curved right arrow"
+      - "Temporary Traffic Control Sign: down diagonal left arrow"
+      - "Temporary Traffic Control Sign: do not enter sign"
+      - "Temporary Traffic Control Sign: worker"
+      - "Temporary Traffic Control Sign: bicycle"
+      - "Temporary Traffic Control Sign: two downward diagonal arrows"
+      - "Temporary Traffic Control Sign: curved left arrow"
+      - "Temporary Traffic Control Sign: curved left and curved right arrow"
+      - "Temporary Traffic Control Sign: work vehicle"
+      - "Temporary Traffic Control Sign: traffic signal"
+      - "Temporary Traffic Control Sign: up arrow / stop sign"
+      - Temporary Traffic Control Message Board
+      - Arrow Board
+    description: "Signs and message boards indicating work zone"
+  
+  PERSONNEL:
+    classes:
+      - Worker
+      - Police Officer
+    description: "Workers and personal protective equipment"
+  
+  EQUIPMENT:
+    classes:
+      - Work Vehicle
+      - Work Equipment
+      - Police Vehicle
+    description: "Heavy equipment and work vehicles"
+  
+  INFRASTRUCTURE:
+    classes:
+      - Bike Lane
+    description: "Modified road infrastructure"
+
+# ===================================
+# DETECTION THRESHOLDS
+# ===================================
+# Confidence thresholds per cue group (0.0-1.0)
+# Lower = more sensitive, Higher = more precise
+
+detection_thresholds:
+  CHANNELIZATION: 0.25   # Lower - cones are reliable, common (cones avg 0.35)
+  SIGNAGE: 0.35          # Medium - signs avg 0.82 so we can be confident
+  PERSONNEL: 0.50        # Medium - people detection varies
+  EQUIPMENT: 0.45        # Medium - equipment is distinctive
+  INFRASTRUCTURE: 0.60   # Higher - harder to detect reliably
+
+# ===================================
+# CUE PRESENCE CRITERIA
+# ===================================
+# Minimum objects needed per cue to consider it "present"
+
+min_objects_per_cue:
+  CHANNELIZATION: 3      # Need ≥3 cones/barriers for taper
+  SIGNAGE: 1             # 1 sign is sufficient evidence
+  PERSONNEL: 1           # 1 worker is sufficient
+  EQUIPMENT: 1           # 1 vehicle/machine is sufficient
+  INFRASTRUCTURE: 1      # 1 area detection is sufficient
+
+# ===================================
+# TEMPORAL PERSISTENCE PARAMETERS
+# ===================================
+
+temporal:
+  # Sliding window size (in frames)
+  window_size: 30          # 1 second at 30fps
+  
+  # Persistence threshold (fraction of window where cue must be present)
+  persistence_threshold: 0.6   # Cue must be present in ≥60% of window
+  
+  # Cue-specific weights (for combining persistence scores)
+  cue_weights:
+    CHANNELIZATION: 1.0
+    SIGNAGE: 1.2         # Signs slightly more reliable
+    PERSONNEL: 0.9       # Personnel less reliable (occlusion)
+    EQUIPMENT: 1.0
+    INFRASTRUCTURE: 0.8  # Infrastructure harder to detect
+
+# ===================================
+# MULTI-CUE GATE PARAMETERS
+# ===================================
+
+multi_cue_gate:
+  # Minimum number of DIFFERENT cue types that must be sustained
+  min_sustained_cues: 2
+  
+  # Confidence boost per additional sustained cue
+  confidence_per_cue: 0.15
+  
+  # Base confidence when minimum cues met
+  base_confidence: 0.6
+
+# ===================================
+# STATE MACHINE PARAMETERS
+# ===================================
+
+state_machine:
+  # State transition thresholds
+  transitions:
+    # OUT → APPROACHING
+    out_to_approaching:
+      min_sustained_cues: 1
+      min_confidence: 0.3
+      
+    # APPROACHING → INSIDE
+    approaching_to_inside:
+      min_sustained_cues: 2
+      min_confidence: 0.6
+      
+    # INSIDE → EXITING (require lower confidence to exit - hysteresis)
+    inside_to_exiting:
+      max_sustained_cues: 1
+      max_confidence: 0.4
+      
+    # EXITING → OUT
+    exiting_to_out:
+      max_sustained_cues: 0
+      exit_cooldown_frames: 60  # Stay in EXITING for 2 seconds
+      
+  # Initial state
+  initial_state: OUT
+
+# ===================================
+# LOGGING AND DEBUG
+# ===================================
+
+logging:
+  level: INFO
+  log_cue_detections: true
+  log_state_transitions: true
+  log_multi_cue_decisions: true
