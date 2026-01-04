@@ -1,0 +1,127 @@
+# Phase 1.3: Motion/Flow Cues Configuration
+# Optical flow and motion plausibility validation
+
+# ===================================
+# OPTICAL FLOW PARAMETERS
+# ===================================
+
+optical_flow:
+  # Method: "lk" (Lucas-Kanade, sparse), "farneback" (dense), "diff" (frame differencing)
+  method: "lk"
+  
+  # Pyramid levels for Lucas-Kanade (more = slower but more robust)
+  pyramid_levels: 2
+  
+  # Feature tracking parameters
+  max_features: 200
+  quality_level: 0.01  # [0-1] quality threshold for feature detection
+  min_distance: 7      # minimum distance between features in pixels
+  
+  # Lucas-Kanade window size
+  window_size: 15
+
+# ===================================
+# MOTION VALIDATION PARAMETERS
+# ===================================
+
+motion_validation:
+  # Static object threshold: max motion (pixels) to be considered static
+  static_threshold: 0.15
+  
+  # Dynamic object threshold: min motion to be clearly dynamic
+  dynamic_threshold: 5.0
+  
+  # Motion coherence threshold: [0-1] how consistent must motion be
+  coherence_threshold: 0.4
+  
+  # Ego-motion estimation smoothing (EMA alpha)
+  ego_motion_smooth: 0.7
+
+# ===================================
+# MOTION CLASS EXPECTATIONS
+# ===================================
+
+class_motion_expectations:
+  # Static classes: should move with camera (ego-motion), not independently
+  static_classes:
+    - Cone
+    - Drum
+    - Barricade
+    - Barrier
+    - Fence
+    - Tubular Marker
+    - Vertical Panel
+    - Temporary Traffic Control Sign
+    - Arrow Board
+    - Temporary Traffic Control Message Board
+  
+  # Dynamic classes: can move independently
+  dynamic_classes:
+    - Worker
+    - Police Officer
+    - Work Vehicle
+    - Work Equipment
+    - Police Vehicle
+  
+  # Semi-dynamic: can be either (infrastructure)
+  semi_dynamic_classes:
+    - Bike Lane
+
+# ===================================
+# MOTION CUE GATE PARAMETERS
+# ===================================
+
+motion_cue_gate:
+  # Minimum plausibility score to pass gate
+  plausibility_threshold: 0.40
+  
+  # Apply coherence penalty to plausibility
+  use_coherence_penalty: true
+  
+  # Coherence penalty range [base, max]
+  coherence_penalty_range: [0.8, 1.0]
+
+# ===================================
+# INTEGRATION WITH PHASE 1.1
+# ===================================
+
+phase1_1_integration:
+  # Treat motion as additional cue group?
+  enabled: true
+  
+  # Weight for motion cue in multi-cue AND logic
+  motion_weight: 1.0
+  
+  # Combine motion with multi-cue gate?
+  # If true, work zone requires BOTH (multi-cue AND motion validation)
+  require_motion_plausibility: false
+  
+  # If require_motion_plausibility=false, use motion for soft penalty instead
+  plausibility_penalty_factor: 0.8  # Multiply plausibility by this if motion fails
+
+# ===================================
+# LOGGING AND VISUALIZATION
+# ===================================
+
+logging:
+  level: INFO
+  log_motion_metrics: true
+  visualize_optical_flow: false  # Expensive, only for debugging
+
+# ===================================
+# PERFORMANCE TUNING
+# ===================================
+
+performance:
+  # Skip motion processing every N frames (e.g., 1 = every frame, 2 = every other)
+  process_stride: 1
+  
+  # Resize frame for flow estimation? (smaller = faster)
+  # 0 = no resize, 1.0 = full size
+  flow_scale: 0.5
+  
+  # Expected overhead per frame (milliseconds)
+  # Lucas-Kanade: 2-3ms
+  # Farneback: 5-10ms
+  # Frame diff: <1ms
+  estimated_latency_ms: 3.0

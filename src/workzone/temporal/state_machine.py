@@ -13,7 +13,7 @@ from pathlib import Path
 
 from ..detection import FrameCues
 from ..temporal import PersistenceState
-from ..fusion.multi_cue_gate import MultiCueDecision
+from ..types import MultiCueDecision
 
 
 class WorkZoneState(Enum):

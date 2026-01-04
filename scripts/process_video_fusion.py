@@ -437,7 +437,7 @@ def process_video(
             # Components auto-load config if not provided
             cue_classifier = CueClassifier()
             persistence = PersistenceTracker()
-            multi_cue = MultiCueGate()
+            multi_cue = MultiCueGate(enable_motion=True)  # Enable Phase 1.3 motion validation
 
             # Optional calibration overrides (no YAML edits needed)
             if p1_window_size is not None:
@@ -457,7 +457,10 @@ def process_video(
                 persistence.persistence_threshold,
                 multi_cue.min_cues,
             )
-            print("✓ Phase 1.1 components loaded (multi-cue AND logic enabled)")
+            if multi_cue.enable_motion:
+                print("✓ Phase 1.1 components loaded (multi-cue AND logic + Phase 1.3 motion validation enabled)")
+            else:
+                print("✓ Phase 1.1 components loaded (multi-cue AND logic enabled)")
         except Exception as e:
             print(f"⚠ Phase 1.1 loading failed: {e}")
             import traceback
@@ -582,8 +585,8 @@ def process_video(
                 # Update persistence tracker
                 persistence_states = persistence.update(frame_cues)
                 
-                # Get multi-cue decision
-                decision = multi_cue.evaluate(frame_cues, persistence_states)
+                # Get multi-cue decision (Phase 1.3: pass frame for motion validation)
+                decision = multi_cue.evaluate(frame_cues, persistence_states, frame=frame, yolo_results=r)
                 p1_pass = decision.passed
                 p1_num_sustained = decision.num_sustained_cues
                 p1_confidence = decision.confidence
