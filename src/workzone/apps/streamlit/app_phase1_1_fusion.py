@@ -815,11 +815,15 @@ def main() -> None:
     
     if model_choice == "Hard-Negative Trained (latest)":
         selected_weights = HARDNEG_WEIGHTS
-        st.sidebar.info("✅ Using model trained with 134 hard negatives (84.6% false positive reduction)")
+        st.sidebar.success("✅ **Hard-Negative Trained Model**")
+        st.sidebar.code(selected_weights, language="text")
+        st.sidebar.info("84.6% false positive reduction vs baseline")
         use_uploaded_weights = False
     elif model_choice == "Fusion Baseline (pre hard-neg)":
         selected_weights = FUSION_BASELINE_WEIGHTS
-        st.sidebar.info("Using baseline fusion model")
+        st.sidebar.success("✅ **Fusion Baseline Model**")
+        st.sidebar.code(selected_weights, language="text")
+        st.sidebar.info("Pre hard-negative training baseline")
         use_uploaded_weights = False
     else:
         selected_weights = None
