@@ -95,7 +95,7 @@ detection_thresholds:
 # Minimum objects needed per cue to consider it "present"
 
 min_objects_per_cue:
-  CHANNELIZATION: 3      # Need ≥3 cones/barriers for taper
+  CHANNELIZATION: 2      # Reduced to 2 (was 3) - early taper may have fewer cones
   SIGNAGE: 1             # 1 sign is sufficient evidence
   PERSONNEL: 1           # 1 worker is sufficient
   EQUIPMENT: 1           # 1 vehicle/machine is sufficient
@@ -107,10 +107,10 @@ min_objects_per_cue:
 
 temporal:
   # Sliding window size (in frames)
-  window_size: 30          # 1 second at 30fps
+  window_size: 90          # 3 seconds at 30fps (increased for better memory)
   
   # Persistence threshold (fraction of window where cue must be present)
-  persistence_threshold: 0.6   # Cue must be present in ≥60% of window
+  persistence_threshold: 0.4   # Cue must be present in ≥40% of window (relaxed)
   
   # Cue-specific weights (for combining persistence scores)
   cue_weights:
@@ -126,13 +126,13 @@ temporal:
 
 multi_cue_gate:
   # Minimum number of DIFFERENT cue types that must be sustained
-  min_sustained_cues: 2
+  min_sustained_cues: 1      # Reduced to 1 - one strong cue (sign/cone) is enough
   
   # Confidence boost per additional sustained cue
-  confidence_per_cue: 0.15
+  confidence_per_cue: 0.20   # Increased boost for multiple cues
   
   # Base confidence when minimum cues met
-  base_confidence: 0.6
+  base_confidence: 0.5       # Slightly lower base
 
 # ===================================
 # STATE MACHINE PARAMETERS

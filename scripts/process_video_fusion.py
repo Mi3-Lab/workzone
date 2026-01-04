@@ -200,10 +200,23 @@ def update_state(
         out_frames = 0
         return state, inside_frames, out_frames
 
-    # Otherwise: OUT or APPROACHING
-    if fused_score >= approach_th:
+    # State transitions with no backward movement
+    if state == "APPROACHING":
+        # Once approaching, can only go forward to INSIDE or stay APPROACHING
+        # NEVER go back to OUT or EXITING (only INSIDE can exit)
+        state = "APPROACHING"
+    elif state == "EXITING":
+        # EXITING can go to OUT if score stays low
+        if fused_score < approach_th:
+            state = "OUT"
+        else:
+            # If score recovers, go back to APPROACHING
+            state = "APPROACHING"
+    elif fused_score >= approach_th:
+        # Transition from OUT to APPROACHING
         state = "APPROACHING"
     else:
+        # Stay OUT
         state = "OUT"
 
     return state, inside_frames, out_frames
@@ -288,18 +301,30 @@ def draw_banner(
 
 
 def load_clip_bundle(device: str) -> Tuple[bool, Optional[Dict]]:
-    """Load OpenCLIP model."""
+    """Load OpenCLIP model with caching."""
     try:
+        import os
         import open_clip
         from PIL import Image
 
+        # Set cache directory to ensure model is cached
+        cache_dir = Path.home() / ".cache" / "open_clip"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        os.environ["TORCH_HOME"] = str(cache_dir.parent)
+        
+        logger.info(f"Loading CLIP model (cache: {cache_dir})...")
+        
         model, _, preprocess = open_clip.create_model_and_transforms(
-            "ViT-B-32", pretrained="openai"
+            "ViT-B-32", 
+            pretrained="openai",
+            cache_dir=str(cache_dir)
         )
         tokenizer = open_clip.get_tokenizer("ViT-B-32")
 
         model = model.to(device)
         model.eval()
+        
+        logger.info("✓ CLIP model loaded successfully")
 
         return True, {
             "open_clip": open_clip,
@@ -654,8 +679,14 @@ def main():
     parser.add_argument(
         "--weights",
         type=str,
-        default="weights/best.pt",
-        help="YOLO weights path (default: weights/best.pt)",
+        default="weights/yolo12s_hardneg_1280.pt",
+        help="YOLO weights path (default: hard-negative trained @1280px)",
+    )
+    
+    parser.add_argument(
+        "--weights-baseline",
+        action="store_true",
+        help="Use fusion baseline model (weights/yolo12s_fusion_baseline.pt)",
     )
     
     parser.add_argument(
@@ -734,12 +765,19 @@ def main():
         print(f"❌ Video not found: {input_path}")
         sys.exit(1)
 
-    weights_path = Path(args.weights)
+    # Determine weights path based on flag
+    if args.weights_baseline:
+        weights_path = Path("weights/yolo12s_fusion_baseline.pt")
+        model_name = "Fusion Baseline"
+    else:
+        weights_path = Path(args.weights)
+        model_name = "Hard-Negative Trained @1280px"
+    
     if not weights_path.exists():
         print(f"❌ Weights not found: {weights_path}")
         sys.exit(1)
 
-    print(f"Loading YOLO from {weights_path}...")
+    print(f"Loading YOLO ({model_name}) from {weights_path}...")
     yolo_model = load_model_default(str(weights_path), args.device)
     print(f"✓ YOLO loaded on {args.device}")
 

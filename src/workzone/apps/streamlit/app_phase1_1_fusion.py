@@ -43,7 +43,8 @@ from workzone.utils.logging_config import setup_logger
 logger = setup_logger(__name__)
 
 # Configuration
-DEFAULT_WEIGHTS_PATH = "weights/best.pt"
+FUSION_BASELINE_WEIGHTS = "weights/yolo12s_fusion_baseline.pt"  # Fusion baseline (pre hard-neg)
+HARDNEG_WEIGHTS = "weights/yolo12s_hardneg_1280.pt"  # Hard-negative trained @1280px
 DEMO_VIDEOS_DIR = Path("data/demo")
 VIDEOS_COMPRESSED_DIR = Path("data/videos_compressed")
 
@@ -800,17 +801,41 @@ def main() -> None:
     device = resolve_device(device_choice)
     st.sidebar.write(f"Using: **{device}**")
 
+    st.sidebar.markdown("---")
+    st.sidebar.header("Model Selection")
+    model_choice = st.sidebar.selectbox(
+        "YOLO Model",
+        [
+            "Hard-Negative Trained (latest)",
+            "Fusion Baseline (pre hard-neg)",
+            "Upload Custom Weights"
+        ],
+        index=0
+    )
+    
+    if model_choice == "Hard-Negative Trained (latest)":
+        selected_weights = HARDNEG_WEIGHTS
+        st.sidebar.info("✅ Using model trained with 134 hard negatives (84.6% false positive reduction)")
+        use_uploaded_weights = False
+    elif model_choice == "Fusion Baseline (pre hard-neg)":
+        selected_weights = FUSION_BASELINE_WEIGHTS
+        st.sidebar.info("Using baseline fusion model")
+        use_uploaded_weights = False
+    else:
+        selected_weights = None
+        use_uploaded_weights = True
+
+    st.sidebar.markdown("---")
     mode = st.sidebar.radio("Run mode", ["Live preview (real time)", "Batch (save outputs)"], index=0)
     max_seconds = st.sidebar.number_input("Live preview max seconds", min_value=5, value=30, step=5)
     run_full_video = st.sidebar.checkbox("Run full video (ignore max seconds)", value=True)
 
-    use_uploaded_weights = st.sidebar.checkbox("Upload YOLO weights", value=False)
-
     if use_uploaded_weights:
         uploaded_weights = st.sidebar.file_uploader("Upload weights (.pt)", type=["pt"])
     else:
-        st.sidebar.text("Default weights:")
-        st.sidebar.code(DEFAULT_WEIGHTS_PATH)
+        if selected_weights:
+            st.sidebar.text("Selected weights:")
+            st.sidebar.code(selected_weights)
         uploaded_weights = None
 
     conf = st.sidebar.slider("Confidence", 0.05, 0.90, 0.25, 0.05)
@@ -934,10 +959,10 @@ def main() -> None:
                     device,
                 )
             else:
-                if not Path(DEFAULT_WEIGHTS_PATH).exists():
-                    st.error(f"Weights not found: {DEFAULT_WEIGHTS_PATH}")
+                if not Path(selected_weights).exists():
+                    st.error(f"Weights not found: {selected_weights}")
                     return
-                yolo_model = load_model_default(DEFAULT_WEIGHTS_PATH, device)
+                yolo_model = load_model_default(selected_weights, device)
         except Exception as e:
             st.error(f"Error loading model: {e}")
             return
