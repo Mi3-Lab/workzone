@@ -2,13 +2,16 @@
 Streamlit app for comprehensive system calibration and testing.
 
 Purpose: Allow research team to:
-1. Test Phase 1.1 (multi-cue) + Phase 1.4 (scene context) on dataset videos
+1. Test Phase 1.1 (multi-cue) + Phase 1.4 (scene context) + Phase 2.1 (per-cue verification) on dataset videos
 2. Calibrate all parameters: YOLO weights, CLIP, orange boost, state machine thresholds
-3. Visualize scores, state timeline, attention over time
-4. Export annotated video + detailed CSV with per-frame metrics
+3. Visualize scores, state timeline, attention over time, per-cue confidences, motion plausibility
+4. Export annotated video + detailed CSV with per-frame metrics including Phase 2.1 features
 5. Compare multiple runs for hyperparameter tuning
 
-(Phase 2.1 temporal attention will be integrated after training validation)
+Phase 2.1 Features:
+- Per-cue CLIP verification (channelization, workers, vehicles, signs, equipment)
+- Motion plausibility from trajectory tracking
+- Explainability dashboard with cue/persistence diagnostics
 """
 
 import tempfile
@@ -54,6 +57,15 @@ try:
     PHASE1_4_AVAILABLE = True
 except ImportError:
     PHASE1_4_AVAILABLE = False
+
+# Phase 2.1 imports (optional)
+try:
+    from workzone.models.per_cue_verification import PerCueTextVerifier, extract_cue_counts_from_yolo
+    from workzone.models.trajectory_tracking import TrajectoryTracker
+    from workzone.detection.cue_classifier import CueClassifier
+    PHASE2_1_AVAILABLE = True
+except ImportError:
+    PHASE2_1_AVAILABLE = False
 
 logger = setup_logger(__name__)
 
@@ -685,6 +697,7 @@ def process_video(
     enable_phase1_4: bool = False,
     enable_ocr: bool = False,
     ocr_bundle: Optional[Dict] = None,
+    enable_phase2_1: bool = False,
 ) -> Dict:
     """Process video with full calibration parameters."""
     cap = cv2.VideoCapture(str(input_path))
@@ -728,6 +741,21 @@ def process_video(
             )
         except Exception as e:
             logger.error(f"Phase 1.4 loading error: {e}")
+
+    # Phase 2.1 initialization
+    per_cue_verifier = None
+    trajectory_tracker = None
+    cue_classifier = None
+    if enable_phase2_1 and PHASE2_1_AVAILABLE:
+        try:
+            if clip_bundle is not None:
+                per_cue_verifier = PerCueTextVerifier(clip_bundle, device)
+                logger.info("✓ Phase 2.1 per-cue verifier loaded")
+            trajectory_tracker = TrajectoryTracker(max_disappeared=30, history_length=30)
+            cue_classifier = CueClassifier()
+            logger.info("✓ Phase 2.1 trajectory tracker + cue classifier loaded")
+        except Exception as e:
+            logger.error(f"Phase 2.1 loading error: {e}")
 
     # OCR is already loaded in ocr_bundle if enable_ocr=True
 
@@ -847,6 +875,32 @@ def process_video(
             approach_th=context_approach_th,
         )
 
+        # Phase 2.1: Per-cue verification and motion plausibility
+        cue_confidences = [0.0] * 5
+        motion_plausibility = 1.0
+        if enable_phase2_1 and per_cue_verifier is not None and cue_classifier is not None:
+            try:
+                # Per-cue CLIP verification
+                detected_cues = extract_cue_counts_from_yolo(r, cue_classifier)
+                cue_conf_dict = per_cue_verifier.verify_frame(frame, detected_cues, threshold=0)
+                cue_confidences = [
+                    cue_conf_dict.get('channelization', 0.0),
+                    cue_conf_dict.get('workers', 0.0),
+                    cue_conf_dict.get('vehicles', 0.0),
+                    cue_conf_dict.get('signs', 0.0),
+                    cue_conf_dict.get('equipment', 0.0),
+                ]
+
+                # Trajectory tracking for motion plausibility
+                if trajectory_tracker is not None:
+                    from workzone.models.trajectory_tracking import extract_detections_for_tracking
+                    detections = extract_detections_for_tracking(r, cue_classifier, conf_threshold=0.25)
+                    tracks = trajectory_tracker.update(detections)
+                    motion_scores = trajectory_tracker.compute_motion_plausibility()
+                    motion_plausibility = motion_scores.get('overall', 1.0)
+            except Exception as e:
+                logger.warning(f"Phase 2.1 processing error: {e}")
+
         # Annotate
         annotated = r.plot()
         annotated = draw_banner(annotated, state, float(fused_ema), clip_used == 1)
@@ -888,6 +942,15 @@ def process_video(
             "text_confidence": float(text_confidence),
             "text_category": str(text_category),
         }
+        
+        # Phase 2.1 features
+        if enable_phase2_1:
+            row["cue_conf_channelization"] = float(cue_confidences[0])
+            row["cue_conf_workers"] = float(cue_confidences[1])
+            row["cue_conf_vehicles"] = float(cue_confidences[2])
+            row["cue_conf_signs"] = float(cue_confidences[3])
+            row["cue_conf_equipment"] = float(cue_confidences[4])
+            row["motion_plausibility"] = float(motion_plausibility)
         
         if scene_context_predictor is not None:
             row["scene_context"] = str(current_context)
@@ -1059,6 +1122,15 @@ def main():
         enable_phase1_4 = False
 
     st.sidebar.markdown("---")
+    st.sidebar.header("Phase 2.1")
+    enable_phase2_1 = st.sidebar.checkbox("Enable Per-Cue Verification + Motion Tracking", value=PHASE2_1_AVAILABLE)
+    if enable_phase2_1 and not PHASE2_1_AVAILABLE:
+        st.sidebar.warning("⚠️ Phase 2.1 not available")
+        enable_phase2_1 = False
+    if enable_phase2_1:
+        st.sidebar.info("✓ Per-cue CLIP verification\n✓ Motion plausibility tracking")
+
+    st.sidebar.markdown("---")
     st.sidebar.header("OCR Text Extraction")
     enable_ocr = st.sidebar.checkbox("Enable OCR", value=OCR_AVAILABLE)
     ocr_bundle = None
@@ -1173,6 +1245,7 @@ def main():
                         enable_phase1_4=enable_phase1_4,
                         enable_ocr=enable_ocr,
                         ocr_bundle=ocr_bundle if enable_ocr else None,
+                        enable_phase2_1=enable_phase2_1,
                     )
 
                     st.success(f"✅ Processed {result['processed']} frames")
@@ -1248,6 +1321,38 @@ def main():
                         ax_pers.grid(True, alpha=0.2)
                         ax_pers.legend(loc='upper right', fontsize=8)
                         st.pyplot(fig_pers)
+
+                    # Phase 2.1 per-cue confidences + motion plausibility
+                    if enable_phase2_1 and 'cue_conf_channelization' in df.columns:
+                        st.subheader("🔬 Phase 2.1: Per-Cue Confidences + Motion Plausibility")
+                        p21_col1, p21_col2 = st.columns(2)
+
+                        with p21_col1:
+                            st.caption("Per-Cue CLIP Confidences")
+                            fig_p21, ax_p21 = plt.subplots(figsize=(8, 4))
+                            ax_p21.plot(df['frame'], df['cue_conf_channelization'], label='Channelization', linewidth=1, alpha=0.7)
+                            ax_p21.plot(df['frame'], df['cue_conf_workers'], label='Workers', linewidth=1, alpha=0.7)
+                            ax_p21.plot(df['frame'], df['cue_conf_vehicles'], label='Vehicles', linewidth=1, alpha=0.7)
+                            ax_p21.plot(df['frame'], df['cue_conf_signs'], label='Signs', linewidth=1, alpha=0.7)
+                            ax_p21.plot(df['frame'], df['cue_conf_equipment'], label='Equipment', linewidth=1, alpha=0.7)
+                            ax_p21.set_ylim(0, 1)
+                            ax_p21.set_xlabel("Frame")
+                            ax_p21.set_ylabel("Confidence")
+                            ax_p21.grid(True, alpha=0.2)
+                            ax_p21.legend(loc='upper right', fontsize=8)
+                            st.pyplot(fig_p21)
+
+                        with p21_col2:
+                            st.caption("Motion Plausibility")
+                            fig_motion, ax_motion = plt.subplots(figsize=(8, 4))
+                            ax_motion.plot(df['frame'], df['motion_plausibility'], label='Motion Plausibility', color='tab:purple', linewidth=2)
+                            ax_motion.axhline(y=0.5, color='r', linestyle='--', alpha=0.5, label='Threshold (0.5)')
+                            ax_motion.set_ylim(0, 1)
+                            ax_motion.set_xlabel("Frame")
+                            ax_motion.set_ylabel("Plausibility")
+                            ax_motion.grid(True, alpha=0.2)
+                            ax_motion.legend(loc='upper right', fontsize=8)
+                            st.pyplot(fig_motion)
 
                     # Download
                     st.subheader("📥 Downloads")
