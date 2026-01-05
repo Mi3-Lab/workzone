@@ -5,17 +5,21 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![YOLOv12](https://img.shields.io/badge/YOLO-v12-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 
-Real-time construction zone detection and monitoring system using state-of-the-art computer vision. Features YOLO object detection with multi-modal semantic verification (CLIP), temporal persistence tracking, and adaptive state machine logic. Built for the ESV (Enhanced Safety of Vehicles) competition and optimized for edge deployment on Jetson Orin.
+Real-time construction zone detection and monitoring system using state-of-the-art computer vision. Features YOLO object detection with multi-modal semantic verification (CLIP), temporal persistence tracking, scene context classification, and adaptive state machine logic. Built for the ESV (Enhanced Safety of Vehicles) competition and optimized for edge deployment on Jetson Orin.
 
-**🎯 Key Achievement**: 84.6% false positive reduction through hard-negative mining and retraining.
+**🎯 Key Achievements**: 
+- 84.6% false positive reduction through hard-negative mining
+- 92.8% scene context classification accuracy (Phase 1.4)
+- Context-aware adaptive thresholding
 
 ## ⚡ Key Features
 
 ### Core Detection
 - 🎯 **YOLO12s Object Detection** - 50-class construction zone detection with 84.6% FP reduction
 - 🧠 **Multi-Modal Fusion** - CLIP semantic verification + orange-cue context boost
+- 🌍 **Phase 1.4 Scene Context** - Highway/Urban/Suburban classification (92.8% accuracy)
 - 📊 **Phase 1.1 Multi-Cue Logic** - Temporal persistence tracking with AND logic
-- 🔄 **Adaptive State Machine** - Anti-flicker states: OUT → APPROACHING → INSIDE → EXITING
+- 🔄 **Adaptive State Machine** - Context-aware thresholds: OUT → APPROACHING → INSIDE → EXITING
 
 ### Hard-Negative Mining Pipeline
 - 🔍 **Automated Mining** - Extract false positives from 400+ videos
@@ -474,13 +478,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Discussions**: [GitHub Discussions](https://github.com/WMaia9/workzone/discussions)
 - **Email**: wesley.maia@example.com
 
+## � Documentation
+
+### Getting Started
+- **[Quick Start Guide](docs/guides/QUICKSTART.md)** - Get up and running in 5 minutes
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Production deployment instructions
+
+### Phase 1.4 - Scene Context Classification
+- **[Phase 1.4 Overview](docs/phase1_4/README.md)** - Complete system overview
+- **[Quick Reference](docs/phase1_4/QUICK_REFERENCE.md)** - Command reference
+- **[Final Report](docs/phase1_4/FINAL_REPORT.md)** - Technical details and results
+- **[Implementation Guide](docs/phase1_4/IMPLEMENTATION_COMPLETE.md)** - Integration details
+
+### Additional Resources
+- **[Project Index](docs/PROJECT_INDEX.md)** - Complete file organization
+- **[Model Registry](docs/MODEL_REGISTRY.md)** - Available models and weights
+- **[Phase 1.3 Motion Cues](docs/guides/PHASE1_3_MOTION_CUES.md)** - Motion validation
+- **[Hard Negatives](docs/reports/HARD_NEGATIVES_SUMMARY.md)** - Mining pipeline
+
 ## 🗺️ Roadmap
 
-### Phase 1.3 (Q1 2026)
-- [ ] Expand hard-negative set to 500-1000 images
-- [ ] Add OCR for sign text reading
-- [ ] Multi-resolution training (640, 960, 1280)
-- [ ] Distillation to YOLO11n for ultra-fast inference
+### ✅ Phase 1.4 Complete (January 2026)
+- [x] Scene context classification (highway/urban/suburban)
+- [x] Context-aware threshold adaptation
+- [x] 92.8% classification accuracy
+- [x] <1ms overhead per frame
 
 ### Phase 2.0 (Q2 2026)
 - [ ] Temporal transformer models for video understanding
@@ -489,12 +511,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ ] Mobile app integration
 
 ### Research
+- [ ] Expand to 4+ scene contexts (rural, tunnel, parking)
 - [ ] Self-supervised learning on unlabeled dashcam footage
 - [ ] Active learning for efficient annotation
 - [ ] Explainability and failure analysis tools
 
 ---
 
-**Built for ESV Competition** 🏆 | **Edge-Ready for Jetson Orin** 🚀 | **84.6% FP Reduction** 📉
+**Built for ESV Competition** 🏆 | **Edge-Ready for Jetson Orin** 🚀 | **84.6% FP Reduction** 📉 | **92.8% Scene Classification** 🎯
 
-*Last updated: January 3, 2026*
+*Last updated: January 4, 2026*

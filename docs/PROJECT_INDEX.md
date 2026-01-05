@@ -1,166 +1,302 @@
-# WorkZone Project Index
+# 📚 Work Zone Detection - Complete Project Index
 
-Complete navigation guide for the WorkZone AI construction zone detection system.
-
-## 📚 Documentation
-
-### Getting Started
-- **[README.md](../README.md)** - Main project overview and features
-- **[Quick Start Guide](guides/QUICKSTART.md)** - Get running in 5 minutes
-- **[Model Registry](MODEL_REGISTRY.md)** - Performance metrics and model selection
-
-### Technical Reports
-- **[Phase 1.2 Mining Report](reports/PHASE1_2_MINING_REPORT.md)** - Hard-negative mining process and results
-- **[Phase 1.2 Completion Report](reports/PHASE1_2_COMPLETION_REPORT.txt)** - Full completion summary
-- **[Model Update Summary](reports/MODEL_UPDATE_SUMMARY.md)** - Integration of hard-neg trained model
-- **[Hard-Negatives Summary](reports/HARD_NEGATIVES_SUMMARY.md)** - Hard-negative categorization details
-- **[Results Index](reports/RESULTS_INDEX.md)** - Training results and metrics
-
-## 🛠️ Key Scripts
-
-### Video Processing
-- **[process_video_fusion.py](../scripts/process_video_fusion.py)** - Main video processing with YOLO + CLIP + Phase 1.1
-  - CLI tool for batch video processing
-  - Outputs: annotated video + CSV timeline
-  - Features: state machine, adaptive EMA, context boost
-
-### Hard-Negative Mining
-- **[mine_hard_negatives.py](../scripts/mine_hard_negatives.py)** - Extract false positive candidates from videos
-- **[review_hard_negatives.py](../scripts/review_hard_negatives.py)** - Interactive review and categorization tool
-- **[consolidate_candidates.py](../scripts/consolidate_candidates.py)** - Merge candidates from multiple mining runs
-- **[sample_candidates.py](../scripts/sample_candidates.py)** - Analyze candidate distributions
-
-### Utilities
-- **[batch_mine_hard_negatives.py](../scripts/batch_mine_hard_negatives.py)** - Parallel mining across GPUs
-- **[HARDNEG_QUICKSTART.sh](../scripts/HARDNEG_QUICKSTART.sh)** - Quickstart script for hard-negative workflow
-
-## 🎨 Applications
-
-### Streamlit Web Interfaces
-- **[app_phase1_1_fusion.py](../src/workzone/apps/streamlit/app_phase1_1_fusion.py)** ⭐ - Complete pipeline (recommended)
-  - Model selection (Hard-Neg, Baseline, Custom)
-  - Real-time playback and batch processing
-  - Phase 1.1 visualization
-  
-- **[app_basic_detection.py](../src/workzone/apps/streamlit/app_basic_detection.py)** - Basic YOLO detection
-- **[app_advanced_scoring.py](../src/workzone/apps/streamlit/app_advanced_scoring.py)** - Advanced scoring with EMA
-
-### Command-Line Interfaces
-- **[src/workzone/cli/](../src/workzone/cli/)** - CLI entry points for training and inference
-
-## 🧩 Source Code
-
-### Core Modules
-- **[src/workzone/detection/](../src/workzone/detection/)** - Cue classification and detection logic
-  - `CueClassifier` - Maps YOLO classes to cue groups
-  
-- **[src/workzone/temporal/](../src/workzone/temporal/)** - Temporal persistence tracking
-  - `PersistenceTracker` - Sliding window cue persistence
-  
-- **[src/workzone/fusion/](../src/workzone/fusion/)** - Multi-cue fusion logic
-  - `MultiCueGate` - AND logic for sustained cues
-  
-- **[src/workzone/models/](../src/workzone/models/)** - Model wrappers (YOLO, CLIP)
-- **[src/workzone/pipelines/](../src/workzone/pipelines/)** - Training and inference pipelines
-- **[src/workzone/utils/](../src/workzone/utils/)** - Utilities (logging, paths, config)
-
-### Applications
-- **[src/workzone/apps/streamlit/](../src/workzone/apps/streamlit/)** - Streamlit web applications
-- **[src/workzone/apps/streamlit_utils.py](../src/workzone/apps/streamlit_utils.py)** - Shared utilities for Streamlit apps
-
-## ⚙️ Configuration
-
-### YAML Configs
-- **[configs/config.yaml](../configs/config.yaml)** - Main project configuration
-  - YOLO parameters (model, imgsz, batch, device)
-  - Processing parameters (fps, threading)
-  - Data paths
-  - W&B integration
-  
-- **[configs/multi_cue_config.yaml](../configs/multi_cue_config.yaml)** - Phase 1.1 configuration
-  - Cue group definitions (50 classes → 5 groups)
-  - Detection thresholds per group
-  - Temporal persistence parameters
-  - Multi-cue gate logic
-  - State machine transitions
-
-### Setup Files
-- **[requirements.txt](../requirements.txt)** - Python dependencies
-- **[pyproject.toml](../pyproject.toml)** - Project metadata and build config
-- **[setup.sh](../setup.sh)** - Environment setup script
-- **[Makefile](../Makefile)** - Common development tasks
-
-## 📊 Data
-
-### Dataset Structure
-- **[data/01_raw/](../data/01_raw/)** - Raw annotations, images, trajectories
-- **[data/02_processed/](../data/02_processed/)** - Processed data + hard negatives
-  - `hard_negatives/` - Approved hard negatives with manifest.csv
-  
-- **[data/03_demo/](../data/03_demo/)** - Demo videos for quick testing
-- **[data/04_derivatives/](../data/04_derivatives/)** - Generated data
-- **[data/05_workzone_yolo/](../data/05_workzone_yolo/)** - YOLO format dataset
-  - `workzone_yolo.yaml` - Dataset config
-  - `images/train/` - Training images
-  - `images/val/` - Validation images
-  - `labels/train/` - Training labels
-  - `labels/val/` - Validation labels
-
-### Outputs
-- **[outputs/](../outputs/)** - Generated outputs
-  - `demo_hardneg_test/` - Demo processing results
-  - `hardneg_mining/` - Hard-negative mining candidates
-  - `notebook*/` - Notebook outputs
-  - Phase 1.1 test results
-
-### Training Results
-- **[runs/train/](../runs/train/)** - YOLO training runs
-  - Each run folder contains: weights/, results.csv, plots
-- **[weights/](../weights/)** - Model checkpoints
-  - `yolo12s_hardneg_1280.pt` ⭐ - Production model
-  - `yolo12s_fusion_baseline.pt` - Baseline model
-  - Other models (yolo11n, yolo8s, etc.)
-
-## 🧪 Testing
-
-- **[tests/](../tests/)** - Unit tests
-  - `test_config.py` - Configuration tests
-  - `test_models.py` - Model wrapper tests
-  - `test_pipelines.py` - Pipeline tests
-  - `conftest.py` - Pytest fixtures
-
-## 📓 Notebooks
-
-- **[notebooks/](../notebooks/)** - Jupyter notebooks for experiments
-  - `01_workzone_yolo_setup.ipynb` - Dataset setup
-  - `02_workzone_yolo_train_eval.ipynb` - Training and evaluation
-  - `03_workzone_yolo_video_demo.ipynb` - Video inference demo
-  - `04_workzone_video_state_machine.ipynb` - State machine development
-  - `05_workzone_video_timeline_calibration.ipynb` - Timeline calibration
-  - `06_triggered_vlm_semantic_verification.ipynb` - VLM experiments
-  - `nvidia_vla_alpamayo_smoke_test.ipynb` - Alpamayo integration
-
-## 🔗 Quick Links
-
-### Common Tasks
-- **Train model**: `yolo train data=data/05_workzone_yolo/workzone_yolo.yaml model=yolo12s.pt epochs=100`
-- **Process video**: `python scripts/process_video_fusion.py VIDEO_PATH --enable-phase1-1`
-- **Launch web UI**: `streamlit run src/workzone/apps/streamlit/app_phase1_1_fusion.py`
-- **Mine hard negatives**: `python scripts/mine_hard_negatives.py --video-dir data/videos_compressed`
-- **Run tests**: `pytest tests/`
-
-### Key Metrics
-- **False Positive Reduction**: 84.6% (Phase 1.2)
-- **Production Model**: yolo12s_hardneg_1280.pt (19 MB)
-- **Inference Speed**: ~85 FPS (A100), ~30 FPS (Jetson Orin est.)
-- **Dataset**: 50 classes, 134 hard negatives
-
-### External Resources
-- **Ultralytics YOLO**: https://github.com/ultralytics/ultralytics
-- **OpenCLIP**: https://github.com/mlfoundations/open_clip
-- **Streamlit**: https://streamlit.io/
-- **W&B**: https://wandb.ai/
+**Last Updated**: January 4, 2026  
+**Status**: Production Ready
 
 ---
 
-**Last Updated**: January 3, 2026
+## 🎯 Quick Navigation
+
+### For New Users
+- [README.md](../README.md) - Project overview and quick start
+- [Quick Start Guide](guides/QUICKSTART.md) - Get running in 5 minutes
+- [Phase 1.4 README](phase1_4/README.md) - Latest features
+
+### For Developers
+- [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md) - Production deployment
+- [Phase 1.4 Implementation](phase1_4/IMPLEMENTATION_COMPLETE.md) - Integration guide
+- [Model Registry](MODEL_REGISTRY.md) - Available models and weights
+
+### For Researchers
+- [Phase 1.4 Final Report](phase1_4/FINAL_REPORT.md) - Technical details
+- [Hard Negatives Summary](reports/HARD_NEGATIVES_SUMMARY.md) - Mining pipeline
+- [Phase 1.3 Motion Cues](guides/PHASE1_3_MOTION_CUES.md) - Motion validation
+
+---
+
+## 📁 Documentation Structure
+
+```
+docs/
+├── deployment/
+│   └── DEPLOYMENT_GUIDE.md         # Production deployment guide (400+ lines)
+│
+├── phase1_4/                        # Scene Context Classification (Phase 1.4)
+│   ├── README.md                    # Overview and introduction
+│   ├── QUICK_REFERENCE.md          # Command reference
+│   ├── FINAL_REPORT.md             # Technical report and results
+│   ├── SUMMARY.md                  # Implementation summary
+│   ├── INDEX.md                    # Phase 1.4 file index
+│   ├── TEST_GUIDE.md               # Testing instructions
+│   ├── IMPLEMENTATION_COMPLETE.md  # Integration checklist
+│   └── COMPLETE_STATUS.md          # Final status report
+│
+├── guides/
+│   ├── QUICKSTART.md               # Quick start guide
+│   ├── PHASE1_3_MOTION_CUES.md    # Motion cue validation
+│   └── PHASE1_4_SCENE_CONTEXT.md  # Scene context detailed guide
+│
+├── phase1_1/
+│   ├── PHASE1_1_RESULTS.md        # Phase 1.1 results
+│   └── DOWNLOAD_RESULTS.md        # Download instructions
+│
+├── reports/
+│   ├── HARD_NEGATIVES_SUMMARY.md  # Hard negative mining report
+│   ├── MODEL_UPDATE_SUMMARY.md    # Model update history
+│   ├── PHASE1_2_MINING_REPORT.md  # Phase 1.2 mining results
+│   └── RESULTS_INDEX.md           # Results overview
+│
+├── MODEL_REGISTRY.md              # Model catalog and metadata
+├── PHASE1_3.md                    # Phase 1.3 overview
+└── PROJECT_INDEX.md               # This file
+```
+
+---
+
+## 🚀 Core Scripts
+
+### Training
+```bash
+scripts/
+├── train_scene_context.py         # Train Phase 1.4 scene classifier
+├── download_models.sh              # Download pretrained weights
+├── mine_hard_negatives.py          # Mine false positives
+├── review_hard_negatives.py        # Review and label FPs
+└── batch_mine_hard_negatives.py    # Batch mining across GPUs
+```
+
+### Inference
+```bash
+scripts/
+├── process_video_fusion.py         # Main video processing pipeline
+├── evaluate_phase1_4.py            # Phase 1.4 evaluation
+├── demo_phase1_4_complete.sh       # Complete demo
+└── PHASE1_4_QUICKSTART.sh          # Automated setup
+```
+
+---
+
+## 🎓 Phase-by-Phase Guide
+
+### Phase 1.1: Multi-Cue Temporal Logic
+**Status**: ✅ Complete  
+**Docs**: [Phase 1.1 Results](phase1_1/PHASE1_1_RESULTS.md)
+
+Features:
+- Temporal persistence tracking
+- Multi-cue AND logic
+- Motion validation (optional)
+- False positive reduction
+
+### Phase 1.2: Hard Negative Mining
+**Status**: ✅ Complete  
+**Docs**: [Hard Negatives Summary](reports/HARD_NEGATIVES_SUMMARY.md)
+
+Features:
+- Automated FP extraction from videos
+- Human-in-the-loop review tools
+- Batch mining across multiple GPUs
+- **Result**: 84.6% FP reduction
+
+### Phase 1.3: Motion Cue Validation
+**Status**: ✅ Complete  
+**Docs**: [Phase 1.3 Overview](PHASE1_3.md), [Motion Cues Guide](guides/PHASE1_3_MOTION_CUES.md)
+
+Features:
+- Optical flow analysis
+- Motion consistency validation
+- Temporal smoothing
+
+### Phase 1.4: Scene Context Classification
+**Status**: ✅ Complete (Production Ready)  
+**Docs**: [Phase 1.4 README](phase1_4/README.md), [Final Report](phase1_4/FINAL_REPORT.md)
+
+Features:
+- ResNet18-based classifier (92.8% accuracy)
+- 3 scene contexts: highway, urban, suburban
+- Context-aware threshold adaptation
+- <1ms overhead per frame
+
+**Quick Commands**:
+```bash
+# Train model
+python scripts/train_scene_context.py \
+  --dataset-dir data/04_derivatives/scene_context_dataset_v4 \
+  --backbone resnet18 --epochs 10
+
+# Run with Phase 1.4
+python scripts/process_video_fusion.py video.mp4 \
+  --enable-phase1-4 --enable-phase1-1 --no-motion
+
+# Evaluate
+python scripts/evaluate_phase1_4.py --limit 10
+```
+
+---
+
+## 📊 Key Performance Metrics
+
+| Metric | Value | Phase |
+|--------|-------|-------|
+| False Positive Reduction | 84.6% | 1.2 (Hard Negatives) |
+| Scene Classification Accuracy | 92.8% | 1.4 (Scene Context) |
+| Inference Speed | 27 FPS | All (A100) |
+| Phase 1.4 Overhead | <1ms | 1.4 |
+| Model Size (Scene Context) | 44 MB | 1.4 |
+| YOLO mAP@0.5 | 84.7% | Base |
+
+---
+
+## 🛠️ Development Workflow
+
+### 1. Setup
+```bash
+# Clone and install
+git clone <repo>
+cd workzone
+bash setup.sh
+```
+
+### 2. Train Scene Context (One-Time)
+```bash
+bash scripts/PHASE1_4_QUICKSTART.sh
+```
+
+### 3. Process Videos
+```bash
+python scripts/process_video_fusion.py video.mp4 \
+  --enable-phase1-4 \
+  --enable-phase1-1 --no-motion \
+  --output-dir outputs/result
+```
+
+### 4. Evaluate
+```bash
+python scripts/evaluate_phase1_4.py --limit 5
+```
+
+---
+
+## 📦 Data Organization
+
+```
+data/
+├── 01_raw/                         # Raw COCO annotations
+├── 02_processed/                   # Processed YOLO format
+├── 03_demo/                        # Demo videos
+├── 04_derivatives/                 # Derived datasets
+│   ├── scene_context_dataset_v4/  # Scene context training data
+│   └── hardneg_candidates/        # Hard negative candidates
+└── 05_workzone_yolo/              # YOLO training splits
+```
+
+---
+
+## 🎯 Model Weights
+
+| Model | Path | Size | Purpose |
+|-------|------|------|---------|
+| YOLO12s (Hard-Neg) | `weights/yolo12s_hardneg_1280.pt` | 24 MB | Main detector |
+| Scene Context | `weights/scene_context_classifier.pt` | 44 MB | Phase 1.4 |
+| CLIP (cached) | `~/.cache/open_clip/` | 350 MB | Semantic verification |
+
+---
+
+## 🔧 Configuration Files
+
+```
+configs/
+├── config.yaml                     # Main pipeline config
+├── motion_cue_config.yaml         # Motion validation config
+└── multi_cue_config.yaml          # Phase 1.1 config
+```
+
+---
+
+## 📝 Notebooks
+
+```
+notebooks/
+├── 01_workzone_yolo_setup.ipynb              # YOLO setup
+├── 02_workzone_yolo_train_eval.ipynb         # Training
+├── 03_workzone_yolo_video_demo.ipynb         # Video demo
+├── 04_workzone_video_state_machine.ipynb     # State machine
+├── 05_workzone_video_timeline_calibration.ipynb  # Calibration
+├── 06_triggered_vlm_semantic_verification.ipynb  # CLIP integration
+└── 07_phase1_4_scene_context.ipynb           # Scene context demo
+```
+
+---
+
+## �� Testing
+
+### Unit Tests
+```bash
+pytest tests/
+```
+
+### Integration Tests
+```bash
+bash scripts/demo_phase1_4_complete.sh
+```
+
+### Evaluation
+```bash
+python scripts/evaluate_phase1_4.py --limit 10 --stride 6
+```
+
+---
+
+## 📮 Output Formats
+
+### CSV Timeline
+```csv
+frame,time_sec,yolo_score,fused_score_ema,state,
+clip_used,scene_context,p1_multi_cue_pass,...
+```
+
+### Video Output
+- Annotated frames with bounding boxes
+- Color-coded state banner
+- CLIP and Phase 1.1 indicators
+- Scene context label
+
+---
+
+## 🎓 Citation
+
+If you use this work, please cite:
+
+```bibtex
+@software{workzone2026,
+  title={WorkZone: AI-Powered Construction Zone Detection},
+  author={Work Zone Detection Team},
+  year={2026},
+  url={https://github.com/...}
+}
+```
+
+---
+
+## 📞 Support
+
+- **Issues**: GitHub Issues
+- **Docs**: This project index
+- **Quick Start**: [QUICKSTART.md](guides/QUICKSTART.md)
+- **Deployment**: [DEPLOYMENT_GUIDE.md](deployment/DEPLOYMENT_GUIDE.md)
+
+---
+
+**Project Status**: 🚀 Production Ready  
+**Latest Phase**: 1.4 (Scene Context Classification)  
+**Last Updated**: January 4, 2026

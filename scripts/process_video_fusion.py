@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Standalone script: Process video with YOLO + CLIP + State Machine
+Standalone script: Process video with YOLO + CLIP + State Machine + Scene Context
 Outputs: annotated video + CSV timeline (ready to download)
 """
 
 import argparse
 import sys
 import tempfile
+import time
 from collections import Counter, deque
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -33,6 +34,13 @@ try:
     PHASE1_1_AVAILABLE = True
 except ImportError:
     PHASE1_1_AVAILABLE = False
+
+# Phase 1.4: Scene Context (optional)
+try:
+    from workzone.models.scene_context import SceneContextPredictor, SceneContextConfig
+    PHASE1_4_AVAILABLE = True
+except ImportError:
+    PHASE1_4_AVAILABLE = False
 
 logger = setup_logger(__name__)
 
@@ -180,44 +188,56 @@ def update_state(
     min_inside_frames: int,
     min_out_frames: int,
     approach_th: float,
+    gate_pass: bool = True,
 ) -> Tuple[str, int, int]:
-    """Update state machine for anti-flicker work zone detection."""
+    """Update state machine with hysteresis to avoid flicker.
+    
+    Transition thresholds:
+    - OUT → APPROACHING: score >= approach_th
+    - APPROACHING → INSIDE: score >= enter_th AND gate_pass AND min_out_frames elapsed
+    - INSIDE → EXITING: score < exit_th AND min_inside_frames elapsed
+    - EXITING → OUT: score < exit_th (already out of zone)
+    - APPROACHING/EXITING → OUT: score < exit_th (hysteresis, lower exit threshold)
+    """
+
     state = prev_state
 
     if state == "INSIDE":
         inside_frames += 1
+        # Only exit if score drops below exit threshold
         if fused_score < exit_th and inside_frames >= min_inside_frames:
             state = "EXITING"
             out_frames = 0
         return state, inside_frames, out_frames
 
-    # OUT / APPROACHING / EXITING
-    out_frames += 1
-
-    if fused_score >= enter_th and out_frames >= min_out_frames:
-        state = "INSIDE"
-        inside_frames = 0
-        out_frames = 0
+    if state == "EXITING":
+        out_frames += 1
+        # EXITING uses hysteresis: exits at lower threshold than entry
+        if fused_score < exit_th:
+            state = "OUT"
+        elif fused_score >= approach_th:
+            state = "APPROACHING"
         return state, inside_frames, out_frames
 
-    # State transitions with no backward movement
+    # OUT / APPROACHING
+    out_frames += 1
+
     if state == "APPROACHING":
-        # Once approaching, can only go forward to INSIDE or stay APPROACHING
-        # NEVER go back to OUT or EXITING (only INSIDE can exit)
-        state = "APPROACHING"
-    elif state == "EXITING":
-        # EXITING can go to OUT if score stays low
-        if fused_score < approach_th:
+        # Stay APPROACHING until score drops significantly
+        if fused_score < exit_th:
             state = "OUT"
-        else:
-            # If score recovers, go back to APPROACHING
+        # Attempt to enter INSIDE if conditions met
+        elif fused_score >= enter_th and out_frames >= min_out_frames and gate_pass:
+            state = "INSIDE"
+            inside_frames = 0
+            out_frames = 0
+        # else: stay APPROACHING
+    else:  # state == "OUT"
+        # Only go to APPROACHING if score is rising clearly
+        if fused_score >= approach_th:
             state = "APPROACHING"
-    elif fused_score >= approach_th:
-        # Transition from OUT to APPROACHING
-        state = "APPROACHING"
-    else:
-        # Stay OUT
-        state = "OUT"
+        else:
+            state = "OUT"
 
     return state, inside_frames, out_frames
 
@@ -368,12 +388,18 @@ def process_video(
     orange_center: float = 0.08,
     orange_k: float = 30.0,
     phase1_1_enabled: bool = False,
+    enable_motion_validation: bool = True,
     p1_window_size: Optional[int] = None,
     p1_persistence_th: Optional[float] = None,
     p1_min_sustained_cues: Optional[int] = None,
     p1_debug: bool = False,
+    phase1_4_enabled: bool = False,
+    scene_context_weights: Optional[str] = None,
+    save_video: bool = True,
+    save_csv: bool = True,
+    quiet: bool = False,
 ) -> Dict:
-    """Process video with YOLO + CLIP fusion and state machine."""
+    """Process video with YOLO + CLIP fusion, state machine, and scene context (Phase 1.4)."""
     if weights_yolo is None:
         weights_yolo = {
             "bias": -0.35,
@@ -400,12 +426,22 @@ def process_video(
     out_video_path = output_dir / f"{input_path.stem}_annotated_fusion.mp4"
     out_csv_path = output_dir / f"{input_path.stem}_timeline_fusion.csv"
 
-    # Video writer
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    effective_fps = fps / stride
-    writer = cv2.VideoWriter(
-        str(out_video_path), fourcc, float(effective_fps), (width, height)
-    )
+    # Video writer (only if save_video enabled)
+    writer = None
+    if save_video:
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        effective_fps = fps / stride
+        writer = cv2.VideoWriter(
+            str(out_video_path), fourcc, float(effective_fps), (width, height)
+        )
+
+    if not quiet:
+        print(f"Processing video: {input_path.name}")
+        print(f"Total frames: {total_frames}, FPS: {fps:.1f}, Stride: {stride}")
+        if not save_video:
+            print("  (video output disabled)")
+        if not save_csv:
+            print("  (CSV output disabled)")
 
     # Load CLIP if requested
     clip_bundle = None
@@ -413,7 +449,8 @@ def process_video(
     pos_emb = neg_emb = None
     
     if use_clip:
-        print("Loading CLIP...")
+        if not quiet:
+            print("Loading CLIP...")
         clip_ok, clip_bundle = load_clip_bundle(device=device)
         if clip_ok:
             try:
@@ -421,9 +458,11 @@ def process_video(
                     clip_bundle, device, clip_pos_text, clip_neg_text
                 )
                 clip_enabled = True
-                print("✓ CLIP loaded and ready")
+                if not quiet:
+                    print("✓ CLIP loaded and ready")
             except Exception as e:
-                print(f"⚠ CLIP embedding failed: {e}")
+                if not quiet:
+                    print(f"⚠ CLIP embedding failed: {e}")
                 use_clip = False
 
     # Load Phase 1.1 components if requested
@@ -432,12 +471,13 @@ def process_video(
     multi_cue = None
     
     if phase1_1_enabled and PHASE1_1_AVAILABLE:
-        print("Loading Phase 1.1 components...")
+        if not quiet:
+            print("Loading Phase 1.1 components...")
         try:
             # Components auto-load config if not provided
             cue_classifier = CueClassifier()
             persistence = PersistenceTracker()
-            multi_cue = MultiCueGate(enable_motion=True)  # Enable Phase 1.3 motion validation
+            multi_cue = MultiCueGate(enable_motion=enable_motion_validation)
 
             # Optional calibration overrides (no YAML edits needed)
             if p1_window_size is not None:
@@ -458,14 +498,35 @@ def process_video(
                 multi_cue.min_cues,
             )
             if multi_cue.enable_motion:
-                print("✓ Phase 1.1 components loaded (multi-cue AND logic + Phase 1.3 motion validation enabled)")
+                if not quiet:
+                    print("✓ Phase 1.1 components loaded (multi-cue AND logic + Phase 1.3 motion validation enabled)")
             else:
-                print("✓ Phase 1.1 components loaded (multi-cue AND logic enabled)")
+                if not quiet:
+                    print("✓ Phase 1.1 components loaded (multi-cue AND logic enabled; motion validation disabled)")
         except Exception as e:
-            print(f"⚠ Phase 1.1 loading failed: {e}")
-            import traceback
-            traceback.print_exc()
+            if not quiet:
+                print(f"⚠ Phase 1.1 loading failed: {e}")
+                import traceback
+                traceback.print_exc()
             phase1_1_enabled = False
+
+    # Load Phase 1.4 Scene Context Classifier (optional)
+    scene_context_predictor = None
+    if phase1_4_enabled and PHASE1_4_AVAILABLE:
+        if not quiet:
+            print("Loading Phase 1.4 Scene Context Classifier...")
+        try:
+            scene_context_predictor = SceneContextPredictor(
+                model_path=scene_context_weights,
+                device=device,
+                img_size=224,
+            )
+            if not quiet:
+                print("✓ Phase 1.4 Scene Context loaded (will apply context-aware thresholds)")
+        except Exception as e:
+            if not quiet:
+                print(f"⚠ Phase 1.4 loading failed: {e}")
+            phase1_4_enabled = False
 
     # Process frames
     timeline_rows = []
@@ -474,14 +535,30 @@ def process_video(
     state = "OUT"
     inside_frames = 0
     out_frames = 999999
+    
+    # Scene context tracking
+    current_context = "urban"  # Default context
+    context_log_interval = 300  # Log context change every 300 frames
+    last_context_log = 0
 
     frame_idx = 0
     processed = 0
 
-    print(f"Processing video: {input_path.name}")
-    print(f"Total frames: {total_frames}, FPS: {fps:.1f}, Stride: {stride}")
+    # Timing accumulators
+    t_yolo = 0.0
+    t_clip = 0.0
+    t_phase1 = 0.0
+    t_phase4 = 0.0
+    t_loop = 0.0
+
+    if not quiet:
+        print(f"Processing video: {input_path.name}")
+    if not quiet:
+        print(f"Total frames: {total_frames}, FPS: {fps:.1f}, Stride: {stride}")
+    start_time = time.time()
 
     while True:
+        t_loop_start = time.time()
         ret, frame = cap.read()
         if not ret:
             break
@@ -492,9 +569,11 @@ def process_video(
             continue
 
         # YOLO inference
+        t0 = time.time()
         results = yolo_model.predict(
             frame, conf=conf, iou=iou, verbose=False, device=device, half=True
         )
+        t_yolo += time.time() - t0
         r = results[0]
 
         if r.boxes is not None and len(r.boxes) > 0:
@@ -502,6 +581,19 @@ def process_video(
             names = [yolo_model.names[int(cid)] for cid in cls_ids]
         else:
             names = []
+
+        # Phase 1.4: Scene Context (early prediction)
+        if scene_context_predictor is not None:
+            t1 = time.time()
+            context, context_conf = scene_context_predictor.predict(frame)
+            current_context = context
+            t_phase4 += time.time() - t1
+            
+            # Log context changes
+            if processed > 0 and processed - last_context_log >= context_log_interval:
+                if not quiet:
+                    logger.info(f"Current scene: {context} (conf={context_conf[context]:.1%})")
+                last_context_log = processed
 
         # YOLO score
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
@@ -516,20 +608,28 @@ def process_video(
         alpha_eff = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
         yolo_ema = ema(yolo_ema, yolo_score, alpha_eff)
 
+        # Apply context-specific CLIP threshold if Phase 1.4 is active
+        effective_clip_trigger = clip_trigger_th
+        if scene_context_predictor is not None:
+            context_thresholds = SceneContextConfig.THRESHOLDS.get(current_context, {})
+            effective_clip_trigger = context_thresholds.get("clip_trigger_th", clip_trigger_th)
+
         # CLIP (triggered)
         clip_score_raw = 0.0
         clip_used = 0
-        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
+        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= effective_clip_trigger):
             try:
+                t1 = time.time()
                 diff = clip_frame_score(clip_bundle, device, frame, pos_emb, neg_emb)
                 clip_score_raw = logistic(diff * 3.0)
                 clip_used = 1
+                t_clip += time.time() - t1
             except Exception as e:
                 logger.warning(f"CLIP frame score error: {e}")
 
         # Fuse scores
         fused = yolo_score
-        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
+        if clip_enabled and (yolo_ema is not None) and (yolo_ema >= effective_clip_trigger):
             fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
 
         # Orange pixel context boost
@@ -554,19 +654,6 @@ def process_video(
         alpha_eff_fused = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
         fused_ema = ema(fused_ema, fused, alpha_eff_fused)
 
-        # State update
-        state, inside_frames, out_frames = update_state(
-            prev_state=state,
-            fused_score=float(fused_ema),
-            inside_frames=inside_frames,
-            out_frames=out_frames,
-            enter_th=enter_th,
-            exit_th=exit_th,
-            min_inside_frames=min_inside_frames,
-            min_out_frames=min_out_frames,
-            approach_th=approach_th,
-        )
-
         # Time stamp for this frame
         time_sec = float(frame_idx / fps) if fps > 0 else float(processed)
 
@@ -586,7 +673,9 @@ def process_video(
                 persistence_states = persistence.update(frame_cues)
                 
                 # Get multi-cue decision (Phase 1.3: pass frame for motion validation)
+                t2 = time.time()
                 decision = multi_cue.evaluate(frame_cues, persistence_states, frame=frame, yolo_results=r)
+                t_phase1 += time.time() - t2
                 p1_pass = decision.passed
                 p1_num_sustained = decision.num_sustained_cues
                 p1_confidence = decision.confidence
@@ -603,18 +692,33 @@ def process_video(
             except Exception as e:
                 logger.warning(f"Phase 1.1 processing error: {e}")
 
-        # Annotate frame
-        annotated = r.plot()
-        annotated = draw_banner(
-            annotated,
-            state,
-            float(fused_ema),
-            clip_active=(clip_used == 1),
-            p1_pass=p1_pass if phase1_1_enabled else None,
-            p1_num=p1_num_sustained if phase1_1_enabled else None,
-            p1_conf=p1_confidence if phase1_1_enabled else None,
+        # State update (gate with Phase 1.1 if enabled)
+        gate_pass = (not phase1_1_enabled) or bool(p1_pass)
+        state, inside_frames, out_frames = update_state(
+            prev_state=state,
+            fused_score=float(fused_ema),
+            inside_frames=inside_frames,
+            out_frames=out_frames,
+            enter_th=enter_th if scene_context_predictor is None else SceneContextConfig.THRESHOLDS.get(current_context, {}).get("enter_th", enter_th),
+            exit_th=exit_th if scene_context_predictor is None else SceneContextConfig.THRESHOLDS.get(current_context, {}).get("exit_th", exit_th),
+            min_inside_frames=min_inside_frames,
+            min_out_frames=min_out_frames,
+            approach_th=approach_th if scene_context_predictor is None else SceneContextConfig.THRESHOLDS.get(current_context, {}).get("approach_th", approach_th),
+            gate_pass=gate_pass,
         )
-        writer.write(annotated)
+        # Annotate frame (skip if not saving video)
+        if save_video:
+            annotated = r.plot()
+            annotated = draw_banner(
+                annotated,
+                state,
+                float(fused_ema),
+                clip_active=(clip_used == 1),
+                p1_pass=p1_pass if phase1_1_enabled else None,
+                p1_num=p1_num_sustained if phase1_1_enabled else None,
+                p1_conf=p1_confidence if phase1_1_enabled else None,
+            )
+            writer.write(annotated)
 
         # Save timeline row
         row = {
@@ -636,28 +740,60 @@ def process_video(
             row["p1_num_sustained"] = int(p1_num_sustained)
             row["p1_confidence"] = float(p1_confidence)
         
+        # Add Phase 1.4 context column if enabled
+        if phase1_4_enabled:
+            row["scene_context"] = str(current_context)
+        
         timeline_rows.append(row)
 
         processed += 1
+        t_loop += time.time() - t_loop_start
         frame_idx += 1
 
         # Progress
-        if processed % 50 == 0:
+        if not quiet and processed % 50 == 0:
             pct = 100 * frame_idx / total_frames if total_frames > 0 else 0
             print(f"  {processed} frames processed ({pct:.1f}%) | State: {state}")
 
     cap.release()
-    writer.release()
+    if writer is not None:
+        writer.release()
 
+    elapsed = time.time() - start_time
+    proc_fps = processed / elapsed if elapsed > 0 else 0.0
+    ms = lambda t: (t / processed) * 1000.0 if processed > 0 else 0.0
     # Save CSV
-    df = pd.DataFrame(timeline_rows)
-    df.to_csv(out_csv_path, index=False)
+    if save_csv:
+        df = pd.DataFrame(timeline_rows)
+        df.to_csv(out_csv_path, index=False)
+
+    if not quiet:
+        print(f"Runtime: {elapsed:.2f}s, Frames: {processed}, Proc FPS: {proc_fps:.2f}")
+        if processed > 0:
+            timing_str = (
+                "Timing breakdown (avg ms/frame): "
+                f"YOLO {ms(t_yolo):.1f} | "
+                f"CLIP {ms(t_clip):.1f} | "
+                f"Phase1.1+motion {ms(t_phase1):.1f}"
+            )
+            if phase1_4_enabled:
+                timing_str += f" | Phase1.4 {ms(t_phase4):.1f}"
+            timing_str += f" | loop_total {ms(t_loop):.1f}"
+            print(timing_str)
 
     return {
         "out_video_path": str(out_video_path),
         "out_csv_path": str(out_csv_path),
         "processed": processed,
         "total_frames": total_frames,
+        "elapsed_sec": elapsed,
+        "proc_fps": proc_fps,
+        "timing_ms_per_frame": {
+            "yolo": ms(t_yolo),
+            "clip": ms(t_clip),
+            "phase1_motion": ms(t_phase1),
+            "loop_total": ms(t_loop),
+        },
     }
 
 
@@ -734,6 +870,12 @@ def main():
     )
 
     parser.add_argument(
+        "--no-motion",
+        action="store_true",
+        help="Disable Phase 1.3 motion validation (can speed up profiling)",
+    )
+
+    parser.add_argument(
         "--p1-window",
         type=int,
         default=None,
@@ -758,6 +900,37 @@ def main():
         "--p1-debug",
         action="store_true",
         help="Log Phase 1.1 decisions periodically"
+    )
+
+    parser.add_argument(
+        "--enable-phase1-4",
+        action="store_true",
+        help=f"Enable Phase 1.4 scene context pre-filter (available: {PHASE1_4_AVAILABLE})",
+    )
+
+    parser.add_argument(
+        "--scene-context-weights",
+        type=str,
+        default="weights/scene_context_classifier.pt",
+        help="Path to Phase 1.4 scene context classifier weights (default: weights/scene_context_classifier.pt)",
+    )
+
+    parser.add_argument(
+        "--no-video",
+        action="store_true",
+        help="Skip annotated video output (faster for profiling)",
+    )
+
+    parser.add_argument(
+        "--no-csv",
+        action="store_true",
+        help="Skip CSV timeline output (faster for profiling)",
+    )
+
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress progress prints (faster for profiling)",
     )
     
     args = parser.parse_args()
@@ -795,10 +968,16 @@ def main():
         stride=args.stride,
         use_clip=not args.no_clip,
         phase1_1_enabled=args.enable_phase1_1 and PHASE1_1_AVAILABLE,
+        enable_motion_validation=not args.no_motion,
         p1_window_size=args.p1_window,
         p1_persistence_th=args.p1_thresh,
         p1_min_sustained_cues=args.p1_min_cues,
         p1_debug=args.p1_debug,
+        phase1_4_enabled=args.enable_phase1_4 and PHASE1_4_AVAILABLE,
+        scene_context_weights=args.scene_context_weights,
+        save_video=not args.no_video,
+        save_csv=not args.no_csv,
+        quiet=args.quiet,
     )
 
     print("\n" + "="*60)

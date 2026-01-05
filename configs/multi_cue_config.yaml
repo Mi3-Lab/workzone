@@ -126,13 +126,13 @@ temporal:
 
 multi_cue_gate:
   # Minimum number of DIFFERENT cue types that must be sustained
-  min_sustained_cues: 1      # Reduced to 1 - one strong cue (sign/cone) is enough
+  min_sustained_cues: 1      # Allow one strong cue (workers/signs) to pass Phase 1.1
   
   # Confidence boost per additional sustained cue
-  confidence_per_cue: 0.20   # Increased boost for multiple cues
-  
+  confidence_per_cue: 0.20   # Restore prior boost per extra cue
+
   # Base confidence when minimum cues met
-  base_confidence: 0.5       # Slightly lower base
+  base_confidence: 0.50      # Restore prior base confidence
 
 # ===================================
 # STATE MACHINE PARAMETERS
@@ -143,8 +143,8 @@ state_machine:
   transitions:
     # OUT → APPROACHING
     out_to_approaching:
-      min_sustained_cues: 1
-      min_confidence: 0.3
+      min_sustained_cues: 2
+      min_confidence: 0.45
       
     # APPROACHING → INSIDE
     approaching_to_inside:
