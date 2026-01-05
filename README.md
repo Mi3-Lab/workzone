@@ -81,6 +81,198 @@ streamlit run src/workzone/apps/streamlit/app_phase1_1_fusion.py
 - **[Results Index](docs/reports/RESULTS_INDEX.md)** - Training results and metrics
 - **[API Documentation](docs/API.md)** - Python API reference
 
+## 🏗️ System Architecture: Complete Phase 1 Pipeline
+
+### Phase 1.0: Core Fusion System (Base)
+
+**YOLO + CLIP + EMA + State Machine** - The foundation of the detection system.
+
+**Components**:
+
+1. **YOLO Object Detection**
+   - 50-class construction zone detection
+   - Semantic grouping: channelization, workers, vehicles, signs, message boards
+   - Weighted linear scoring: `score = w₁×channelization + w₂×workers + ... + bias`
+   - Logistic transformation for 0-1 range
+
+2. **EMA Temporal Smoothing**
+   - Exponential moving average with adaptive alpha
+   - `score_ema = α×score_new + (1-α)×score_old`
+   - Adaptive α based on evidence strength (0.10-0.50)
+
+3. **CLIP Semantic Verification**
+   - OpenCLIP ViT-B/32 model
+   - Triggered when YOLO score ≥ 0.45 (uncertain range)
+   - Positive prompt: "a road work zone with traffic cones, barriers, workers, construction signs"
+   - Negative prompt: "a normal road with no construction and no work zone"
+   - Fusion weight: 0.35
+
+4. **Orange-Cue Context Boost**
+   - HSV-based orange pixel detection
+   - Applied when YOLO_ema < 0.55 (low evidence)
+   - Boost weight: 0.25
+   - Helps detect sparse construction zones
+
+5. **Fused Score**
+   - `fused_score = YOLO_ema × (1-clip_weight) + CLIP_score × clip_weight + orange_boost × orange_weight`
+   - Final confidence score used by state machine
+
+6. **State Machine**
+   - 4 states: **OUT** → **APPROACHING** → **INSIDE** → **EXITING** → **OUT**
+   - Hysteresis thresholds: enter=0.70, exit=0.45, approach=0.55
+   - Min frames: 25 inside, 15 outside (prevents flickering)
+   - **Key feature**: APPROACHING never goes back to OUT (anti-flicker)
+
+**CLI**: Default behavior (always active)
+```bash
+python scripts/process_video_fusion.py VIDEO_PATH --output-dir outputs/
+```
+
+---
+
+### Phase 1.1: Multi-Cue Temporal Persistence
+
+**AND Logic** across multiple cue types for robust confirmation.
+
+**What it does**:
+- Groups 50 YOLO classes into 5 cue types: channelization, workers, vehicles, signs, equipment
+- Tracks each cue's presence over 90-frame sliding window (3 seconds)
+- Cue is "sustained" if present in ≥40% of window
+- Work zone confirmed if ≥1 sustained cue type (configurable)
+- Adds confidence score based on number of sustained cues
+
+**Benefits**:
+- 15-25% additional FP reduction
+- More stable detections in sparse zones
+- Prevents single-frame false positives
+
+**CLI**: Enable with `--enable-phase1-1`
+```bash
+python scripts/process_video_fusion.py VIDEO_PATH \
+  --output-dir outputs/ \
+  --enable-phase1-1 \
+  --p1-window 90 \
+  --p1-thresh 0.4 \
+  --p1-min-cues 1
+```
+
+**Documentation**: `configs/multi_cue_config.yaml`
+
+---
+
+### Phase 1.2: Hard-Negative Training
+
+**Model Training** - Not a runtime feature, built into model weights.
+
+**What was done**:
+1. **Mining**: Processed 406 videos with baseline model → 17,957 candidate false positives
+2. **Filtering**: Extracted frames where Phase 1.1 failed (high confidence but no actual work zone)
+3. **Manual Review**: Categorized into 4 types:
+   - Lane markings (cones/channelization)
+   - Non-construction signs
+   - Civilian vehicles/trucks
+   - Other roadwork (repairs, maintenance)
+4. **Selection**: Manually verified 134 hard negatives
+5. **Retraining**: Fine-tuned YOLO12s @ 1280px with hard negatives
+
+**Results**:
+- **84.6% FP reduction** vs baseline model
+- Model: `yolo12s_hardneg_1280.pt` (production model, used by default)
+
+**Documentation**: [docs/reports/PHASE1_2_MINING_REPORT.md](docs/reports/PHASE1_2_MINING_REPORT.md)
+
+**CLI**: Automatically active when using production model (default)
+
+---
+
+### Phase 1.3: Motion Validation
+
+**Optical flow** to validate static objects (under development).
+
+**What it does**:
+- Lucas-Kanade optical flow tracking
+- Validates that detected objects are stationary (as expected for construction zones)
+- Filters out false positives from moving objects
+
+**Status**: Experimental (can disable with `--no-motion`)
+
+**Documentation**: [docs/guides/PHASE1_3_MOTION_CUES.md](docs/guides/PHASE1_3_MOTION_CUES.md)
+
+---
+
+### Phase 1.4: Scene Context Pre-filter
+
+**Scene classification** for context-aware threshold adaptation.
+
+**What it does**:
+- MobileNetV2-based classifier (3 classes: highway, urban, suburban)
+- **92.8% accuracy** on test set
+- **<1ms overhead** per frame
+- Auto-adjusts state machine thresholds:
+  - **Highway**: approach=0.60 (stricter, avoid shoulder markings)
+  - **Urban**: approach=0.50 (looser, crowded scenes with many workers)
+  - **Suburban**: approach=0.55 (balanced)
+
+**Benefits**:
+- Adapts to road type automatically
+- Reduces false positives on highways
+- More sensitive in urban areas
+
+**CLI**: Enable with `--enable-phase1-4`
+```bash
+python scripts/process_video_fusion.py VIDEO_PATH \
+  --output-dir outputs/ \
+  --enable-phase1-1 \
+  --enable-phase1-4
+```
+
+**CSV Output**: Includes `scene_context` column (highway/urban/suburban)
+
+**Documentation**: [docs/phase1_4/README.md](docs/phase1_4/README.md)
+
+---
+
+### Complete Pipeline (All Phases)
+
+```bash
+# Full system with all features
+python scripts/process_video_fusion.py VIDEO_PATH \
+  --output-dir outputs/full_pipeline \
+  --enable-phase1-1 \
+  --enable-phase1-4 \
+  --ema-alpha 0.25 \
+  --clip-weight 0.35 \
+  --enter-th 0.70 \
+  --exit-th 0.45
+```
+
+**Processing Flow**:
+```
+Video Frame
+    ↓
+YOLO Detection (Phase 1.2 model) → 50 classes detected
+    ↓
+Semantic Grouping → 5 cue types
+    ↓
+Phase 1.1 Multi-Cue → Sustained cues over time?
+    ↓
+YOLO Score (weighted) → 0-1 score
+    ↓
+EMA Smoothing (adaptive α) → Temporal stability
+    ↓
+CLIP Verification (if uncertain) → Semantic similarity
+    ↓
+Orange Boost (if low evidence) → Context cue
+    ↓
+Fused Score → Final confidence
+    ↓
+Phase 1.4 Scene Context → Adjust thresholds
+    ↓
+State Machine → OUT/APPROACHING/INSIDE/EXITING
+    ↓
+Output: Annotated video + CSV timeline
+```
+
 ## 🛠️ CLI Tools
 
 ### Video Processing

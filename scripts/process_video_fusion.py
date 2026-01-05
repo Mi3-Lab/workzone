@@ -903,6 +903,76 @@ def main():
     )
 
     parser.add_argument(
+        "--enter-th",
+        type=float,
+        default=None,
+        help="Override WORKZONE entry threshold (default: 0.70 or context-specific)",
+    )
+
+    parser.add_argument(
+        "--exit-th",
+        type=float,
+        default=None,
+        help="Override WORKZONE exit threshold (default: 0.45 or context-specific)",
+    )
+
+    parser.add_argument(
+        "--approach-th",
+        type=float,
+        default=None,
+        help="Override APPROACHING threshold (default: 0.55 or context-specific)",
+    )
+
+    parser.add_argument(
+        "--ema-alpha",
+        type=float,
+        default=0.25,
+        help="EMA smoothing factor (default: 0.25)",
+    )
+
+    parser.add_argument(
+        "--clip-weight",
+        type=float,
+        default=0.35,
+        help="CLIP fusion weight (default: 0.35)",
+    )
+
+    parser.add_argument(
+        "--clip-trigger-th",
+        type=float,
+        default=0.45,
+        help="CLIP trigger threshold (default: 0.45)",
+    )
+
+    parser.add_argument(
+        "--orange-weight",
+        type=float,
+        default=0.25,
+        help="Orange boost weight (default: 0.25)",
+    )
+
+    parser.add_argument(
+        "--context-trigger-below",
+        type=float,
+        default=0.55,
+        help="Apply orange boost if YOLO_ema below this (default: 0.55)",
+    )
+
+    parser.add_argument(
+        "--min-inside-frames",
+        type=int,
+        default=25,
+        help="Min frames inside WORKZONE before exit allowed (default: 25)",
+    )
+
+    parser.add_argument(
+        "--min-out-frames",
+        type=int,
+        default=15,
+        help="Min frames outside WORKZONE before entry allowed (default: 15)",
+    )
+
+    parser.add_argument(
         "--enable-phase1-4",
         action="store_true",
         help=f"Enable Phase 1.4 scene context pre-filter (available: {PHASE1_4_AVAILABLE})",
@@ -966,7 +1036,10 @@ def main():
         conf=args.conf,
         iou=args.iou,
         stride=args.stride,
+        ema_alpha=args.ema_alpha,
         use_clip=not args.no_clip,
+        clip_weight=args.clip_weight,
+        clip_trigger_th=args.clip_trigger_th,
         phase1_1_enabled=args.enable_phase1_1 and PHASE1_1_AVAILABLE,
         enable_motion_validation=not args.no_motion,
         p1_window_size=args.p1_window,
@@ -975,6 +1048,13 @@ def main():
         p1_debug=args.p1_debug,
         phase1_4_enabled=args.enable_phase1_4 and PHASE1_4_AVAILABLE,
         scene_context_weights=args.scene_context_weights,
+        enter_th=args.enter_th if args.enter_th is not None else 0.70,
+        exit_th=args.exit_th if args.exit_th is not None else 0.45,
+        approach_th=args.approach_th if args.approach_th is not None else 0.55,
+        orange_weight=args.orange_weight,
+        context_trigger_below=args.context_trigger_below,
+        min_inside_frames=args.min_inside_frames,
+        min_out_frames=args.min_out_frames,
         save_video=not args.no_video,
         save_csv=not args.no_csv,
         quiet=args.quiet,

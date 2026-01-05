@@ -40,6 +40,13 @@ from workzone.apps.streamlit_utils import (
 )
 from workzone.utils.logging_config import setup_logger
 
+# Phase 1.4 imports (optional)
+try:
+    from workzone.models.scene_context import SceneContextPredictor, SceneContextConfig
+    PHASE1_4_AVAILABLE = True
+except ImportError:
+    PHASE1_4_AVAILABLE = False
+
 logger = setup_logger(__name__)
 
 # Configuration
@@ -579,9 +586,11 @@ def process_video(
     min_out_frames: int,
     approach_th: float,
     save_video: bool,
+    enable_phase1_4: bool = False,
+    scene_context_weights: Optional[str] = None,
 ) -> Dict:
     """
-    Process video with YOLO + CLIP fusion and state machine.
+    Process video with YOLO + CLIP fusion, Phase 1.4 scene context, and state machine.
 
     Returns dict with output paths, timeline DataFrame, and metrics.
     """
@@ -619,6 +628,21 @@ def process_video(
         except Exception as e:
             logger.error(f"CLIP embedding error: {e}")
 
+    # Phase 1.4: Scene Context Predictor
+    scene_context_predictor = None
+    current_context = "suburban"  # Default
+    if enable_phase1_4 and PHASE1_4_AVAILABLE:
+        try:
+            scene_context_predictor = SceneContextPredictor(
+                model_path=scene_context_weights,
+                device=device,
+                backbone="resnet18"
+            )
+            logger.info("✓ Phase 1.4 Scene Context loaded")
+        except Exception as e:
+            logger.error(f"Phase 1.4 loading failed: {e}")
+            scene_context_predictor = None
+
     timeline_rows = []
     yolo_ema = None
     fused_ema = None
@@ -654,6 +678,14 @@ def process_video(
             names = [yolo_model.names[int(cid)] for cid in cls_ids]
         else:
             names = []
+
+        # Phase 1.4: Predict scene context
+        if scene_context_predictor is not None:
+            try:
+                context, context_conf = scene_context_predictor.predict(frame)
+                current_context = context
+            except Exception as e:
+                logger.error(f"Scene context prediction error: {e}")
 
         # YOLO score
         yolo_score, feats = yolo_frame_score(names, weights_yolo)
@@ -706,17 +738,28 @@ def process_video(
         alpha_eff_fused = adaptive_alpha(evidence, alpha_min=ema_alpha * 0.4, alpha_max=ema_alpha * 1.2)
         fused_ema = ema(fused_ema, fused, alpha_eff_fused)
 
+        # Phase 1.4: Apply context-aware thresholds
+        context_enter_th = enter_th
+        context_exit_th = exit_th
+        context_approach_th = approach_th
+        
+        if scene_context_predictor is not None:
+            ctx_thresholds = SceneContextConfig.THRESHOLDS.get(current_context, {})
+            context_enter_th = ctx_thresholds.get("enter_th", enter_th)
+            context_exit_th = ctx_thresholds.get("exit_th", exit_th)
+            context_approach_th = ctx_thresholds.get("approach_th", approach_th)
+
         # State update
         state, inside_frames, out_frames = update_state(
             prev_state=state,
             fused_score=float(fused_ema),
             inside_frames=inside_frames,
             out_frames=out_frames,
-            enter_th=enter_th,
-            exit_th=exit_th,
+            enter_th=context_enter_th,
+            exit_th=context_exit_th,
             min_inside_frames=min_inside_frames,
             min_out_frames=min_out_frames,
-            approach_th=approach_th,
+            approach_th=context_approach_th,
         )
 
         # Annotate
@@ -746,6 +789,11 @@ def process_video(
             "count_channelization": int(feats["count_channelization"]),
             "count_workers": int(feats["count_workers"]),
         }
+        
+        # Add scene context column if Phase 1.4 is enabled
+        if scene_context_predictor is not None:
+            row["scene_context"] = str(current_context)
+        
         timeline_rows.append(row)
 
         processed += 1
@@ -864,6 +912,18 @@ def main() -> None:
         "ttc_signs": float(w_ttc),
         "message_board": float(w_msg),
     }
+
+    st.sidebar.markdown("---")
+    st.sidebar.header("Phase 1.4: Scene Context")
+    if PHASE1_4_AVAILABLE:
+        enable_phase1_4 = st.sidebar.checkbox("Enable Scene Context Pre-filter", value=True)
+        if enable_phase1_4:
+            st.sidebar.success("✅ Phase 1.4 active")
+            st.sidebar.info("Auto-adjusts thresholds based on highway/urban/suburban context")
+        scene_context_weights = "weights/scene_context_classifier.pt"
+    else:
+        enable_phase1_4 = False
+        st.sidebar.warning("⚠️ Phase 1.4 not available (model not found)")
 
     st.sidebar.markdown("---")
     st.sidebar.header("State machine")
@@ -1045,6 +1105,8 @@ def main() -> None:
             min_out_frames=int(min_out_frames),
             approach_th=float(approach_th),
             save_video=bool(save_video),
+            enable_phase1_4=enable_phase1_4,
+            scene_context_weights=scene_context_weights if enable_phase1_4 else None,
         )
 
     df = result["timeline_df"]
