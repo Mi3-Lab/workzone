@@ -877,6 +877,8 @@ def process_video(
             "yolo_ema": float(yolo_ema) if yolo_ema is not None else 0.0,
             "fused_ema": float(fused_ema) if fused_ema is not None else 0.0,
             "state": str(state),
+            "inside_frames": int(inside_frames),
+            "out_frames": int(out_frames),
             "clip_used": int(clip_used),
             "clip_score": float(clip_score_raw),
             "count_channelization": int(feats.get("count_channelization", 0)),
@@ -1201,6 +1203,51 @@ def main():
                         st.subheader("State Transitions")
                         state_counts = result['timeline_df']['state'].value_counts()
                         st.bar_chart(state_counts)
+
+                    # Explainability dashboard: quick cue and persistence diagnostics
+                    st.subheader("🔍 Explainability Dashboard")
+                    dash_col1, dash_col2, dash_col3 = st.columns(3)
+
+                    with dash_col1:
+                        st.caption("OCR + CLIP cues")
+                        fig_cue, ax_cue = plt.subplots(figsize=(6, 3))
+                        df = result['timeline_df']
+                        ax_cue.plot(df['frame'], df['text_confidence'], label='OCR confidence', color='tab:blue', linewidth=1)
+                        ax_cue.scatter(df['frame'], df['clip_score'], label='CLIP score', color='tab:orange', s=6, alpha=0.6)
+                        ax_cue.scatter(df.loc[df['clip_used'] == 1, 'frame'],
+                                       df.loc[df['clip_used'] == 1, 'clip_score'],
+                                       label='CLIP trigger', color='tab:red', s=12, marker='x')
+                        ax_cue.set_ylim(0, 1)
+                        ax_cue.set_xlabel("Frame")
+                        ax_cue.set_ylabel("Score")
+                        ax_cue.grid(True, alpha=0.2)
+                        ax_cue.legend(loc='upper right', fontsize=8)
+                        st.pyplot(fig_cue)
+
+                    with dash_col2:
+                        st.caption("Object counts (scene evidence)")
+                        fig_cnt, ax_cnt = plt.subplots(figsize=(6, 3))
+                        df = result['timeline_df']
+                        ax_cnt.plot(df['frame'], df['count_channelization'], label='Channelization', linewidth=1)
+                        ax_cnt.plot(df['frame'], df['count_workers'], label='Workers', linewidth=1)
+                        ax_cnt.plot(df['frame'], df['count_vehicles'], label='Vehicles', linewidth=1)
+                        ax_cnt.set_xlabel("Frame")
+                        ax_cnt.set_ylabel("Count")
+                        ax_cnt.grid(True, alpha=0.2)
+                        ax_cnt.legend(loc='upper right', fontsize=8)
+                        st.pyplot(fig_cnt)
+
+                    with dash_col3:
+                        st.caption("Persistence counters")
+                        fig_pers, ax_pers = plt.subplots(figsize=(6, 3))
+                        df = result['timeline_df']
+                        ax_pers.plot(df['frame'], df['inside_frames'], label='Inside counter', color='tab:green', linewidth=1)
+                        ax_pers.plot(df['frame'], df['out_frames'], label='Outside counter', color='tab:red', linewidth=1)
+                        ax_pers.set_xlabel("Frame")
+                        ax_pers.set_ylabel("Frames")
+                        ax_pers.grid(True, alpha=0.2)
+                        ax_pers.legend(loc='upper right', fontsize=8)
+                        st.pyplot(fig_pers)
 
                     # Download
                     st.subheader("📥 Downloads")

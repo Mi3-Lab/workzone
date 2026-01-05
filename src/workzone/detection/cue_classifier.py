@@ -66,6 +66,20 @@ class CueClassifier:
         
         # Get cue group names
         self.cue_groups = list(self.config['cue_groups'].keys())
+
+        # Map Phase 1.1 cue groups -> Phase 2.1 per-cue buckets
+        self.per_cue_map = {
+            'CHANNELIZATION': 'channelization',
+            'SIGNAGE': 'signs',
+            'PERSONNEL': 'workers',
+            'EQUIPMENT': 'vehicles',
+            'INFRASTRUCTURE': 'equipment',
+        }
+
+    def classify(self, class_name: str) -> str:
+        """Map a YOLO class name to a Phase 2.1 per-cue bucket."""
+        group = self.class_to_cue.get(class_name.lower())
+        return self.per_cue_map.get(group, 'other')
         
     def _build_class_mapping(self) -> Dict[str, str]:
         """Build mapping from YOLO class name to cue group."""
