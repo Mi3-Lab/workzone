@@ -64,9 +64,10 @@ outputs/
 # ---------------------------------
 # Model weights
 # ---------------------------------
-weights/
-*.pt
-!weights/.gitkeep
+# Committed to repo (small models for easy setup)
+# weights/ directory is now tracked for distribution
+*.pt.bak
+*.pt.tmp
 
 # ---------------------------------
 # Logs and runtime
