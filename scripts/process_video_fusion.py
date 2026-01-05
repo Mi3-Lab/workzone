@@ -50,6 +50,14 @@ try:
 except ImportError:
     PHASE2_1_AVAILABLE = False
 
+# OCR imports (optional)
+try:
+    from workzone.ocr.text_detector import SignTextDetector
+    from workzone.ocr.text_classifier import TextClassifier
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
 logger = setup_logger(__name__)
 
 
@@ -99,6 +107,65 @@ def group_counts_from_names(names: List[str]) -> Dict[str, int]:
         else:
             c["other"] += 1
     return dict(c)
+
+def extract_ocr_from_frame(
+    frame: np.ndarray,
+    r,
+    ocr_bundle: Optional[Dict],
+    yolo_model,
+) -> Tuple[str, float, str]:
+    """Extract OCR text from message boards in a frame."""
+    if ocr_bundle is None:
+        return "", 0.0, "NONE"
+
+    detector = ocr_bundle.get("detector")
+    classifier = ocr_bundle.get("classifier")
+
+    if detector is None or classifier is None:
+        return "", 0.0, "NONE"
+
+    try:
+        if r.boxes is None or len(r.boxes) == 0:
+            return "", 0.0, "NONE"
+
+        cls_ids = r.boxes.cls.int().cpu().tolist()
+        names = [yolo_model.names[int(cid)] for cid in cls_ids]
+
+        for i, cls_id in enumerate(cls_ids):
+            cls_name = names[i].lower()
+            is_message_board = "message board" in cls_name or int(cls_id) == 14
+            is_ttc_sign = "temporary traffic control" in cls_name or "sign" in cls_name
+            if is_message_board or is_ttc_sign:
+                box = r.boxes.xyxy[i].cpu().numpy()
+                x1, y1, x2, y2 = map(int, box)
+
+                pad = 20  # wider crop to capture full text
+                crop = frame[
+                    max(0, y1 - pad) : min(frame.shape[0], y2 + pad),
+                    max(0, x1 - pad) : min(frame.shape[1], x2 + pad),
+                ]
+
+                if crop.size == 0:
+                    continue
+
+                ocr_text, ocr_conf = detector.extract_text(crop)
+                if ocr_conf > 0.50:  # allow slightly lower confidence to catch partial reads
+                    text_category, class_conf = classifier.classify(ocr_text)
+                    text_confidence = ocr_conf * class_conf
+
+                    # Heuristic: map noisy "WORK AHEAD" variants to WORKZONE
+                    norm = ocr_text.lower()
+                    if text_category == "UNCLEAR" and "work" in norm:
+                        if "ahead" in norm or "ahe" in norm or "amead" in norm:
+                            text_category = "WORKZONE"
+                            text_confidence *= 0.6  # dampen due to heuristic
+
+                    return ocr_text, text_confidence, text_category
+
+        return "", 0.0, "NONE"
+    except Exception as e:
+        logger.debug(f"OCR extraction error: {e}")
+        return "", 0.0, "NONE"
 
 
 def yolo_frame_score(names: List[str], weights: Dict[str, float]) -> Tuple[float, Dict[str, float]]:
@@ -404,6 +471,8 @@ def process_video(
     phase1_4_enabled: bool = False,
     scene_context_weights: Optional[str] = None,
     phase2_1_enabled: bool = False,
+    enable_ocr: bool = False,
+    ocr_every_n: int = 2,
     save_video: bool = True,
     save_csv: bool = True,
     quiet: bool = False,
@@ -565,6 +634,26 @@ def process_video(
             per_cue_verifier = None
             trajectory_tracker = None
 
+    # Load OCR bundle if requested
+    ocr_bundle = None
+    if enable_ocr and OCR_AVAILABLE:
+        if not quiet:
+            print("Loading OCR detector and classifier...")
+        try:
+            detector = SignTextDetector()
+            classifier = TextClassifier()
+            ocr_bundle = {
+                "detector": detector,
+                "classifier": classifier,
+            }
+            if not quiet:
+                print("✓ OCR modules loaded (text extraction + classification)")
+        except Exception as e:
+            if not quiet:
+                print(f"⚠ OCR loading failed: {e}")
+            enable_ocr = False
+            ocr_bundle = None
+
     # Process frames
     timeline_rows = []
     yolo_ema = None
@@ -669,6 +758,21 @@ def process_video(
         fused = yolo_score
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= effective_clip_trigger):
             fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
+
+        # OCR extraction (before orange boost to use in score calculation)
+        ocr_text = ""
+        text_confidence = 0.0
+        text_category = "NONE"
+        if enable_ocr and ocr_bundle is not None and (frame_idx % max(1, ocr_every_n) == 0):
+            ocr_text, text_confidence, text_category = extract_ocr_from_frame(
+                frame, r, ocr_bundle, yolo_model
+            )
+
+        # OCR boost (high-confidence workzone text increases score)
+        if enable_ocr and text_confidence >= 0.70 and text_category in ["WORKZONE", "LANE", "CAUTION"]:
+            # Boost fused score when high-confidence workzone text detected
+            ocr_boost = min(text_confidence * 0.15, 0.15)  # Max 15% boost
+            fused = min(fused + ocr_boost, 1.0)
 
         # Orange pixel context boost
         if enable_context_boost and (yolo_ema is not None) and (yolo_ema < context_trigger_below):
@@ -787,6 +891,19 @@ def process_video(
                 p1_num=p1_num_sustained if phase1_1_enabled else None,
                 p1_conf=p1_confidence if phase1_1_enabled else None,
             )
+            # Overlay OCR text when available for visual validation
+            if ocr_text:
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                cv2.putText(
+                    annotated,
+                    f"OCR: {ocr_text} ({text_category}:{text_confidence:.2f})",
+                    (12, 36),
+                    font,
+                    0.8,
+                    (255, 255, 255),
+                    2,
+                    cv2.LINE_AA,
+                )
             writer.write(annotated)
 
         # Save timeline row
@@ -801,6 +918,9 @@ def process_video(
             "clip_score": float(clip_score_raw),
             "count_channelization": int(feats["count_channelization"]),
             "count_workers": int(feats["count_workers"]),
+            "ocr_text": str(ocr_text),
+            "text_confidence": float(text_confidence),
+            "text_category": str(text_category),
         }
         
         # Add Phase 1.1 columns if enabled
@@ -1070,6 +1190,19 @@ def main():
     )
 
     parser.add_argument(
+        "--enable-ocr",
+        action="store_true",
+        help=f"Enable OCR text extraction from message boards (available: {OCR_AVAILABLE})",
+    )
+
+    parser.add_argument(
+        "--ocr-every-n",
+        type=int,
+        default=2,
+        help="Run OCR every N frames to reduce latency (default: 2)",
+    )
+
+    parser.add_argument(
         "--no-video",
         action="store_true",
         help="Skip annotated video output (faster for profiling)",
@@ -1133,6 +1266,8 @@ def main():
         phase1_4_enabled=args.enable_phase1_4 and PHASE1_4_AVAILABLE,
         scene_context_weights=args.scene_context_weights,
         phase2_1_enabled=args.enable_phase2_1 and PHASE2_1_AVAILABLE,
+        enable_ocr=args.enable_ocr and OCR_AVAILABLE,
+        ocr_every_n=max(1, args.ocr_every_n),
         enter_th=args.enter_th if args.enter_th is not None else 0.70,
         exit_th=args.exit_th if args.exit_th is not None else 0.45,
         approach_th=args.approach_th if args.approach_th is not None else 0.55,

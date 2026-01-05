@@ -5,6 +5,13 @@ Extracts text from cropped sign images with preprocessing and confidence scoring
 """
 
 from paddleocr import PaddleOCR
+import paddle
+try:
+    import easyocr
+    EASY_AVAILABLE = True
+except ImportError:
+    EASY_AVAILABLE = False
+import torch
 import numpy as np
 import cv2
 from typing import Tuple, Optional
@@ -21,7 +28,7 @@ class SignTextDetector:
     Includes preprocessing to enhance OCR accuracy.
     """
     
-    def __init__(self, use_gpu: bool = True, lang: str = 'en', verbose: bool = False):
+    def __init__(self, use_gpu: bool = True, lang: str = 'en', verbose: bool = False, prefer_easyocr: bool = True):
         """
         Initialize PaddleOCR detector.
         
@@ -30,16 +37,61 @@ class SignTextDetector:
             lang: Language code ('en' for English)
             verbose: Enable PaddleOCR logging (not used in PaddleOCR 3.x)
         """
+        self.backend = None
+        self.ocr = None
+        self.easy = None
+
+        last_error = None
+
+        def init_easy():
+            gpu_flag = use_gpu and torch.cuda.is_available()
+            reader = easyocr.Reader([lang], gpu=gpu_flag)
+            logger.info(f"EasyOCR initialized (gpu={gpu_flag})")
+            return reader
+
+        def init_paddle():
+            if use_gpu and paddle.is_compiled_with_cuda():
+                paddle.set_device("gpu")
+                logger.info("Paddle set_device('gpu')")
+            else:
+                paddle.set_device("cpu")
+                if use_gpu:
+                    logger.warning("Paddle GPU not available, using CPU for OCR")
+            ocr = PaddleOCR(use_angle_cls=True, lang=lang)
+            logger.info(f"PaddleOCR initialized (device={paddle.get_device()})")
+            return ocr
+
+        # Prefer EasyOCR when available (avoids Paddle import issues)
+        if prefer_easyocr and EASY_AVAILABLE:
+            try:
+                self.easy = init_easy()
+                self.backend = "easyocr"
+                return
+            except Exception as e:
+                last_error = e
+                logger.warning(f"EasyOCR init failed, will try Paddle: {e}")
+
+        # Try PaddleOCR next
         try:
-            # PaddleOCR 3.x API changes: removed show_log and use_gpu parameters
-            self.ocr = PaddleOCR(
-                use_angle_cls=True,  # Auto-rotate text
-                lang=lang
-            )
-            logger.info(f"PaddleOCR initialized")
+            self.ocr = init_paddle()
+            self.backend = "paddle"
+            return
         except Exception as e:
-            logger.error(f"Failed to initialize PaddleOCR: {e}")
-            raise
+            last_error = e
+            logger.error(f"PaddleOCR init failed: {e}")
+
+        # Fallback to EasyOCR if Paddle failed and EasyOCR is present
+        if EASY_AVAILABLE:
+            try:
+                self.easy = init_easy()
+                self.backend = "easyocr"
+                return
+            except Exception as e:
+                last_error = e
+                logger.error(f"EasyOCR fallback failed: {e}")
+
+        # If nothing worked, surface the last error
+        raise RuntimeError(f"Failed to initialize OCR backend: {last_error}")
     
     def extract_text(self, crop: np.ndarray) -> Tuple[str, float]:
         """
@@ -65,6 +117,25 @@ class SignTextDetector:
         
         try:
             # PaddleOCR 3.x returns a list of dicts with structured output
+            if getattr(self, "backend", "paddle") == "easyocr" and getattr(self, "easy", None) is not None:
+                # EasyOCR path
+                result = self.easy.readtext(enhanced, detail=1, paragraph=False)
+                if not result:
+                    return "", 0.0
+                texts = []
+                confidences = []
+                for _, text, score in result:
+                    if score >= 0.50:
+                        texts.append(str(text))
+                        confidences.append(float(score))
+                if not texts:
+                    return "", 0.0
+                full_text = " ".join(texts)
+                avg_conf = float(np.mean(confidences))
+                logger.info(f"OCR(Easy): \"{full_text}\" (conf: {avg_conf:.2f})")
+                return full_text, avg_conf
+
+            # Paddle path
             result = self.ocr.ocr(enhanced)
             
             # Handle empty results

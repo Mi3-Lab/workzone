@@ -347,15 +347,19 @@ def extract_ocr_from_frame(
             return "", 0.0, "NONE"
         
         cls_ids = r.boxes.cls.int().cpu().tolist()
-        
+        names = [yolo_model.names[int(cid)] for cid in cls_ids]
+
         for i, cls_id in enumerate(cls_ids):
-            if int(cls_id) == 16:  # Message board
+            cls_name = names[i].lower()
+            is_message_board = "message board" in cls_name or int(cls_id) == 14
+            is_ttc_sign = "temporary traffic control" in cls_name or "sign" in cls_name
+            if is_message_board or is_ttc_sign:
                 # Get bbox
                 box = r.boxes.xyxy[i].cpu().numpy()
                 x1, y1, x2, y2 = map(int, box)
-                
-                # Crop with padding
-                pad = 10
+
+                # Crop with padding (wider to capture full text)
+                pad = 20
                 crop = frame[
                     max(0, y1 - pad) : min(frame.shape[0], y2 + pad),
                     max(0, x1 - pad) : min(frame.shape[1], x2 + pad),
@@ -367,9 +371,17 @@ def extract_ocr_from_frame(
                 # Extract text
                 ocr_text, ocr_conf = detector.extract_text(crop)
                 
-                if ocr_conf > 0.65:  # Confidence filter
+                if ocr_conf > 0.50:  # Slightly lower threshold to catch partial reads
                     text_category, class_conf = classifier.classify(ocr_text)
                     text_confidence = ocr_conf * class_conf
+
+                    # Heuristic: map noisy "WORK AHEAD" variants to WORKZONE
+                    norm = ocr_text.lower()
+                    if text_category == "UNCLEAR" and "work" in norm:
+                        if "ahead" in norm or "ahe" in norm or "amead" in norm:
+                            text_category = "WORKZONE"
+                            text_confidence *= 0.6  # dampen due to heuristic
+
                     return ocr_text, text_confidence, text_category
         
         return "", 0.0, "NONE"
@@ -535,6 +547,22 @@ def run_live_preview(
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
             fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
 
+        # OCR extraction (throttled to reduce latency)
+        ocr_text_full = ""
+        text_confidence = 0.0
+        text_category = "NONE"
+        ocr_every_n = 2  # run OCR every N frames to keep FPS higher
+        if enable_ocr and ocr_bundle is not None and (frame_idx % ocr_every_n == 0):
+            ocr_text_full, text_confidence, text_category = extract_ocr_from_frame(
+                frame, r, ocr_bundle, yolo_model
+            )
+
+        # OCR boost (high-confidence workzone text increases score)
+        if enable_ocr and text_confidence >= 0.70 and text_category in ["WORKZONE", "LANE", "CAUTION"]:
+            # Boost fused score when high-confidence workzone text detected
+            ocr_boost = min(text_confidence * 0.15, 0.15)  # Max 15% boost
+            fused = min(fused + ocr_boost, 1.0)
+
         # Orange boost
         if enable_context_boost and (yolo_ema is not None) and (yolo_ema < context_trigger_below):
             ratio = orange_ratio_hsv(frame, orange_h_low, orange_h_high, orange_s_th, orange_v_th)
@@ -573,10 +601,22 @@ def run_live_preview(
         annotated = r.plot()
         annotated = draw_banner(annotated, state, float(fused_ema), clip_used == 1)
 
-        # OCR extraction
-        ocr_text = ""
-        if enable_ocr:
-            ocr_text, _, _ = extract_ocr_from_frame(frame, r, ocr_bundle, yolo_model)
+        # Use OCR text from extraction above (ocr_text_full already extracted)
+        ocr_text = ocr_text_full if 'ocr_text_full' in locals() else ""
+
+        # Overlay OCR text for visual evidence
+        if ocr_text:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(
+                annotated,
+                f"OCR: {ocr_text} ({text_category}:{text_confidence:.2f})",
+                (12, 36),
+                font,
+                0.8,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
 
         # Resize for browser
         disp_h, disp_w = annotated.shape[:2]
@@ -758,6 +798,21 @@ def process_video(
         if clip_enabled and (yolo_ema is not None) and (yolo_ema >= clip_trigger_th):
             fused = (1.0 - clip_weight) * fused + clip_weight * clip_score_raw
 
+        # OCR extraction (before fusion to use in score calculation)
+        ocr_text = ""
+        text_confidence = 0.0
+        text_category = "NONE"
+        if enable_ocr and ocr_bundle is not None:
+            ocr_text, text_confidence, text_category = extract_ocr_from_frame(
+                frame, r, ocr_bundle, yolo_model
+            )
+
+        # OCR boost (high-confidence workzone text increases score)
+        if enable_ocr and text_confidence >= 0.70 and text_category in ["WORKZONE", "LANE", "CAUTION"]:
+            # Boost fused score when high-confidence workzone text detected
+            ocr_boost = min(text_confidence * 0.15, 0.15)  # Max 15% boost
+            fused = min(fused + ocr_boost, 1.0)
+
         # Orange boost
         if enable_context_boost and (yolo_ema is not None) and (yolo_ema < context_trigger_below):
             ratio = orange_ratio_hsv(frame, orange_h_low, orange_h_high, orange_s_th, orange_v_th)
@@ -796,17 +851,24 @@ def process_video(
         annotated = r.plot()
         annotated = draw_banner(annotated, state, float(fused_ema), clip_used == 1)
 
+        # Overlay OCR text for visual evidence in saved video
+        if ocr_text:
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            cv2.putText(
+                annotated,
+                f"OCR: {ocr_text} ({text_category}:{text_confidence:.2f})",
+                (12, 36),
+                font,
+                0.8,
+                (255, 255, 255),
+                2,
+                cv2.LINE_AA,
+            )
+
         if writer is not None:
             writer.write(annotated)
 
-        # OCR extraction
-        ocr_text = ""
-        text_confidence = 0.0
-        text_category = "NONE"
-        if enable_ocr:
-            ocr_text, text_confidence, text_category = extract_ocr_from_frame(
-                frame, r, ocr_bundle, yolo_model
-            )
+        # Build row (OCR already extracted before fusion)
         time_sec = float(frame_idx / fps) if fps > 0 else float(processed)
         row = {
             "frame": int(frame_idx),
