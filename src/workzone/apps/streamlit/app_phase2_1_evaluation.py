@@ -402,6 +402,195 @@ def extract_ocr_from_frame(
         return "", 0.0, "NONE"
 
 
+def generate_parameters_csv(
+    video_path: str,
+    conf: float, iou: float, stride: int,
+    ema_alpha: float,
+    use_clip: bool, clip_weight: float, clip_trigger_th: float,
+    clip_pos_text: str, clip_neg_text: str,
+    weights_yolo: Dict,
+    enter_th: float, exit_th: float, approach_th: float,
+    min_inside_frames: int, min_out_frames: int,
+    enable_context_boost: bool, orange_weight: float,
+    context_trigger_below: float,
+    orange_h_low: int, orange_h_high: int, orange_s_th: int, orange_v_th: int,
+    orange_center: float, orange_k: float,
+    enable_phase1_4: bool,
+    enable_ocr: bool, ocr_every_n: int,
+    enable_phase2_1: bool,
+    device: str,
+    model_name: str,
+) -> pd.DataFrame:
+    """Generate a CSV with all calibration parameters for reference."""
+    import datetime
+    
+    params = {
+        "Parameter": [],
+        "Value": [],
+        "Category": []
+    }
+    
+    # Metadata
+    params["Parameter"].append("Video Name")
+    params["Value"].append(Path(video_path).name)
+    params["Category"].append("Metadata")
+    
+    params["Parameter"].append("Processing Date")
+    params["Value"].append(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    params["Category"].append("Metadata")
+    
+    params["Parameter"].append("Device")
+    params["Value"].append(device)
+    params["Category"].append("Device")
+    
+    params["Parameter"].append("Model")
+    params["Value"].append(model_name)
+    params["Category"].append("Model")
+    
+    # YOLO Inference
+    params["Parameter"].append("YOLO Confidence Threshold")
+    params["Value"].append(f"{conf:.3f}")
+    params["Category"].append("YOLO Inference")
+    
+    params["Parameter"].append("YOLO IoU")
+    params["Value"].append(f"{iou:.3f}")
+    params["Category"].append("YOLO Inference")
+    
+    params["Parameter"].append("Frame Stride")
+    params["Value"].append(str(stride))
+    params["Category"].append("YOLO Inference")
+    
+    # YOLO Weights
+    params["Parameter"].append("YOLO Bias")
+    params["Value"].append(f"{weights_yolo.get('bias', 0):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    params["Parameter"].append("Channelization Weight")
+    params["Value"].append(f"{weights_yolo.get('channelization', 0.9):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    params["Parameter"].append("Workers Weight")
+    params["Value"].append(f"{weights_yolo.get('workers', 0.8):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    params["Parameter"].append("Vehicles Weight")
+    params["Value"].append(f"{weights_yolo.get('vehicles', 0.5):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    params["Parameter"].append("TTC Signs Weight")
+    params["Value"].append(f"{weights_yolo.get('ttc_signs', 0.7):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    params["Parameter"].append("Message Board Weight")
+    params["Value"].append(f"{weights_yolo.get('message_board', 0.6):.3f}")
+    params["Category"].append("YOLO Weights")
+    
+    # EMA
+    params["Parameter"].append("EMA Alpha")
+    params["Value"].append(f"{ema_alpha:.3f}")
+    params["Category"].append("EMA")
+    
+    # State Machine
+    params["Parameter"].append("Enter Threshold")
+    params["Value"].append(f"{enter_th:.3f}")
+    params["Category"].append("State Machine")
+    
+    params["Parameter"].append("Exit Threshold")
+    params["Value"].append(f"{exit_th:.3f}")
+    params["Category"].append("State Machine")
+    
+    params["Parameter"].append("Approach Threshold")
+    params["Value"].append(f"{approach_th:.3f}")
+    params["Category"].append("State Machine")
+    
+    params["Parameter"].append("Min INSIDE Frames")
+    params["Value"].append(str(min_inside_frames))
+    params["Category"].append("State Machine")
+    
+    params["Parameter"].append("Min OUT Frames")
+    params["Value"].append(str(min_out_frames))
+    params["Category"].append("State Machine")
+    
+    # CLIP
+    params["Parameter"].append("CLIP Enabled")
+    params["Value"].append("Yes" if use_clip else "No")
+    params["Category"].append("CLIP")
+    
+    params["Parameter"].append("CLIP Weight")
+    params["Value"].append(f"{clip_weight:.3f}")
+    params["Category"].append("CLIP")
+    
+    params["Parameter"].append("CLIP Trigger Threshold")
+    params["Value"].append(f"{clip_trigger_th:.3f}")
+    params["Category"].append("CLIP")
+    
+    params["Parameter"].append("CLIP Positive Prompt")
+    params["Value"].append(clip_pos_text[:100] + ("..." if len(clip_pos_text) > 100 else ""))
+    params["Category"].append("CLIP")
+    
+    params["Parameter"].append("CLIP Negative Prompt")
+    params["Value"].append(clip_neg_text[:100] + ("..." if len(clip_neg_text) > 100 else ""))
+    params["Category"].append("CLIP")
+    
+    # Orange Boost
+    params["Parameter"].append("Orange Boost Enabled")
+    params["Value"].append("Yes" if enable_context_boost else "No")
+    params["Category"].append("Orange Boost")
+    
+    params["Parameter"].append("Orange Weight")
+    params["Value"].append(f"{orange_weight:.3f}")
+    params["Category"].append("Orange Boost")
+    
+    params["Parameter"].append("Orange Trigger (YOLO <)")
+    params["Value"].append(f"{context_trigger_below:.3f}")
+    params["Category"].append("Orange Boost")
+    
+    params["Parameter"].append("Orange Hue Low")
+    params["Value"].append(str(orange_h_low))
+    params["Category"].append("Orange Boost HSV")
+    
+    params["Parameter"].append("Orange Hue High")
+    params["Value"].append(str(orange_h_high))
+    params["Category"].append("Orange Boost HSV")
+    
+    params["Parameter"].append("Orange Sat Min")
+    params["Value"].append(str(orange_s_th))
+    params["Category"].append("Orange Boost HSV")
+    
+    params["Parameter"].append("Orange Val Min")
+    params["Value"].append(str(orange_v_th))
+    params["Category"].append("Orange Boost HSV")
+    
+    params["Parameter"].append("Orange Center (logistic)")
+    params["Value"].append(f"{orange_center:.3f}")
+    params["Category"].append("Orange Boost HSV")
+    
+    params["Parameter"].append("Orange Slope (k)")
+    params["Value"].append(f"{orange_k:.1f}")
+    params["Category"].append("Orange Boost HSV")
+    
+    # Phase 1.4
+    params["Parameter"].append("Phase 1.4 (Scene Context)")
+    params["Value"].append("Enabled" if enable_phase1_4 else "Disabled")
+    params["Category"].append("Phase 1.4")
+    
+    # OCR
+    params["Parameter"].append("OCR")
+    params["Value"].append("Enabled" if enable_ocr else "Disabled")
+    params["Category"].append("OCR")
+    
+    params["Parameter"].append("OCR Every N Frames")
+    params["Value"].append(str(ocr_every_n))
+    params["Category"].append("OCR")
+    
+    # Phase 2.1
+    params["Parameter"].append("Phase 2.1 (Per-Cue + Motion)")
+    params["Value"].append("Enabled" if enable_phase2_1 else "Disabled")
+    params["Category"].append("Phase 2.1")
+    
+    return pd.DataFrame(params)
+
+
 def run_live_preview(
     input_path: Path,
     yolo_model: YOLO,
@@ -697,6 +886,7 @@ def process_video(
     enable_phase1_4: bool = False,
     enable_ocr: bool = False,
     ocr_bundle: Optional[Dict] = None,
+    ocr_every_n: int = 2,
     enable_phase2_1: bool = False,
 ) -> Dict:
     """Process video with full calibration parameters."""
@@ -1115,30 +1305,37 @@ def main():
         orange_k = st.slider("Slope (k)", 1.0, 60.0, 30.0, 1.0, key="k")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Phase 1.4")
+    st.sidebar.header("Phase 1.4: Scene Context")
     enable_phase1_4 = st.sidebar.checkbox("Enable Scene Context", value=PHASE1_4_AVAILABLE)
     if enable_phase1_4 and not PHASE1_4_AVAILABLE:
         st.sidebar.warning("⚠️ Phase 1.4 not available")
         enable_phase1_4 = False
+    if enable_phase1_4:
+        st.sidebar.caption("✓ Auto-detects highway/urban/suburban scenes\n✓ Adaptive thresholds per scene type")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Phase 2.1")
+    st.sidebar.header("Phase 2.1: Per-Cue + Motion")
     enable_phase2_1 = st.sidebar.checkbox("Enable Per-Cue Verification + Motion Tracking", value=PHASE2_1_AVAILABLE)
     if enable_phase2_1 and not PHASE2_1_AVAILABLE:
         st.sidebar.warning("⚠️ Phase 2.1 not available")
         enable_phase2_1 = False
     if enable_phase2_1:
-        st.sidebar.info("✓ Per-cue CLIP verification\n✓ Motion plausibility tracking")
+        st.sidebar.info("✓ Per-cue CLIP verification (5 separate scores)\n✓ Motion plausibility tracking\n✓ Per-cue object detection")
 
     st.sidebar.markdown("---")
     st.sidebar.header("OCR Text Extraction")
     enable_ocr = st.sidebar.checkbox("Enable OCR", value=OCR_AVAILABLE)
     ocr_bundle = None
+    ocr_every_n = 2
     if enable_ocr:
         if OCR_AVAILABLE:
             ocr_loaded, ocr_bundle = load_ocr_bundle()
             if ocr_loaded:
                 st.sidebar.success("✅ OCR loaded")
+                # OCR calibration options
+                with st.sidebar.expander("🔧 OCR Settings", expanded=False):
+                    ocr_every_n = st.slider("OCR every N frames", 1, 10, 2, key="ocr_stride")
+                    st.caption(f"Process every {ocr_every_n} frame(s) to balance speed/coverage")
             else:
                 st.sidebar.warning("⚠️ OCR loading failed")
                 enable_ocr = False
@@ -1207,6 +1404,8 @@ def main():
                     enable_phase1_4=enable_phase1_4,
                     enable_ocr=enable_ocr,
                     ocr_bundle=ocr_bundle if enable_ocr else None,
+                    ocr_every_n=ocr_every_n,
+                    enable_phase2_1=enable_phase2_1,
                 )
         else:  # Batch mode
             if st.button("🚀 Process Video", type="primary"):
@@ -1245,6 +1444,7 @@ def main():
                         enable_phase1_4=enable_phase1_4,
                         enable_ocr=enable_ocr,
                         ocr_bundle=ocr_bundle if enable_ocr else None,
+                        ocr_every_n=ocr_every_n,
                         enable_phase2_1=enable_phase2_1,
                     )
 
@@ -1356,7 +1556,7 @@ def main():
 
                     # Download
                     st.subheader("📥 Downloads")
-                    col1, col2 = st.columns(2)
+                    col1, col2, col3 = st.columns(3)
 
                     with col1:
                         csv_data = result['timeline_df'].to_csv(index=False).encode()
@@ -1376,6 +1576,34 @@ def main():
                                     f"{video_path.stem}_annotated.mp4",
                                     "video/mp4"
                                 )
+                    
+                    with col3:
+                        params_df = generate_parameters_csv(
+                            str(video_path),
+                            conf, iou, stride,
+                            ema_alpha,
+                            use_clip, clip_weight, clip_trigger_th,
+                            clip_pos_text, clip_neg_text,
+                            weights_yolo,
+                            enter_th, exit_th, approach_th,
+                            min_inside_frames, min_out_frames,
+                            enable_context_boost, orange_weight,
+                            context_trigger_below,
+                            orange_h_low, orange_h_high, orange_s_th, orange_v_th,
+                            orange_center, orange_k,
+                            enable_phase1_4,
+                            enable_ocr, ocr_every_n,
+                            enable_phase2_1,
+                            device,
+                            model_choice
+                        )
+                        params_csv = params_df.to_csv(index=False).encode()
+                        st.download_button(
+                            "⚙️ Parameters CSV",
+                            params_csv,
+                            f"{video_path.stem}_parameters.csv",
+                            "text/csv"
+                        )
 
                 except Exception as e:
                     st.error(f"Error: {e}")
