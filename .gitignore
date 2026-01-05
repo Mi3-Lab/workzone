@@ -89,6 +89,11 @@ htmlcov/
 .tox/
 .hypothesis/
 
+# Exploratory test scripts (kept in tests/exploratory/ for reference)
+test_*.py
+*_test.py
+!tests/test_*.py
+
 # ---------------------------------
 # Jupyter
 # ---------------------------------

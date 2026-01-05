@@ -5,20 +5,22 @@
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![YOLOv12](https://img.shields.io/badge/YOLO-v12-00FFFF.svg)](https://github.com/ultralytics/ultralytics)
 
-Real-time construction zone detection and monitoring system using state-of-the-art computer vision. Features YOLO object detection with multi-modal semantic verification (CLIP), temporal persistence tracking, scene context classification, and adaptive state machine logic. Built for the ESV (Enhanced Safety of Vehicles) competition and optimized for edge deployment on Jetson Orin.
+Real-time construction zone detection and monitoring system using state-of-the-art computer vision. Features YOLO object detection with multi-modal semantic verification (CLIP + OCR), temporal persistence tracking, scene context classification, and adaptive state machine logic. Built for the ESV (Enhanced Safety of Vehicles) competition and optimized for edge deployment on Jetson Orin.
 
-**🎯 Key Achievements**: 
+**🎯 Competition-Ready System**: 
 - 84.6% false positive reduction through hard-negative mining
-- 92.8% scene context classification accuracy (Phase 1.4)
+- 92.8% scene context classification accuracy
+- 97.7% OCR text classification accuracy
 - Context-aware adaptive thresholding
 
 ## ⚡ Key Features
 
 ### Core Detection
 - 🎯 **YOLO12s Object Detection** - 50-class construction zone detection with 84.6% FP reduction
-- 🧠 **Multi-Modal Fusion** - CLIP semantic verification + orange-cue context boost
-- 🌍 **Phase 1.4 Scene Context** - Highway/Urban/Suburban classification (92.8% accuracy)
-- 📊 **Phase 1.1 Multi-Cue Logic** - Temporal persistence tracking with AND logic
+- 🧠 **Multi-Modal Fusion** - CLIP semantic verification + OCR text extraction
+- 🔤 **OCR Text Classification** - PaddleOCR with 97.7% semantic classification (WORKZONE, SPEED, LANE, CAUTION, DIRECTION)
+- 🌍 **Scene Context Classification** - Highway/Urban/Suburban detection (92.8% accuracy)
+- 📊 **Multi-Cue Temporal Logic** - Temporal persistence tracking with weighted fusion
 - 🔄 **Adaptive State Machine** - Context-aware thresholds: OUT → APPROACHING → INSIDE → EXITING
 
 ### Hard-Negative Mining Pipeline
@@ -34,13 +36,16 @@ Real-time construction zone detection and monitoring system using state-of-the-a
 
 ## 📊 Performance Highlights
 
-| Metric | Value |
-|--------|-------|
-| **False Positive Reduction** | 84.6% (vs baseline) |
-| **Model** | YOLO12s @ 1280px |
-| **Inference Speed** | ~85 FPS (A100), ~30 FPS (Jetson Orin) |
-| **GPU Memory** | 2.4 GB (batch=1) |
-| **Hard Negatives Trained** | 134 manually-reviewed images |
+| Component | Metric | Value |
+|-----------|--------|-------|
+| **Object Detection** | False Positive Reduction | 84.6% vs baseline |
+| **Object Detection** | Inference Speed (A100) | ~85 FPS @ 1280px |
+| **Object Detection** | Inference Speed (Jetson) | ~30 FPS @ 1280px |
+| **Scene Context** | Classification Accuracy | 92.8% |
+| **OCR Classification** | Test Set Accuracy | 97.7% (43/44) |
+| **OCR Classification** | Noise Filtering | 63 cases detected |
+| **OCR Classification** | Useful Rate | 39% (up from 26%) |
+| **System** | GPU Memory | 2.4 GB (batch=1) |
 
 ## 🚀 Quick Start
 
@@ -53,17 +58,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
 
-# 2. Process demo video
+# 2. Download models
+bash scripts/download_models.sh
+
+# 3. Process demo video (Phase 1.4 Complete)
 python scripts/process_video_fusion.py \
   data/03_demo/videos/boston_workzone_short.mp4 \
   --output-dir outputs/demo \
-  --enable-phase1-1
+  --enable-phase1-4 \
+  --enable-ocr
 
-# 3. Launch web interface
-streamlit run src/workzone/apps/streamlit/app_phase1_1_fusion.py
+# 4. Launch web interface
+streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
 ```
 
-**📖 Full guide**: See [docs/guides/QUICKSTART.md](docs/guides/QUICKSTART.md)
+**📖 Full guide**: See [APP_TESTING_GUIDE.md](APP_TESTING_GUIDE.md)
 
 ## 🎯 Use Cases
 

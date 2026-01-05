@@ -42,6 +42,14 @@ try:
 except ImportError:
     PHASE1_4_AVAILABLE = False
 
+# Phase 2.1: Temporal Attention (optional)
+try:
+    from workzone.models.per_cue_verification import PerCueTextVerifier, extract_cue_counts_from_yolo
+    from workzone.models.trajectory_tracking import TrajectoryTracker, extract_detections_for_tracking
+    PHASE2_1_AVAILABLE = True
+except ImportError:
+    PHASE2_1_AVAILABLE = False
+
 logger = setup_logger(__name__)
 
 
@@ -395,11 +403,12 @@ def process_video(
     p1_debug: bool = False,
     phase1_4_enabled: bool = False,
     scene_context_weights: Optional[str] = None,
+    phase2_1_enabled: bool = False,
     save_video: bool = True,
     save_csv: bool = True,
     quiet: bool = False,
 ) -> Dict:
-    """Process video with YOLO + CLIP fusion, state machine, and scene context (Phase 1.4)."""
+    """Process video with YOLO + CLIP fusion, state machine, scene context (Phase 1.4), and temporal features (Phase 2.1)."""
     if weights_yolo is None:
         weights_yolo = {
             "bias": -0.35,
@@ -528,6 +537,34 @@ def process_video(
                 print(f"⚠ Phase 1.4 loading failed: {e}")
             phase1_4_enabled = False
 
+    # Initialize Phase 2.1 components (optional)
+    per_cue_verifier = None
+    trajectory_tracker = None
+    if phase2_1_enabled and PHASE2_1_AVAILABLE:
+        if not quiet:
+            print("Initializing Phase 2.1 Temporal Attention features...")
+        try:
+            # Per-cue text verification (requires CLIP)
+            if clip_enabled and clip_ok:
+                per_cue_verifier = PerCueTextVerifier(clip_bundle, device)
+                if not quiet:
+                    print("  ✓ Per-cue text verification ready (5 cue types)")
+            
+            # Trajectory tracking for motion plausibility
+            trajectory_tracker = TrajectoryTracker(
+                max_disappeared=30,
+                iou_threshold=0.3,
+                history_length=30,
+            )
+            if not quiet:
+                print("  ✓ Trajectory tracker ready (motion plausibility)")
+        except Exception as e:
+            if not quiet:
+                print(f"⚠ Phase 2.1 initialization failed: {e}")
+            phase2_1_enabled = False
+            per_cue_verifier = None
+            trajectory_tracker = None
+
     # Process frames
     timeline_rows = []
     yolo_ema = None
@@ -549,6 +586,7 @@ def process_video(
     t_clip = 0.0
     t_phase1 = 0.0
     t_phase4 = 0.0
+    t_phase21 = 0.0
     t_loop = 0.0
 
     if not quiet:
@@ -692,6 +730,37 @@ def process_video(
             except Exception as e:
                 logger.warning(f"Phase 1.1 processing error: {e}")
 
+        # Phase 2.1: Rich feature extraction for temporal attention
+        cue_confidences = [0.0] * 5  # Default: [channelization, workers, vehicles, signs, equipment]
+        motion_plausibility = 1.0
+        
+        if phase2_1_enabled:
+            t2 = time.time()
+            try:
+                # Per-cue text verification
+                if per_cue_verifier is not None and cue_classifier is not None:
+                    detected_cues = extract_cue_counts_from_yolo(r, cue_classifier)
+                    cue_conf_dict = per_cue_verifier.verify_frame(frame, detected_cues, threshold=0)
+                    cue_confidences = [
+                        cue_conf_dict.get('channelization', 0.0),
+                        cue_conf_dict.get('workers', 0.0),
+                        cue_conf_dict.get('vehicles', 0.0),
+                        cue_conf_dict.get('signs', 0.0),
+                        cue_conf_dict.get('equipment', 0.0),
+                    ]
+                
+                # Trajectory tracking for motion plausibility
+                if trajectory_tracker is not None and cue_classifier is not None:
+                    detections = extract_detections_for_tracking(r, cue_classifier, conf_threshold=0.25)
+                    tracks = trajectory_tracker.update(detections)
+                    motion_scores = trajectory_tracker.compute_motion_plausibility()
+                    motion_plausibility = motion_scores.get('overall', 1.0)
+                
+            except Exception as e:
+                logger.warning(f"Phase 2.1 feature extraction error: {e}")
+            
+            t_phase21 += time.time() - t2
+
         # State update (gate with Phase 1.1 if enabled)
         gate_pass = (not phase1_1_enabled) or bool(p1_pass)
         state, inside_frames, out_frames = update_state(
@@ -743,6 +812,15 @@ def process_video(
         # Add Phase 1.4 context column if enabled
         if phase1_4_enabled:
             row["scene_context"] = str(current_context)
+        
+        # Add Phase 2.1 feature columns if enabled
+        if phase2_1_enabled:
+            row["cue_conf_channelization"] = float(cue_confidences[0])
+            row["cue_conf_workers"] = float(cue_confidences[1])
+            row["cue_conf_vehicles"] = float(cue_confidences[2])
+            row["cue_conf_signs"] = float(cue_confidences[3])
+            row["cue_conf_equipment"] = float(cue_confidences[4])
+            row["motion_plausibility"] = float(motion_plausibility)
         
         timeline_rows.append(row)
 
@@ -986,6 +1064,12 @@ def main():
     )
 
     parser.add_argument(
+        "--enable-phase2-1",
+        action="store_true",
+        help=f"Enable Phase 2.1 temporal attention features (per-cue CLIP + motion) (available: {PHASE2_1_AVAILABLE})",
+    )
+
+    parser.add_argument(
         "--no-video",
         action="store_true",
         help="Skip annotated video output (faster for profiling)",
@@ -1048,6 +1132,7 @@ def main():
         p1_debug=args.p1_debug,
         phase1_4_enabled=args.enable_phase1_4 and PHASE1_4_AVAILABLE,
         scene_context_weights=args.scene_context_weights,
+        phase2_1_enabled=args.enable_phase2_1 and PHASE2_1_AVAILABLE,
         enter_th=args.enter_th if args.enter_th is not None else 0.70,
         exit_th=args.exit_th if args.exit_th is not None else 0.45,
         approach_th=args.approach_th if args.approach_th is not None else 0.55,

@@ -128,7 +128,7 @@ def run_on_video(
 
 # NOTE: The above stub is intentional to avoid mis-running without full context.
 # In this repository, process_video requires a YOLO model instance.
-# To keep this script self-contained and SOTA-ready, we will load the model once and reuse.
+# To keep this script self-contained and production-ready, we will load the model once and reuse.
 
 
 def run_batch(args):
