@@ -2,6 +2,18 @@
 
 **Comprehensive guide for using the Streamlit calibration app and CLI to tune detection parameters.**
 
+**Last Updated**: January 5, 2026 | Phase 2.1, OCR, and Parameters CSV features included
+
+---
+
+## 🆕 Recent Updates (Jan 5, 2026)
+
+- ✅ **OCR Settings**: New "OCR every N frames" slider (1-10, default 2) for speed/coverage trade-off
+- ✅ **Parameters CSV Export**: Download all calibration parameters as CSV for reproducibility
+- ✅ **Phase 1.4 Calibration**: Scene context information with adaptive thresholds
+- ✅ **Phase 2.1 Calibration**: Per-cue CLIP verification and motion plausibility options
+- ✅ **3 Download Buttons**: Timeline CSV, Annotated Video, and Parameters CSV
+
 ---
 
 ## 📋 Table of Contents
@@ -307,7 +319,18 @@ EXITING (out_frames ≥ min_out_frames) → OUT
 **Tuning Strategy**:
 - **Enable** if videos contain message boards with readable text.
 - **Disable** if OCR is slow or videos have no text signs.
-- OCR runs **every 2 frames** by default to reduce latency (configurable in CLI).
+- OCR runs **every 2 frames** by default to reduce latency (configurable).
+
+**OCR Settings** (Expandable in sidebar):
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| **OCR every N frames** | Slider | 2 | Process OCR on every Nth frame. Higher = faster but may miss text. Lower (1) = every frame but slower. |
+
+Example:
+- `OCR every 1 frame`: 100% text coverage, slower (~20-30ms per frame overhead)
+- `OCR every 2 frames`: Good balance, checks ~50% of frames
+- `OCR every 5 frames`: Fast, but may miss some text
+- `OCR every 10 frames`: Very fast, minimal text detection
 
 ##### 1.12 Save Video
 
@@ -354,7 +377,33 @@ Choose video input source:
   - State transition histogram
   - Explainability dashboard (OCR, CLIP, object counts, persistence counters)
   - Phase 2.1 plots (if enabled): per-cue confidences, motion plausibility
-- Download buttons for CSV and video.
+
+##### 2.3 Download Buttons (Batch Mode)
+
+After processing, you get **3 download buttons**:
+
+| Button | File Name | Description |
+|--------|-----------|-------------|
+| **📊 CSV Timeline** | `<video>_timeline.csv` | Per-frame detection scores, states, OCR, CLIP, Phase 2.1 metrics |
+| **🎬 Annotated Video** | `<video>_annotated.mp4` | Video with YOLO boxes, state banner, OCR text overlay |
+| **⚙️ Parameters CSV** | `<video>_parameters.csv` | ALL calibration parameters used (for reference & reproducibility) |
+
+**Parameters CSV** includes:
+- **Metadata**: Video name, processing timestamp, device, model used
+- **YOLO**: Confidence, IoU, stride, all 6 semantic weights (bias, channelization, workers, vehicles, signs, message_board)
+- **EMA**: Alpha smoothing factor
+- **State Machine**: Enter/exit/approach thresholds, min frames
+- **CLIP**: Fusion weight, trigger threshold, positive/negative prompts
+- **Orange Boost**: Weight, trigger, all HSV parameters (hue, sat, val, center, slope)
+- **Phase 1.4**: Scene context enabled/disabled
+- **OCR**: Enabled/disabled, OCR every N frames
+- **Phase 2.1**: Per-cue + motion tracking enabled/disabled
+
+**Why this matters**: 
+- 📋 **Reproducibility** - exactly know what settings produced each result
+- 📊 **Comparison** - download multiple CSVs and compare parameter sets
+- 🔍 **Documentation** - keep a record of what worked best
+- 🚀 **Sharing** - send parameters CSV to team for peer review
 
 ---
 
