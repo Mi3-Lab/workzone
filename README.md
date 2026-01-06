@@ -59,13 +59,13 @@ cd workzone
 
 ```bash
 # Create venv
-python3.11 -m venv .venv
+python -m venv venv
 
 # Activate (Linux/macOS)
-source .venv/bin/activate
+source venv/bin/activate
 
 # Activate (Windows)
-.venv\Scripts\activate
+venv\Scripts\activate
 ```
 
 ### Step 3: Install Dependencies
@@ -86,18 +86,18 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### Step 4: Download Pre-trained Models
+### Step 5: Verify Installation
 
 ```bash
-# Download all required models (~3GB)
-bash scripts/download_models.sh
+# Verify all dependencies are correctly installed
+./verify_installation.sh
 ```
 
-This downloads:
-- ✅ `yolo12s_hardneg_1280.pt` - Hard-negative trained YOLO (recommended)
-- ✅ `yolo12s_fusion_baseline.pt` - Baseline YOLO model
-- ✅ `scene_context_classifier.pt` - Phase 1.4 scene context model
-- ✅ CLIP ViT-B/32 (auto-downloaded on first run)
+This script checks:
+- ✅ Python virtual environment
+- ✅ All required Python packages
+- ✅ WorkZone package installation
+- ✅ Model weights availability
 
 ### Step 5: Verify Installation
 
@@ -111,6 +111,34 @@ python scripts/process_video_fusion.py \
 # Expected: Annotated video + CSV timeline in outputs/test/
 ```
 
+### Troubleshooting
+
+**Common Issues:**
+
+- **"ModuleNotFoundError: No module named 'workzone'"**
+  ```bash
+  # Install the package
+  pip install -e .
+  ```
+
+- **CUDA/PyTorch issues**
+  ```bash
+  # For CPU-only installation
+  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+  ```
+
+- **Permission issues**
+  ```bash
+  # Make scripts executable
+  chmod +x setup.sh launch_streamlit.sh verify_installation.sh
+  ```
+
+- **Model loading issues**
+  ```bash
+  # Check model files
+  ls -la weights/
+  ```
+
 ---
 
 ## 🚀 Quick Start
@@ -120,6 +148,10 @@ python scripts/process_video_fusion.py \
 Launch the **Streamlit calibration UI** for interactive parameter tuning:
 
 ```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Launch the app
 streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
 ```
 

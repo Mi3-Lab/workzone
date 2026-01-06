@@ -33,7 +33,7 @@
 
 ```bash
 # Activate venv
-source .venv/bin/activate
+source venv/bin/activate
 
 # Launch app
 streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py

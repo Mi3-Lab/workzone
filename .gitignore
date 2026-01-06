@@ -126,9 +126,12 @@ workzone-yolo-v12/
 !data/03_demo/**/*.mkv
 
 # ---------------------------------
-# Model weights (too large)
+# Model weights (distributed models kept)
 # ---------------------------------
 weights/*.pt
+!weights/yolo12s_hardneg_1280.pt
+!weights/yolo12s_fusion_baseline.pt
+!weights/scene_context_classifier.pt
 !weights/.gitkeep
 
 # ---------------------------------

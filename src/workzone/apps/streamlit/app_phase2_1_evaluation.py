@@ -623,6 +623,8 @@ def run_live_preview(
     enable_phase1_4: bool = False,
     enable_ocr: bool = False,
     ocr_bundle: Optional[Dict] = None,
+    ocr_every_n: int = 2,
+    enable_phase2_1: bool = False,
 ) -> None:
     """Run live preview with real-time frame rendering."""
     cap = cv2.VideoCapture(str(input_path))
@@ -657,6 +659,21 @@ def run_live_preview(
             )
         except Exception as e:
             logger.warning(f"Phase 1.4 loading error: {e}")
+
+    # Phase 2.1 initialization
+    per_cue_verifier = None
+    trajectory_tracker = None
+    cue_classifier = None
+    if enable_phase2_1 and PHASE2_1_AVAILABLE:
+        try:
+            if clip_bundle is not None:
+                per_cue_verifier = PerCueTextVerifier(clip_bundle, device)
+                logger.info("✓ Phase 2.1 per-cue verifier loaded")
+            trajectory_tracker = TrajectoryTracker(max_disappeared=30, history_length=30)
+            cue_classifier = CueClassifier()
+            logger.info("✓ Phase 2.1 trajectory tracker + cue classifier loaded")
+        except Exception as e:
+            logger.error(f"Phase 2.1 loading error: {e}")
 
     yolo_ema = None
     fused_ema = None
@@ -826,7 +843,7 @@ def run_live_preview(
             annotated = cv2.resize(annotated, (1280, int(disp_h * scale)))
 
         rgb = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
-        frame_placeholder.image(rgb, channels="RGB", use_column_width=True)
+        frame_placeholder.image(rgb, channels="RGB", width="auto")
 
         t_sec = float(frame_idx / fps) if fps > 0 else float(processed)
         ocr_info = f" | **OCR:** \"{ocr_text}\"" if ocr_text else ""
@@ -1452,7 +1469,7 @@ def main():
 
                     # Timeline display
                     st.subheader("📊 Timeline")
-                    st.dataframe(result['timeline_df'].head(100), use_container_width=True)
+                    st.dataframe(result['timeline_df'].head(100), width=None)
 
                     # Plots
                     col1, col2 = st.columns(2)
