@@ -87,11 +87,11 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### Step 5: Verify Installation
+### Step 4: Verify Installation
 
 ```bash
 # Verify all dependencies are correctly installed
-./verify_installation.sh
+scripts/verify_installation.sh
 ```
 
 This script checks:
@@ -100,7 +100,7 @@ This script checks:
 - ✅ WorkZone package installation
 - ✅ Model weights availability
 
-### Step 5: Verify Installation
+### Step 5: Quick Test
 
 ```bash
 # Quick test - process demo video
@@ -131,7 +131,7 @@ python scripts/process_video_fusion.py \
 - **Permission issues**
   ```bash
   # Make scripts executable
-  chmod +x setup.sh launch_streamlit.sh verify_installation.sh
+  chmod +x scripts/setup.sh scripts/launch_streamlit.sh scripts/verify_installation.sh
   ```
 
 - **Model loading issues**
@@ -164,7 +164,7 @@ The **Streamlit calibration UI** provides interactive parameter tuning:
 source venv/bin/activate
 streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
 # or
-./launch_streamlit.sh
+scripts/launch_streamlit.sh
 ```
 
 **Features**:
@@ -178,7 +178,7 @@ streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
 - ⚡ Component throughput visualization (Hz, ms/frame)
 - 📈 Advanced analysis: score zones, state distribution, latency profiling
 
-👉 **See [APP_TESTING_GUIDE.md](APP_TESTING_GUIDE.md)** for detailed usage instructions.
+👉 **See [APP_TESTING_GUIDE.md](docs/guides/APP_TESTING_GUIDE.md)** for detailed usage instructions.
 
 #### Backend Selection (Auto/TensorRT/GPU/CPU)
 
@@ -211,7 +211,7 @@ python scripts/optimize_for_jetson.py
 
 After conversion, run Streamlit (Auto/TensorRT will pick the `.engine` automatically).
 
-For Jetson-specific tips and deployment steps, see [JETSON_QUICKSTART.md](JETSON_QUICKSTART.md).
+For Jetson-specific tips and deployment steps, see [JETSON_OPTIMIZATION.md](docs/JETSON_OPTIMIZATION.md).
 
 ---
 
@@ -543,6 +543,119 @@ pytest tests/test_models.py -v
 ## 🤝 Contributing
 
 Contributions welcome! Please see [CONTRIBUTING.md](alpamayo/CONTRIBUTING.md) for guidelines.
+
+---
+
+## 📄 License
+
+---
+
+## 📁 Repository Structure
+
+```
+workzone/
+├── 📚 Documentation
+│   ├── docs/
+│   │   ├── guides/
+│   │   │   ├── APP_TESTING_GUIDE.md          # Complete calibration UI guide
+│   │   │   └── ...
+│   │   ├── technical/
+│   │   │   ├── STREAMLIT_COMPONENT_ANALYSIS.md
+│   │   │   ├── STREAMLIT_CHANGES_SUMMARY.md
+│   │   │   ├── MODEL_REGISTRY.md
+│   │   │   └── ...
+│   │   ├── JETSON_OPTIMIZATION.md
+│   │   ├── REPOSITORY_STRUCTURE.md
+│   │   └── README.md
+│
+├── 🚀 Quick Start & Installation
+│   ├── README.md                             # This file
+│   ├── requirements.txt                      # Python dependencies
+│   ├── pyproject.toml                        # Package metadata
+│   ├── Makefile                              # Common tasks (make app, make test)
+│   └── .gitignore
+│
+├── 🛠️ Scripts & Tools
+│   ├── scripts/
+│   │   ├── launch_streamlit.sh              # Start Streamlit UI
+│   │   ├── setup.sh                         # Initial setup
+│   │   ├── verify_installation.sh           # Check dependencies
+│   │   ├── process_video_fusion.py          # Batch video processing
+│   │   ├── optimize_for_jetson.py           # Convert YOLO to TensorRT
+│   │   ├── mine_hard_negatives.py           # Hard negative mining
+│   │   ├── evaluate_phase1_4.py             # Scene context evaluation
+│   │   ├── train_*.py                       # Training scripts
+│   │   └── ...
+│
+├── 📊 Source Code
+│   └── src/workzone/
+│       ├── apps/
+│       │   ├── streamlit/
+│       │   │   └── app_phase2_1_evaluation.py   # Main calibration UI
+│       │   └── ...
+│       ├── models/
+│       │   ├── yolo_bundle.py
+│       │   ├── clip_bundle.py
+│       │   ├── ocr_bundle.py
+│       │   ├── scene_context.py
+│       │   └── ...
+│       └── ...
+│
+├── 📓 Notebooks
+│   ├── 01_workzone_yolo_setup.ipynb
+│   ├── 02_workzone_yolo_train_eval.ipynb
+│   ├── 03_workzone_yolo_video_demo.ipynb
+│   ├── 04_workzone_video_state_machine.ipynb
+│   ├── 05_workzone_video_timeline_calibration.ipynb
+│   ├── 06_triggered_vlm_semantic_verification.ipynb
+│   ├── 07_phase1_4_scene_context.ipynb
+│   └── ...
+│
+├── 🗂️ Data
+│   ├── configs/
+│   │   ├── config.yaml                      # Main configuration
+│   │   ├── motion_cue_config.yaml
+│   │   ├── multi_cue_config.yaml
+│   │   └── ...
+│   ├── data/
+│   │   ├── 01_raw/                          # Raw dataset
+│   │   ├── 02_processed/                    # Processed data
+│   │   ├── 03_demo/                         # Demo videos
+│   │   ├── 04_derivatives/
+│   │   ├── 05_workzone_yolo/
+│   │   └── ...
+│   ├── outputs/                             # Generated results
+│   └── results/                             # Analysis results
+│
+├── 🏋️ Model Weights
+│   ├── weights/
+│   │   ├── yolo12s_hardneg_1280.pt         # YOLO detection model
+│   │   ├── yolo12s_hardneg_1280.engine     # TensorRT optimized
+│   │   └── ...
+│   └── runs/
+│       ├── detect/
+│       ├── train/
+│       └── phase2_1_test/
+│
+├── 🧪 Tests & Validation
+│   └── tests/
+│
+└── 🔧 Development (Alpamayo submodule)
+    └── alpamayo/
+        ├── src/
+        └── ar1_venv/
+```
+
+### Key Documentation Files
+
+| File | Purpose |
+|------|---------|
+| [README.md](README.md) | Overview and quick start |
+| [docs/guides/APP_TESTING_GUIDE.md](docs/guides/APP_TESTING_GUIDE.md) | **Complete Streamlit UI guide** |
+| [docs/JETSON_OPTIMIZATION.md](docs/JETSON_OPTIMIZATION.md) | Edge deployment for Jetson Orin |
+| [docs/technical/MODEL_REGISTRY.md](docs/technical/MODEL_REGISTRY.md) | Model specifications |
+| [docs/technical/STREAMLIT_COMPONENT_ANALYSIS.md](docs/technical/STREAMLIT_COMPONENT_ANALYSIS.md) | Component status & architecture |
+| [docs/REPOSITORY_STRUCTURE.md](docs/REPOSITORY_STRUCTURE.md) | Detailed folder explanation |
 
 ---
 

@@ -46,7 +46,7 @@ app-advanced-scoring:
 
 app:
 	@echo "🚀 Launching WorkZone Streamlit App..."
-	@bash launch_streamlit.sh
+	@bash scripts/launch_streamlit.sh
 
 streamlit: app
 
