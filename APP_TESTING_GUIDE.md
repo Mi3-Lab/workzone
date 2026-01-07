@@ -2,7 +2,7 @@
 
 **Comprehensive guide for using the Streamlit calibration app and CLI to tune detection parameters.**
 
-**Last Updated**: January 5, 2026 | Phase 2.1, OCR, and Parameters CSV features included
+**Last Updated**: January 7, 2026 | Phase 2.1, OCR, and Parameters CSV features included
 
 ---
 
@@ -222,7 +222,7 @@ EXITING (out_frames ≥ min_out_frames) → OUT
 - **Increase orange_weight** (0.3-0.4) in scenes with lots of orange cues but weak YOLO detections.
 - **Adjust HSV ranges** if orange objects are not being detected (check frame HSV values).
 
-##### 1.9 Phase 1.4: Scene Context
+##### 1.9 Scene Context
 
 **Scene Context** classifies the environment (Highway / Urban / Suburban) and adjusts thresholds accordingly.
 
@@ -250,15 +250,15 @@ EXITING (out_frames ≥ min_out_frames) → OUT
 - ✅ Want **adaptive thresholds** without manual tuning.
 - ❌ Single-environment videos (manual threshold tuning is simpler).
 
-##### 1.10 Phase 2.1: Per-Cue Verification + Motion Tracking
+##### 1.10 Per-Cue Verification + Motion Tracking
 
-**Phase 2.1** adds fine-grained verification: per-cue CLIP confidences and motion plausibility.
+adds fine-grained verification: per-cue CLIP confidences and motion plausibility.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | **Enable Per-Cue Verification + Motion Tracking** | Checkbox | ✅ (if available) | Enable Phase 2.1 features. |
 
-**Phase 2.1 Features**:
+**Features**:
 
 1. **Per-Cue CLIP Verification**:
    - Instead of global CLIP score, compute CLIP confidence **separately** for each cue type:

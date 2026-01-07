@@ -314,7 +314,7 @@ python scripts/process_video_fusion.py \
 │  YOLO12s Object Detection                       │
 │  • 50 work zone classes                         │
 │  • Hard-negative trained (84.6% FP reduction)   │
-│  • 1280px @ 30 FPS (Jetson Orin)               │
+│  • 1280px @ 30 FPS (Jetson Orin)                │
 └────────┬────────────────────────────────────────┘
          │
          ├──────────────────┬──────────────────┬─────────────────┐
@@ -328,8 +328,8 @@ python scripts/process_video_fusion.py \
          │                   │           └──────┬───────┘  │ • Signs         │
          │                   │                  │          │ • Equipment     │
          │                   │                  │          └────────┬────────┘
-         │                   │                   │                   │
-         └───────────────────┴───────────────────┴───────────────────┘
+         │                   │                  │                   │
+         └───────────────────┴──────────────────┴───────────────────┘
                                       │
                                       ▼
                           ┌───────────────────────┐
