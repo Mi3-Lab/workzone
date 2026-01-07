@@ -978,11 +978,13 @@ def run_live_preview(
         context_enter_th = enter_th
         context_exit_th = exit_th
         context_approach_th = approach_th
-        if scene_context_predictor is not None:
+        if scene_context_predictor is not None and not scene_context_use_manual:
+            # Use scene-adaptive thresholds only if manual override is disabled
             ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
             context_enter_th = ctx_th.get("enter_th", enter_th)
             context_exit_th = ctx_th.get("exit_th", exit_th)
             context_approach_th = ctx_th.get("approach_th", approach_th)
+        # else: use manual thresholds (enter_th, exit_th, approach_th from sliders)
 
         # State machine
         state, inside_frames, out_frames = update_state(
@@ -1698,11 +1700,13 @@ def process_video(
         context_enter_th = enter_th
         context_exit_th = exit_th
         context_approach_th = approach_th
-        if scene_context_predictor is not None:
+        if scene_context_predictor is not None and not scene_context_use_manual:
+            # Use scene-adaptive thresholds only if manual override is disabled
             ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
             context_enter_th = ctx_th.get("enter_th", enter_th)
             context_exit_th = ctx_th.get("exit_th", exit_th)
             context_approach_th = ctx_th.get("approach_th", approach_th)
+        # else: use manual thresholds (enter_th, exit_th, approach_th from sliders)
 
         # State machine
         state, inside_frames, out_frames = update_state(
@@ -2094,29 +2098,71 @@ def main():
         orange_k = st.slider("Slope (k)", 1.0, 60.0, float(loaded_params.get("orange_k", 30.0)), 1.0, key="k")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Scene Context")
-    enable_phase1_4 = st.sidebar.checkbox("Enable Scene Context", value=loaded_params.get("enable_phase1_4", PHASE1_4_AVAILABLE))
+    st.sidebar.header("Scene Context (Phase 1.4)")
+    enable_phase1_4 = st.sidebar.checkbox("Enable Scene Context", value=loaded_params.get("enable_phase1_4", False))
+    scene_context_use_manual = False
     if enable_phase1_4 and not PHASE1_4_AVAILABLE:
         st.sidebar.warning("⚠️ Scene Context not available")
         enable_phase1_4 = False
     if enable_phase1_4:
-        st.sidebar.caption("✓ Auto-detects highway/urban/suburban scenes\n✓ Adaptive thresholds per scene type")
+        st.sidebar.success("✅ Scene Context active (scene detection)")
+        
+        # Scene Context Settings
+        with st.sidebar.expander("🔧 Scene Context Settings", expanded=True):
+            # Manual override option
+            scene_context_use_manual = st.checkbox(
+                "Use Manual Thresholds (Override Presets)",
+                value=loaded_params.get("scene_context_use_manual", False),
+                help="Check to use your manual threshold sliders instead of scene-specific presets. Scene detection will still be active for visualization."
+            )
+            
+            if scene_context_use_manual:
+                st.success("✅ Using MANUAL thresholds from sliders above")
+                st.caption("Scene detection is active but thresholds are controlled by your sliders")
+            else:
+                st.warning("⚠️ Using SCENE-ADAPTIVE thresholds (manual sliders ignored)")
+                st.markdown("**Scene-Specific Thresholds**")
+                st.caption("These preset thresholds will be used automatically:")
+                
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Highway", "")
+                    st.caption("enter: 0.75")
+                    st.caption("exit: 0.50")
+                    st.caption("approach: 0.60")
+                with col2:
+                    st.metric("Urban", "")
+                    st.caption("enter: 0.65")
+                    st.caption("exit: 0.40")
+                    st.caption("approach: 0.50")
+                with col3:
+                    st.metric("Suburban", "")
+                    st.caption("enter: 0.70")
+                    st.caption("exit: 0.45")
+                    st.caption("approach: 0.55")
+            
+            st.info("💡 **Tip**: Toggle manual override to compare adaptive vs manual tuning")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Per-Cue Verification + Motion")
-    enable_phase2_1 = st.sidebar.checkbox("Enable Per-Cue Verification + Motion Tracking", value=loaded_params.get("enable_phase2_1", PHASE2_1_AVAILABLE))
-    if enable_phase2_1 and not PHASE2_1_AVAILABLE:
-        st.sidebar.warning("⚠️ Per-Cue + Motion not available")
+    st.sidebar.header("Per-Cue Verification + Motion (Phase 2.1)")
+    
+    # Check CLIP dependency BEFORE allowing Phase 2.1 to be enabled
+    if not use_clip:
+        st.sidebar.error("🚨 **DEPENDENCY REQUIRED**: Per-Cue Verification requires CLIP to be enabled!")
+        st.sidebar.info("👉 Enable CLIP in the 'EMA + CLIP' section above to use this feature")
         enable_phase2_1 = False
-    if enable_phase2_1:
-        if use_clip:
+    else:
+        enable_phase2_1 = st.sidebar.checkbox("Enable Per-Cue Verification + Motion Tracking", value=loaded_params.get("enable_phase2_1", PHASE2_1_AVAILABLE))
+        if enable_phase2_1 and not PHASE2_1_AVAILABLE:
+            st.sidebar.warning("⚠️ Per-Cue + Motion not available")
+            enable_phase2_1 = False
+        if enable_phase2_1:
+            st.sidebar.success("✅ Per-Cue Verification active (CLIP-based)")
             st.sidebar.info("✓ Per-cue CLIP verification (5 separate scores)\n✓ Motion plausibility tracking\n✓ Per-cue object detection")
-        else:
-            st.sidebar.warning("⚠️ Per-cue CLIP disabled (enable CLIP above)\n✓ Motion plausibility tracking active\n✓ Per-cue object detection active")
 
     st.sidebar.markdown("---")
     st.sidebar.header("OCR Text Extraction")
-    enable_ocr = st.sidebar.checkbox("Enable OCR", value=loaded_params.get("enable_ocr", OCR_AVAILABLE))
+    enable_ocr = st.sidebar.checkbox("Enable OCR", value=loaded_params.get("enable_ocr", False))
     ocr_bundle = None
     ocr_every_n = loaded_params.get("ocr_every_n", 2)
     ocr_full_frame = False
