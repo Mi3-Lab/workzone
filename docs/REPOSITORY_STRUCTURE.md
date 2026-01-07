@@ -29,13 +29,15 @@ src/workzone/
 │   ├── yolo_detector.py    # Core YOLOv12 detection
 │   ├── clip_verifier.py    # CLIP semantic verification
 │   └── fusion.py           # Score fusion logic
-├── ocr/                    # OCR text extraction (Phase 2.1)
+├── ocr/                    # OCR text extraction
 │   ├── text_detector.py    # PaddleOCR detection
 │   └── text_classifier.py  # Text semantic classification (97.7% accuracy)
 ├── state_machine/          # Temporal state tracking
 │   └── workzone_tracker.py # State machine logic
-├── scene_context/          # Scene classification (Phase 1.4)
-│   └── classifier.py       # Highway/Urban/Suburban
+├── models/                 # ML models
+│   ├── scene_context.py    # Scene classification (Highway/Urban/Suburban)
+│   ├── per_cue_verification.py  # Per-cue CLIP verification
+│   └── trajectory_tracking.py   # Motion plausibility tracking
 ├── apps/                   # Applications
 │   ├── streamlit/          # Web interfaces
 │   └── cli/                # Command-line tools
@@ -44,9 +46,11 @@ src/workzone/
 
 **Key Features**:
 - YOLO12s object detection (50 classes)
-- CLIP semantic verification
+- CLIP semantic verification (global + per-cue)
 - PaddleOCR text extraction with 97.7% classification accuracy
 - Scene context classification (92.8% accuracy)
+- Per-cue confidence tracking (5 cue types)
+- Motion plausibility from trajectory tracking
 - Adaptive state machine with temporal persistence
 
 ## 🧪 Testing (`tests/`)

@@ -1,11 +1,9 @@
 """
-Text detection module using PaddleOCR.
+Text detection module using OCR backends (EasyOCR preferred, PaddleOCR optional).
 
 Extracts text from cropped sign images with preprocessing and confidence scoring.
 """
 
-from paddleocr import PaddleOCR
-import paddle
 try:
     import easyocr
     EASY_AVAILABLE = True
@@ -50,7 +48,13 @@ class SignTextDetector:
             return reader
 
         def init_paddle():
-            if use_gpu and paddle.is_compiled_with_cuda():
+            try:
+                import paddle  # Lazy import
+                from paddleocr import PaddleOCR  # Lazy import
+            except ImportError as e:
+                raise RuntimeError(f"PaddleOCR not installed: {e}")
+
+            if use_gpu and hasattr(paddle, "is_compiled_with_cuda") and paddle.is_compiled_with_cuda():
                 paddle.set_device("gpu")
                 logger.info("Paddle set_device('gpu')")
             else:
@@ -58,7 +62,9 @@ class SignTextDetector:
                 if use_gpu:
                     logger.warning("Paddle GPU not available, using CPU for OCR")
             ocr = PaddleOCR(use_angle_cls=True, lang=lang)
-            logger.info(f"PaddleOCR initialized (device={paddle.get_device()})")
+            # paddle.get_device may not exist in some versions
+            dev = getattr(paddle, "get_device", lambda: "cpu")()
+            logger.info(f"PaddleOCR initialized (device={dev})")
             return ocr
 
         # Prefer EasyOCR when available (avoids Paddle import issues)
@@ -125,14 +131,18 @@ class SignTextDetector:
                 texts = []
                 confidences = []
                 for _, text, score in result:
-                    if score >= 0.50:
-                        texts.append(str(text))
-                        confidences.append(float(score))
+                    # Lower threshold for better recall
+                    if score >= 0.3:  # 30% confidence
+                        text_clean = str(text).strip()
+                        if len(text_clean) > 0:  # Skip empty strings
+                            texts.append(text_clean)
+                            confidences.append(float(score))
                 if not texts:
                     return "", 0.0
                 full_text = " ".join(texts)
                 avg_conf = float(np.mean(confidences))
-                logger.info(f"OCR(Easy): \"{full_text}\" (conf: {avg_conf:.2f})")
+                conf_status = "low" if avg_conf < 0.5 else "ok"
+                logger.info(f"OCR(Easy): \"{full_text}\" (conf: {avg_conf:.2f} [{conf_status}])")
                 return full_text, avg_conf
 
             # Paddle path
@@ -157,9 +167,11 @@ class SignTextDetector:
                     logger.debug(f"Page {i}: {len(rec_texts)} texts found")
                     
                     for text, score in zip(rec_texts, rec_scores):
-                        if score >= 0.50:  # Confidence filter
-                            texts.append(str(text))
-                            confidences.append(float(score))
+                        if score >= 0.3:  # Lower threshold for better recall
+                            text_clean = str(text).strip()
+                            if len(text_clean) > 0:  # Skip empty strings
+                                texts.append(text_clean)
+                                confidences.append(float(score))
             
             if not texts:
                 logger.debug("No text met confidence threshold")
@@ -168,8 +180,9 @@ class SignTextDetector:
             # Join multi-line text
             full_text = " ".join(texts)
             avg_conf = float(np.mean(confidences))
+            conf_status = "low" if avg_conf < 0.5 else "ok"
             
-            logger.info(f"OCR: \"{full_text}\" (conf: {avg_conf:.2f})")
+            logger.info(f"OCR(Paddle): \"{full_text}\" (conf: {avg_conf:.2f} [{conf_status}])")
             return full_text, avg_conf
             
         except Exception as e:
@@ -182,34 +195,43 @@ class SignTextDetector:
         """
         Enhance image for OCR.
         
-        Applies:
-        - Grayscale conversion
-        - CLAHE (Contrast Limited Adaptive Histogram Equalization)
-        - Slight denoising
+        Applies multiple enhancement strategies:
+        - Upscale small crops for better OCR
+        - CLAHE for contrast enhancement
+        - Sharpening filter
+        - Denoising for very noisy images
         
         Args:
             crop: Input image (BGR or grayscale)
         
         Returns:
-            Enhanced grayscale or BGR image (PaddleOCR 3.x prefers BGR)
+            Enhanced BGR image
         """
-        # PaddleOCR 3.x actually works better with BGR, not grayscale
-        # Just apply CLAHE on the luminance channel
         if len(crop.shape) == 2:
-            # Grayscale - convert to BGR
             crop = cv2.cvtColor(crop, cv2.COLOR_GRAY2BGR)
         
-        # Enhance contrast using LAB color space
+        # Upscale small images (improves OCR significantly)
+        h, w = crop.shape[:2]
+        if h < 64 or w < 64:
+            scale = max(2, 64 // min(h, w))
+            crop = cv2.resize(crop, (w * scale, h * scale), interpolation=cv2.INTER_CUBIC)
+        
+        # Denoise if very noisy
+        crop = cv2.fastNlMeansDenoisingColored(crop, None, 10, 10, 7, 21)
+        
+        # CLAHE on luminance channel
         lab = cv2.cvtColor(crop, cv2.COLOR_BGR2LAB)
         l, a, b = cv2.split(lab)
-        
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
         l = clahe.apply(l)
-        
         enhanced = cv2.merge([l, a, b])
         enhanced = cv2.cvtColor(enhanced, cv2.COLOR_LAB2BGR)
         
-        return enhanced
+        # Sharpen to enhance text edges
+        kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        sharpened = cv2.filter2D(enhanced, -1, kernel)
+        
+        return sharpened
     
     def extract_text_batch(self, crops: list) -> list:
         """
