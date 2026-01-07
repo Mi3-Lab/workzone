@@ -2,7 +2,7 @@
 
 **Comprehensive guide for using the Streamlit calibration app and CLI to tune detection parameters.**
 
-**Last Updated**: January 7, 2026 | Phase 2.1, OCR, and Parameters CSV features included
+**Last Updated**: January 7, 2026 | Scene Context, Per-Cue Verification, OCR, and Parameters CSV features included
 
 ---
 
@@ -10,8 +10,9 @@
 
 - ✅ **OCR Settings**: New "OCR every N frames" slider (1-10, default 2) for speed/coverage trade-off
 - ✅ **Parameters CSV Export**: Download all calibration parameters as CSV for reproducibility
-- ✅ **Phase 1.4 Calibration**: Scene context information with adaptive thresholds
-- ✅ **Phase 2.1 Calibration**: Per-cue CLIP verification and motion plausibility options
+- ✅ **Scene Context**: Adaptive threshold tuning based on scene type
+- ✅ **Per-Cue Verification**: Individual CLIP verification and motion tracking
+- ✅ **OCR Settings**: New OCR configuration options
 - ✅ **3 Download Buttons**: Timeline CSV, Annotated Video, and Parameters CSV
 
 ---
@@ -52,7 +53,7 @@ The **Streamlit Calibration App** provides an interactive interface for:
 - 📊 **Batch processing** with comprehensive visualizations
 - 💾 **Export** annotated videos + detailed CSV timelines
 - 🎚️ **Calibration** of all detection and fusion parameters
-- 🔬 **Explainability dashboards** with Phase 2.1 per-cue diagnostics
+- 🔬 **Explainability dashboards** with per-cue diagnostics
 
 ---
 
@@ -228,7 +229,7 @@ EXITING (out_frames ≥ min_out_frames) → OUT
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| **Enable Scene Context** | Checkbox | ✅ (if available) | Enable Phase 1.4 scene-adaptive thresholds. |
+| **Enable Scene Context** | Checkbox | ✅ (if available) | Enable adaptive thresholds based on scene type (highway/urban/suburban). |
 
 **How It Works**:
 1. Classify scene as Highway, Urban, or Suburban using ResNet18.
@@ -256,7 +257,7 @@ adds fine-grained verification: per-cue CLIP confidences and motion plausibility
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| **Enable Per-Cue Verification + Motion Tracking** | Checkbox | ✅ (if available) | Enable Phase 2.1 features. |
+| **Enable Per-Cue Verification + Motion Tracking** | Checkbox | ✅ (if available) | Enable individual CLIP verification for each cue type plus motion plausibility tracking. |
 
 **Features**:
 
@@ -283,7 +284,7 @@ adds fine-grained verification: per-cue CLIP confidences and motion plausibility
 **When to Use**:
 - ✅ Need **fine-grained explainability** (which cues are firing?).
 - ✅ Want to **filter motion-based false positives** (e.g., moving vehicles misclassified as work vehicles).
-- ✅ Building **temporal attention models** (Phase 2.1 outputs feed into attention networks).
+- ✅ Building **temporal attention models** (per-cue outputs feed into attention networks).
 - ❌ Simple deployments where global CLIP is sufficient.
 
 **Output**:
@@ -376,7 +377,7 @@ Choose video input source:
   - Score over time plot
   - State transition histogram
   - Explainability dashboard (OCR, CLIP, object counts, persistence counters)
-  - Phase 2.1 plots (if enabled): per-cue confidences, motion plausibility
+  - Per-Cue plots (if enabled): per-cue confidences, motion plausibility
 
 ##### 2.3 Download Buttons (Batch Mode)
 
@@ -384,7 +385,7 @@ After processing, you get **3 download buttons**:
 
 | Button | File Name | Description |
 |--------|-----------|-------------|
-| **📊 CSV Timeline** | `<video>_timeline.csv` | Per-frame detection scores, states, OCR, CLIP, Phase 2.1 metrics |
+| **📊 CSV Timeline** | `<video>_timeline.csv` | Per-frame detection scores, states, OCR, CLIP, per-cue verification metrics |
 | **🎬 Annotated Video** | `<video>_annotated.mp4` | Video with YOLO boxes, state banner, OCR text overlay |
 | **⚙️ Parameters CSV** | `<video>_parameters.csv` | ALL calibration parameters used (for reference & reproducibility) |
 
@@ -395,9 +396,9 @@ After processing, you get **3 download buttons**:
 - **State Machine**: Enter/exit/approach thresholds, min frames
 - **CLIP**: Fusion weight, trigger threshold, positive/negative prompts
 - **Orange Boost**: Weight, trigger, all HSV parameters (hue, sat, val, center, slope)
-- **Phase 1.4**: Scene context enabled/disabled
+- **Scene Context**: Scene context enabled/disabled, custom per-scene thresholds
 - **OCR**: Enabled/disabled, OCR every N frames
-- **Phase 2.1**: Per-cue + motion tracking enabled/disabled
+- **Per-Cue Verification**: Per-cue verification + motion tracking enabled/disabled
 
 **Why this matters**: 
 - 📋 **Reproducibility** - exactly know what settings produced each result
@@ -429,8 +430,8 @@ The timeline CSV contains per-frame metrics. Columns:
 | `ocr_text` | str | Extracted OCR text (if any). |
 | `text_confidence` | float | OCR confidence * text classification confidence. |
 | `text_category` | str | Text category: WORKZONE / SPEED / LANE / CAUTION / DIRECTION / UNCLEAR / NONE. |
-| `scene_context` | str | Scene type: highway / urban / suburban (Phase 1.4). |
-| **Phase 2.1 columns** (if enabled): |
+| `scene_context` | str | Scene type: highway / urban / suburban (adaptive thresholds). |
+| **Per-Cue Verification columns** (if enabled): |
 | `cue_conf_channelization` | float | Per-cue CLIP confidence for channelization. |
 | `cue_conf_workers` | float | Per-cue CLIP confidence for workers. |
 | `cue_conf_vehicles` | float | Per-cue CLIP confidence for vehicles. |
@@ -509,7 +510,7 @@ python scripts/process_video_fusion.py \
 
 ### Example Commands
 
-#### 1. Basic Run (Phase 1.0)
+#### 1. Basic Run (Core Features)
 
 ```bash
 python scripts/process_video_fusion.py \
@@ -527,7 +528,7 @@ python scripts/process_video_fusion.py \
   --clip-trigger-th 0.40
 ```
 
-#### 3. Phase 1.4 (Scene Context + OCR)
+#### 3. Scene Context + OCR
 
 ```bash
 python scripts/process_video_fusion.py \
@@ -537,7 +538,7 @@ python scripts/process_video_fusion.py \
   --enable-ocr
 ```
 
-#### 4. Phase 2.1 (Full Pipeline)
+#### 4. Full Pipeline with All Features
 
 ```bash
 python scripts/process_video_fusion.py \
@@ -615,7 +616,7 @@ streamlit --version
 - **Increase stride**: `--stride 5` or `--stride 10` for calibration.
 - **Disable CLIP**: `--no-clip` (saves ~15ms/frame).
 - **Disable OCR**: Uncheck "Enable OCR" in UI.
-- **Disable Phase 2.1**: Uncheck Phase 2.1 (saves trajectory tracking overhead).
+- **Disable Per-Cue Verification**: Uncheck Per-Cue Verification (saves trajectory tracking overhead).
 - **Lower resolution**: Use 640px YOLO model (if available).
 
 #### 4. **OCR fails or returns garbage**
@@ -651,15 +652,15 @@ bash scripts/download_models.sh
 # Place in weights/ folder
 ```
 
-#### 6. **Phase 2.1 errors**
+#### 6. **Per-Cue Verification errors**
 
 **Symptoms**:
-- `'CueClassifier' object has no attribute 'classify'`
-- Phase 2.1 warnings
+- Per-Cue Verification not working properly
+- Per-Cue Verification warnings
 
 **Solutions**:
-- **Update code**: Ensure you have the latest version with `classify()` method.
-- **Disable Phase 2.1**: Uncheck the checkbox to bypass errors.
+- **Ensure CLIP is enabled**: Per-Cue Verification requires CLIP to be active
+- **Disable Per-Cue Verification**: Uncheck the checkbox to bypass errors.
 - **Check imports**: Ensure `workzone.detection.cue_classifier`, `workzone.models.per_cue_verification`, `workzone.models.trajectory_tracking` are importable.
 
 ---
@@ -681,14 +682,14 @@ bash scripts/download_models.sh
 3. **CLIP fusion**: Fine-tune CLIP weight and trigger threshold.
 4. **EMA alpha**: Adjust smoothing if scores are too noisy or too laggy.
 5. **Orange boost**: Enable if YOLO misses orange-heavy work zones.
-6. **Phase 1.4 / 2.1**: Enable advanced features after basic pipeline is working.
+6. **Advanced features**: Enable Scene Context and Per-Cue Verification after basic pipeline is working.
 
 ### 3. **Avoiding False Positives**
 
 - **Increase enter_th**: 0.75-0.80 for stricter entry.
 - **Increase min_inside_frames**: 30-50 to require sustained detections.
 - **Negative YOLO bias**: -0.4 to -0.5 to reduce baseline score.
-- **Enable Phase 2.1 motion tracking**: Filter moving objects.
+- **Enable Per-Cue Verification motion tracking**: Filter moving objects.
 - **CLIP verification**: Increase CLIP weight to 0.4-0.5 to rely more on semantic verification.
 
 ### 4. **Avoiding False Negatives (Missing Work Zones)**
@@ -703,12 +704,12 @@ bash scripts/download_models.sh
 
 | Dataset Type | Recommended Settings |
 |--------------|---------------------|
-| **Highway** | enter_th=0.75, channelization=1.0, ttc_signs=0.8, enable Phase 1.4 |
+| **Highway** | enter_th=0.75, channelization=1.0, ttc_signs=0.8, enable Scene Context |
 | **Urban** | enter_th=0.65, workers=0.9, vehicles=0.6, enable OCR |
 | **Suburban** | enter_th=0.70 (default), balanced weights |
 | **Night** | message_board=0.8, enable orange boost, enable OCR |
 | **Daytime Clear** | Use defaults, enable CLIP for semantic verification |
-| **Mixed Environment** | Enable Phase 1.4 scene context for adaptive thresholds |
+| **Mixed Environment** | Enable Scene Context for adaptive thresholds |
 
 ### 6. **Performance Optimization**
 
@@ -766,7 +767,7 @@ If you see:
 - **Outside counter** (red): Increases while OUT/EXITING.
 - Used for anti-flicker logic.
 
-### 4. **Phase 2.1 Plots** (if enabled)
+### 4. **Per-Cue Verification Plots** (if enabled)
 
 #### Per-Cue Confidences:
 - 5 lines (one per cue type).
@@ -811,7 +812,7 @@ If you see:
    - `enter_th = 0.75` (stricter entry)
    - `min_inside_frames = 40` (require sustained detections)
 4. Enable **CLIP** and increase `clip_weight = 0.45` (rely more on semantic verification).
-5. Enable **Phase 2.1** to filter moving vehicles (motion plausibility).
+5. Enable **Per-Cue Verification** to filter moving vehicles (motion plausibility).
 6. Test and batch process.
 
 ### Tutorial 3: Night Video with Message Boards

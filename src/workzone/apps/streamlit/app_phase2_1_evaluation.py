@@ -978,13 +978,21 @@ def run_live_preview(
         context_enter_th = enter_th
         context_exit_th = exit_th
         context_approach_th = approach_th
-        if scene_context_predictor is not None and not scene_context_use_manual:
-            # Use scene-adaptive thresholds only if manual override is disabled
-            ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
-            context_enter_th = ctx_th.get("enter_th", enter_th)
-            context_exit_th = ctx_th.get("exit_th", exit_th)
-            context_approach_th = ctx_th.get("approach_th", approach_th)
-        # else: use manual thresholds (enter_th, exit_th, approach_th from sliders)
+        if scene_context_predictor is not None:
+            if scene_context_use_manual and scene_context_thresholds:
+                # Use custom per-scene thresholds from Scene Context Settings
+                scene_key = current_context.lower()
+                if scene_key in scene_context_thresholds:
+                    context_enter_th = scene_context_thresholds[scene_key].get('enter_th', enter_th)
+                    context_exit_th = scene_context_thresholds[scene_key].get('exit_th', exit_th)
+                    context_approach_th = scene_context_thresholds[scene_key].get('approach_th', approach_th)
+            elif not scene_context_use_manual:
+                # Use scene-adaptive presets (default behavior)
+                ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
+                context_enter_th = ctx_th.get("enter_th", enter_th)
+                context_exit_th = ctx_th.get("exit_th", exit_th)
+                context_approach_th = ctx_th.get("approach_th", approach_th)
+            # else: keep using main sliders values
 
         # State machine
         state, inside_frames, out_frames = update_state(
@@ -999,7 +1007,7 @@ def run_live_preview(
             approach_th=context_approach_th,
         )
 
-        # Per-cue verification and motion plausibility (Phase 2.1)
+        # Per-cue verification and motion plausibility
         cue_confidences = [0.0] * 5
         motion_plausibility = 1.0
         if enable_phase2_1 and per_cue_verifier is not None and cue_classifier is not None:
@@ -1401,7 +1409,7 @@ def run_live_preview(
                                     ha='center', va='center', transform=ax_cue_dist.transAxes,
                                     fontsize=10, color='gray', weight='bold')
             else:
-                ax_cue_dist.text(0.5, 0.5, 'Phase 2.1 not enabled', 
+                ax_cue_dist.text(0.5, 0.5, 'Per-Cue Verification not enabled', 
                                ha='center', va='center', transform=ax_cue_dist.transAxes,
                                fontsize=10, color='gray')
             ax_cue_dist.set_xlim(0, 1)
@@ -1700,13 +1708,21 @@ def process_video(
         context_enter_th = enter_th
         context_exit_th = exit_th
         context_approach_th = approach_th
-        if scene_context_predictor is not None and not scene_context_use_manual:
-            # Use scene-adaptive thresholds only if manual override is disabled
-            ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
-            context_enter_th = ctx_th.get("enter_th", enter_th)
-            context_exit_th = ctx_th.get("exit_th", exit_th)
-            context_approach_th = ctx_th.get("approach_th", approach_th)
-        # else: use manual thresholds (enter_th, exit_th, approach_th from sliders)
+        if scene_context_predictor is not None:
+            if scene_context_use_manual and scene_context_thresholds:
+                # Use custom per-scene thresholds from Scene Context Settings
+                scene_key = current_context.lower()
+                if scene_key in scene_context_thresholds:
+                    context_enter_th = scene_context_thresholds[scene_key].get('enter_th', enter_th)
+                    context_exit_th = scene_context_thresholds[scene_key].get('exit_th', exit_th)
+                    context_approach_th = scene_context_thresholds[scene_key].get('approach_th', approach_th)
+            elif not scene_context_use_manual:
+                # Use scene-adaptive presets (default behavior)
+                ctx_th = SceneContextConfig.THRESHOLDS.get(current_context, {})
+                context_enter_th = ctx_th.get("enter_th", enter_th)
+                context_exit_th = ctx_th.get("exit_th", exit_th)
+                context_approach_th = ctx_th.get("approach_th", approach_th)
+            # else: keep using main sliders values
 
         # State machine
         state, inside_frames, out_frames = update_state(
@@ -1727,7 +1743,7 @@ def process_video(
         if enable_phase2_1:
             if per_cue_verifier is None and cue_classifier is None:
                 if processed == 0:  # Log once
-                    logger.warning("Phase 2.1 enabled but verifier/classifier not initialized")
+                    logger.warning("Per-Cue Verification enabled but verifier/classifier not initialized")
             elif per_cue_verifier is not None and cue_classifier is not None:
                 t_pcue0 = time.perf_counter()
                 try:
@@ -1903,9 +1919,9 @@ def process_video(
     ]
     stage_hz = {m["name"]: m["hz"] for m in stage_metrics}
 
-    # Log Phase 2.1 statistics
+    # Log Per-Cue Verification statistics
     if enable_phase2_1 and 'cue_conf_channelization' in df.columns:
-        logger.info("=== Phase 2.1 Statistics ===")
+        logger.info("=== Per-Cue Verification Statistics ===")
         logger.info(f"Channelization: mean={df['cue_conf_channelization'].mean():.3f}, max={df['cue_conf_channelization'].max():.3f}")
         logger.info(f"Workers: mean={df['cue_conf_workers'].mean():.3f}, max={df['cue_conf_workers'].max():.3f}")
         logger.info(f"Vehicles: mean={df['cue_conf_vehicles'].mean():.3f}, max={df['cue_conf_vehicles'].max():.3f}")
@@ -2098,9 +2114,10 @@ def main():
         orange_k = st.slider("Slope (k)", 1.0, 60.0, float(loaded_params.get("orange_k", 30.0)), 1.0, key="k")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Scene Context (Phase 1.4)")
+    st.sidebar.header("Scene Context - Adaptive Thresholds")
     enable_phase1_4 = st.sidebar.checkbox("Enable Scene Context", value=loaded_params.get("enable_phase1_4", False))
     scene_context_use_manual = False
+    scene_context_thresholds = {}
     if enable_phase1_4 and not PHASE1_4_AVAILABLE:
         st.sidebar.warning("⚠️ Scene Context not available")
         enable_phase1_4 = False
@@ -2113,40 +2130,133 @@ def main():
             scene_context_use_manual = st.checkbox(
                 "Use Manual Thresholds (Override Presets)",
                 value=loaded_params.get("scene_context_use_manual", False),
-                help="Check to use your manual threshold sliders instead of scene-specific presets. Scene detection will still be active for visualization."
+                help="Check to customize threshold values for each scene type independently."
             )
             
             if scene_context_use_manual:
-                st.success("✅ Using MANUAL thresholds from sliders above")
-                st.caption("Scene detection is active but thresholds are controlled by your sliders")
+                st.success("✅ Using CUSTOM thresholds per scene type")
+                st.caption("Customize threshold values for each scene (Highway, Urban, Suburban):")
+                
+                # Initialize custom thresholds dictionary
+                scene_context_thresholds = {
+                    'highway': {},
+                    'urban': {},
+                    'suburban': {}
+                }
+                
+                # Highway thresholds
+                st.markdown("**🛣️ Highway**")
+                col_h1, col_h2, col_h3 = st.columns(3)
+                with col_h1:
+                    scene_context_thresholds['highway']['enter_th'] = st.slider(
+                        "Highway Enter",
+                        0.50, 0.95, 
+                        float(loaded_params.get("scene_highway_enter", 0.75)),
+                        0.01,
+                        key="scene_highway_enter"
+                    )
+                with col_h2:
+                    scene_context_thresholds['highway']['exit_th'] = st.slider(
+                        "Highway Exit",
+                        0.05, 0.70,
+                        float(loaded_params.get("scene_highway_exit", 0.50)),
+                        0.01,
+                        key="scene_highway_exit"
+                    )
+                with col_h3:
+                    scene_context_thresholds['highway']['approach_th'] = st.slider(
+                        "Highway Approach",
+                        0.10, 0.90,
+                        float(loaded_params.get("scene_highway_approach", 0.60)),
+                        0.01,
+                        key="scene_highway_approach"
+                    )
+                
+                # Urban thresholds
+                st.markdown("**🏙️ Urban**")
+                col_u1, col_u2, col_u3 = st.columns(3)
+                with col_u1:
+                    scene_context_thresholds['urban']['enter_th'] = st.slider(
+                        "Urban Enter",
+                        0.50, 0.95,
+                        float(loaded_params.get("scene_urban_enter", 0.65)),
+                        0.01,
+                        key="scene_urban_enter"
+                    )
+                with col_u2:
+                    scene_context_thresholds['urban']['exit_th'] = st.slider(
+                        "Urban Exit",
+                        0.05, 0.70,
+                        float(loaded_params.get("scene_urban_exit", 0.40)),
+                        0.01,
+                        key="scene_urban_exit"
+                    )
+                with col_u3:
+                    scene_context_thresholds['urban']['approach_th'] = st.slider(
+                        "Urban Approach",
+                        0.10, 0.90,
+                        float(loaded_params.get("scene_urban_approach", 0.50)),
+                        0.01,
+                        key="scene_urban_approach"
+                    )
+                
+                # Suburban thresholds
+                st.markdown("**🌳 Suburban**")
+                col_s1, col_s2, col_s3 = st.columns(3)
+                with col_s1:
+                    scene_context_thresholds['suburban']['enter_th'] = st.slider(
+                        "Suburban Enter",
+                        0.50, 0.95,
+                        float(loaded_params.get("scene_suburban_enter", 0.70)),
+                        0.01,
+                        key="scene_suburban_enter"
+                    )
+                with col_s2:
+                    scene_context_thresholds['suburban']['exit_th'] = st.slider(
+                        "Suburban Exit",
+                        0.05, 0.70,
+                        float(loaded_params.get("scene_suburban_exit", 0.45)),
+                        0.01,
+                        key="scene_suburban_exit"
+                    )
+                with col_s3:
+                    scene_context_thresholds['suburban']['approach_th'] = st.slider(
+                        "Suburban Approach",
+                        0.10, 0.90,
+                        float(loaded_params.get("scene_suburban_approach", 0.55)),
+                        0.01,
+                        key="scene_suburban_approach"
+                    )
+                
+                st.info("💡 Each scene type can have different threshold values. No need to adjust main sliders!")
             else:
-                st.warning("⚠️ Using SCENE-ADAPTIVE thresholds (manual sliders ignored)")
+                st.warning("⚠️ Using SCENE-ADAPTIVE presets (fixed values)")
                 st.markdown("**Scene-Specific Thresholds**")
                 st.caption("These preset thresholds will be used automatically:")
                 
                 col1, col2, col3 = st.columns(3)
                 with col1:
-                    st.metric("Highway", "")
+                    st.metric("🛣️ Highway", "")
                     st.caption("enter: 0.75")
                     st.caption("exit: 0.50")
                     st.caption("approach: 0.60")
                 with col2:
-                    st.metric("Urban", "")
+                    st.metric("🏙️ Urban", "")
                     st.caption("enter: 0.65")
                     st.caption("exit: 0.40")
                     st.caption("approach: 0.50")
                 with col3:
-                    st.metric("Suburban", "")
+                    st.metric("🌳 Suburban", "")
                     st.caption("enter: 0.70")
                     st.caption("exit: 0.45")
                     st.caption("approach: 0.55")
             
-            st.info("💡 **Tip**: Toggle manual override to compare adaptive vs manual tuning")
+            st.info("💡 **Tip**: Toggle to compare fixed presets vs custom per-scene tuning")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("Per-Cue Verification + Motion (Phase 2.1)")
+    st.sidebar.header("Per-Cue Verification + Motion Tracking")
     
-    # Check CLIP dependency BEFORE allowing Phase 2.1 to be enabled
+    # Check CLIP dependency BEFORE allowing Per-Cue Verification to be enabled
     if not use_clip:
         st.sidebar.error("🚨 **DEPENDENCY REQUIRED**: Per-Cue Verification requires CLIP to be enabled!")
         st.sidebar.info("👉 Enable CLIP in the 'EMA + CLIP' section above to use this feature")
@@ -2154,7 +2264,7 @@ def main():
     else:
         enable_phase2_1 = st.sidebar.checkbox("Enable Per-Cue Verification + Motion Tracking", value=loaded_params.get("enable_phase2_1", PHASE2_1_AVAILABLE))
         if enable_phase2_1 and not PHASE2_1_AVAILABLE:
-            st.sidebar.warning("⚠️ Per-Cue + Motion not available")
+            st.sidebar.warning("⚠️ Per-Cue Verification + Motion not available")
             enable_phase2_1 = False
         if enable_phase2_1:
             st.sidebar.success("✅ Per-Cue Verification active (CLIP-based)")
@@ -2430,7 +2540,7 @@ def main():
                     st.dataframe(result['timeline_df'].head(100), width="stretch")
                     df = result['timeline_df']
                     
-                    # Show Phase 2.1 debug info if enabled
+                    # Show Per-Cue Verification debug info if enabled
                     if enable_phase2_1:
                         if 'cue_conf_channelization' in df.columns:
                             cue_stats = {
@@ -2447,9 +2557,9 @@ def main():
                             has_motion_data = motion_std > 0.01
                             
                             if has_cue_data or has_motion_data:
-                                st.info(f"📊 Phase 2.1: Per-Cue max={max(v[1] for v in cue_stats.values()):.2f}, Motion std={motion_std:.3f}")
+                                st.info(f"📊 Per-Cue Verification: max={max(v[1] for v in cue_stats.values()):.2f}, Motion std={motion_std:.3f}")
                             else:
-                                st.warning("⚠️ Phase 2.1 enabled but no data detected. Check: CLIP enabled? Detections present?")
+                                st.warning("⚠️ Per-Cue Verification enabled but no data detected. Check: CLIP enabled? Detections present?")
 
                     st.divider()
 
@@ -2696,7 +2806,7 @@ def main():
                         ax_conf.set_title("Detection Confidence Comparison")
                         st.pyplot(fig_conf)
                     
-                    # Motion plausibility distribution (if Phase 2.1 enabled)
+                    # Motion plausibility distribution (if Per-Cue Verification enabled)
                     if enable_phase2_1 and 'motion_plausibility' in df.columns:
                         st.divider()
                         motion_col1, motion_col2 = st.columns(2)
@@ -2758,7 +2868,7 @@ def main():
                                                     fontsize=10, color='gray', weight='bold')
                                     ax_cue_dist.set_title("Per-Cue Confidence Distribution")
                             else:
-                                ax_cue_dist.text(0.5, 0.5, 'Phase 2.1 not enabled', 
+                                ax_cue_dist.text(0.5, 0.5, 'Per-Cue Verification not enabled', 
                                                ha='center', va='center', transform=ax_cue_dist.transAxes,
                                                fontsize=10, color='gray')
                                 ax_cue_dist.set_title("Per-Cue Confidence Distribution")
