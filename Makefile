@@ -8,6 +8,8 @@ help:
 	@echo "  make install-dev       Install with development dependencies"
 	@echo "  make train             Train YOLO model"
 	@echo "  make infer             Run inference on video"
+	@echo "  make app               Run the main Streamlit app (Phase 2.1 Evaluation)"
+	@echo "  make streamlit         Alias for 'make app'"
 	@echo "  make app-semantic-fusion  Run the Semantic Fusion Streamlit app"
 	@echo "  make app-basic-detection  Run the Basic Detection Streamlit app"
 	@echo "  make app-advanced-scoring Run the Advanced Scoring Streamlit app"
@@ -41,6 +43,12 @@ app-basic-detection:
 
 app-advanced-scoring:
 	streamlit run src/workzone/apps/streamlit/app_advanced_scoring.py
+
+app:
+	@echo "🚀 Launching WorkZone Streamlit App..."
+	@bash launch_streamlit.sh
+
+streamlit: app
 
 test:
 	pytest tests/ -v

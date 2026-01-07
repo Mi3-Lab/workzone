@@ -17,11 +17,12 @@ Built for ESV (Enhanced Safety of Vehicles) competition. Features multi-modal ve
 |---------|-------------|
 | **🎯 YOLO12s Detection** | 50-class object detection with 84.6% false positive reduction |
 | **🧠 Multi-Modal Fusion** | CLIP semantic verification + OCR text extraction |
-| **📊 Temporal Attention** | Phase 2.1: Per-cue confidence tracking + motion plausibility |
+| **� OCR Speed Sign Detection** | Priority-based OCR with visual alerts for speed limit signs |
+| **📊 Per-Cue Verification** | Per-cue confidence tracking + motion plausibility |
 | **🌍 Scene Context** | Highway/Urban/Suburban classification (92.8% accuracy) |
 | **🔄 Adaptive State Machine** | Context-aware thresholds: OUT → APPROACHING → INSIDE → EXITING |
 | **⚡ Edge Optimized** | Runs 30 FPS @ 1280px on Jetson Orin |
-| **🎬 Interactive UI** | Streamlit calibration app with real-time visualization |
+| **🎬 Interactive UI** | Streamlit calibration app with video player and real-time tuning |
 
 ---
 
@@ -143,26 +144,74 @@ python scripts/process_video_fusion.py \
 
 ## 🚀 Quick Start
 
-### Option 1: Interactive Calibration App (Recommended)
-
-Launch the **Streamlit calibration UI** for interactive parameter tuning:
+### Run the App (Professional Way)
 
 ```bash
-# Activate virtual environment
-source venv/bin/activate
+# Quick launch
+make app
+# or
+make streamlit
+```
 
-# Launch the app
+The app will be available at `http://localhost:8502`
+
+### Option 1: Interactive Calibration App (Recommended)
+
+The **Streamlit calibration UI** provides interactive parameter tuning:
+
+**Alternative manual launch**:
+```bash
+source venv/bin/activate
 streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
+# or
+./launch_streamlit.sh
 ```
 
 **Features**:
 - 📹 Real-time video preview with live parameter adjustment
-- 📊 Batch processing with explainability dashboards
-- 💾 Export annotated videos + detailed CSV timelines
-- 🎚️ Calibrate YOLO weights, CLIP fusion, OCR boost, state machine
-- 🔬 Phase 2.1: Per-cue confidences + motion plausibility visualizations
+- 📊 Batch processing with comprehensive explainability dashboards
+- 🎬 Built-in video player with play/pause/seek controls (batch mode)
+- 💾 Export annotated videos (H.264) + detailed CSV timelines
+- 🏛️ Calibrate YOLO weights, CLIP fusion, OCR boost, state machine thresholds
+- 📝 OCR customization: confidence threshold, score boost, speed sign priority
+- 🔬 Per-cue confidences + motion plausibility tracking
+- ⚡ Component throughput visualization (Hz, ms/frame)
+- 📈 Advanced analysis: score zones, state distribution, latency profiling
 
 👉 **See [APP_TESTING_GUIDE.md](APP_TESTING_GUIDE.md)** for detailed usage instructions.
+
+#### Backend Selection (Auto/TensorRT/GPU/CPU)
+
+In the Streamlit sidebar, choose your inference backend under "Model + Device":
+
+- Auto (prefer TensorRT): uses `.engine` if present; else CUDA; else CPU
+- TensorRT: forces `.engine` (Tensor Cores); falls back to `.pt` if load fails
+- GPU (cuda): forces `.pt` on CUDA even if `.engine` exists (useful for comparisons)
+- CPU: forces `.pt` on CPU for portability
+
+Expected logs:
+
+```
+🚀 TensorRT engine found: yolo12s_hardneg_1280.engine
+✓ Loaded TensorRT model (optimized for Tensor Cores)
+
+Loaded YOLO from yolo12s_hardneg_1280.pt (FP16/FP32)
+```
+
+#### Convert YOLO to TensorRT (optional, for maximum speed)
+
+```bash
+source venv/bin/activate
+# Convert a specific model to .engine (FP16)
+python scripts/optimize_for_jetson.py --model weights/yolo12s_hardneg_1280.pt
+
+# Or convert all .pt models in weights/
+python scripts/optimize_for_jetson.py
+```
+
+After conversion, run Streamlit (Auto/TensorRT will pick the `.engine` automatically).
+
+For Jetson-specific tips and deployment steps, see [JETSON_QUICKSTART.md](JETSON_QUICKSTART.md).
 
 ---
 
@@ -178,32 +227,32 @@ python scripts/process_video_fusion.py \
   --output-dir outputs/my_run
 ```
 
-#### Phase 1.1: Multi-Cue Temporal Persistence
+#### Multi-Cue Temporal Detection
 
 ```bash
 python scripts/process_video_fusion.py \
   data/demo/video.mp4 \
-  --output-dir outputs/phase1_1 \
+  --output-dir outputs/multi_cue \
   --enable-phase1-1 \
   --no-motion
 ```
 
-#### Phase 1.4: Scene Context Classification
+#### Scene Context Classification
 
 ```bash
 python scripts/process_video_fusion.py \
   data/demo/video.mp4 \
-  --output-dir outputs/phase1_4 \
+  --output-dir outputs/scene_context \
   --enable-phase1-4 \
   --enable-ocr
 ```
 
-#### Phase 2.1: Per-Cue Verification + Motion Tracking
+#### Per-Cue Verification + Motion Tracking
 
 ```bash
 python scripts/process_video_fusion.py \
   data/demo/video.mp4 \
-  --output-dir outputs/phase2_1 \
+  --output-dir outputs/per_cue_motion \
   --enable-phase2-1 \
   --enable-phase1-1 \
   --enable-ocr \
@@ -240,6 +289,8 @@ python scripts/process_video_fusion.py \
 | `--enable-phase1-1` | Multi-cue temporal logic | `False` |
 | `--enable-phase1-4` | Scene context classification | `False` |
 | `--enable-phase2-1` | Per-cue CLIP + motion tracking | `False` |
+
+**Note**: Flag names preserve `phase` for backward compatibility but represent unified system components.
 | `--clip-weight` | CLIP fusion weight | `0.35` |
 | `--clip-trigger-th` | CLIP trigger threshold | `0.45` |
 | `--enter-th` | WORKZONE entry threshold | `0.70` |
@@ -270,13 +321,13 @@ python scripts/process_video_fusion.py \
          ▼                  ▼                  ▼                 ▼
 ┌────────────────┐  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐
 │ CLIP Semantic  │  │ OCR Text        │  │ Scene Context│  │ Per-Cue CLIP    │
-│ Verification   │  │ Extraction      │  │ Classifier   │  │ (Phase 2.1)     │
-│ (Global)       │  │ (Message Boards)│  │ (Phase 1.4)  │  │ • Channelization│
-└────────┬───────┘  └────────┬────────┘  └──────┬───────┘  │ • Workers       │
-         │                   │                   │          │ • Vehicles      │
-         │                   │                   │          │ • Signs         │
-         │                   │                   │          │ • Equipment     │
-         │                   │                   │          └────────┬────────┘
+│ Verification   │  │ Extraction      │  │ Classifier   │  │ Verification    │
+│ (Global)       │  │ (Message Boards)│  │ (Highway/    │  │ • Channelization│
+└────────┬───────┘  └────────┬────────┘  │  Urban/      │  │ • Workers       │
+         │                   │           │  Suburban)   │  │ • Vehicles      │
+         │                   │           └──────┬───────┘  │ • Signs         │
+         │                   │                  │          │ • Equipment     │
+         │                   │                  │          └────────┬────────┘
          │                   │                   │                   │
          └───────────────────┴───────────────────┴───────────────────┘
                                       │
@@ -515,7 +566,6 @@ MIT License - see [LICENSE](alpamayo/LICENSE) for details.
 
 For questions or feedback:
 - **GitHub Issues**: [github.com/WMaia9/workzone/issues](https://github.com/WMaia9/workzone/issues)
-- **Email**: [your-email@domain.com]
 
 ---
 

@@ -61,12 +61,27 @@ ls outputs/demo/
 ### Launch Web Interface
 
 ```bash
-# Start Streamlit app
-streamlit run src/workzone/apps/streamlit/app_phase1_1_fusion.py --server.port 8501
+# Start Streamlit app (recommended)
+make app
+# or manually:
+streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py --server.port 8502
 
-# Open browser to http://localhost:8501
+# Open browser to http://localhost:8502
 # Upload video and see real-time detection!
 ```
+
+**OCR Features:**
+- **Customizable OCR threshold** (0.1-0.9): Adjust text detection sensitivity
+- **Speed sign priority**: Speed limit signs automatically prioritized in detection
+- **Visual alerts**: Large red warning box when speed signs detected
+- **Score boost controls**: Enable/disable OCR confidence boost for workzone keywords
+- **Full-Frame & YOLO-Guided modes**: Choose between scanning entire frame or only detected sign regions
+
+**Batch Processing Features:**
+- **Integrated video player**: Play/pause/seek through processed video with native controls
+- **H.264 encoding**: Browser-compatible video format with timeline support
+- **Real-time graphs**: Latency profiles, throughput metrics, per-cue confidences
+- **Export options**: Download annotated video, CSV timeline, and config JSON
 
 ## CLI Script Reference
 

@@ -23,8 +23,9 @@ echo "✅ Virtual environment activated"
 
 # Set PYTHONPATH to include src directory
 echo "🔧 Setting PYTHONPATH..."
-export PYTHONPATH="/home/wesleyferreiramaia/data/workzone/src:$PYTHONPATH"
-echo "✅ PYTHONPATH set to: $PYTHONPATH"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+export PYTHONPATH="${SCRIPT_DIR}/src:$PYTHONPATH"
+echo "✅ PYTHONPATH set"
 
 # Check if streamlit is installed
 if ! command -v streamlit &> /dev/null; then
