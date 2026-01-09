@@ -104,14 +104,14 @@ def draw_hud(frame, state, score, clip_active, fps):
     # Draw on top padding
     cv2.rectangle(padded, (0, 0), (w, pad_h), color, -1)
     
-    # Left: State + Score
-    cv2.putText(padded, f"{lbl}", (20, 50), 1, 2.0, (255, 255, 255), 3)
-    cv2.putText(padded, f"Score: {score:.2f}", (350, 50), 1, 1.5, (200, 200, 200), 2)
+    # Left: State + Score combined
+    text_left = f"{lbl} | Score: {score:.2f}"
+    cv2.putText(padded, text_left, (20, 50), 1, 1.8, (255, 255, 255), 2, cv2.LINE_AA)
     
     # Right: FPS + CLIP
     info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
-    (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.5, 2)
-    cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.5, (255, 255, 255), 2)
+    (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.3, 2)
+    cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.3, (255, 255, 255), 2, cv2.LINE_AA)
     
     return padded
 
