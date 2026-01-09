@@ -1,25 +1,198 @@
-# Python
+# ---------------------------------
+# Python cache and compiled files
+# ---------------------------------
 __pycache__/
 *.py[cod]
-*$py.class
-venv/
-.env
+*.pyo
+*.pyd
+*.pyc
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Models & Weights
+# ---------------------------------
+# Virtual environments
+# ---------------------------------
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+ar1_venv/
+
+# ---------------------------------
+# IDE and editors
+# ---------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+
+# ---------------------------------
+# Results and outputs (large files)
+# ---------------------------------
+results/
+outputs/
+*.mp4
+*.avi
+*.mov
+*.mkv
+/data/videos_compressed/
+/data/demo/
+
+# ---------------------------------
+# Model weights
+# ---------------------------------
+# Committed to repo (small models for easy setup)
+# weights/ directory is now tracked for distribution
+*.pt.bak
+*.pt.tmp
+
+# ---------------------------------
+# Logs and runtime
+# ---------------------------------
+*.log
+.streamlit/
+wandb/
+.run/
+
+.pydevproject
+.settings/
+
+# ---------------------------------
+# Testing
+# ---------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.hypothesis/
+
+# Exploratory test scripts (kept in tests/exploratory/ for reference)
+test_*.py
+*_test.py
+!tests/test_*.py
+
+# ---------------------------------
+# Jupyter
+# ---------------------------------
+.ipynb_checkpoints/
+.jupyter/
+
+# ---------------------------------
+# Data
+# ---------------------------------
+# Ignore all data folder contents except demo
+data/*
+!data/demo/
+!data/demo/**
+calib/*
+
+# Ignore outputs
+outputs/
+alpamayo/
+workzone-yolo-v12/
+
+# Ignore video files (except demo videos)
+*.mp4
+*.avi
+*.mkv
+!data/demo/**/*.mp4
+!data/demo/**/*.avi
+!data/demo/**/*.mkv
+!data/03_demo/**/*.mp4
+!data/03_demo/**/*.avi
+!data/03_demo/**/*.mkv
+
+# ---------------------------------
+# Model weights (distributed models kept)
+# ---------------------------------
 weights/*.pt
+!weights/yolo12s_hardneg_1280.pt
+!weights/yolo12s_fusion_baseline.pt
+!weights/yolo11s_finetune_1080px.pt
+!weights/scene_context_classifier.pt
+!weights/.gitkeep
+
+# ---------------------------------
+# Training outputs and artifacts
+# ---------------------------------
+runs/
+runs_workzone/
+models/
+workzone_yolo/
+lightning_logs/
+workzone_phase1_1_yolo11_1080_wandb/
+
+# ---------------------------------
+# Logs and cache
+# ---------------------------------
+*.log
+logs/
+wandb/
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ---------------------------------
+# Environment files
+# ---------------------------------
+.env
+.env.local
+.env.*.local
+
+# ---------------------------------
+# OS specific
+# ---------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+.tmp/
+*.tmp
+
+# ---------------------------------
+# OS and editor files
+# ---------------------------------
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.whl
+
+# ---------------------------------
+# Jetson App Specific
+# ---------------------------------
 weights/*.engine
 weights/*.onnx
 weights/clip/
-
-# Data & Results
-data/demo/
-results/
-*.mp4
-*.avi
-*.jpg
-*.png
-
-# Logs & Configs
-*.log
-.DS_Store
-.vscode/
+libcusparse_lt-linux-aarch64-0.6.2.3-archive/
+libcusparse_lt-linux-aarch64-0.6.2.3-archive.tar.xz
