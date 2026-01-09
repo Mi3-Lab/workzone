@@ -131,6 +131,7 @@ workzone-yolo-v12/
 weights/*.pt
 !weights/yolo12s_hardneg_1280.pt
 !weights/yolo12s_fusion_baseline.pt
+!weights/yolo11s_finetune_1080px.pt
 !weights/scene_context_classifier.pt
 !weights/.gitkeep
 
@@ -142,6 +143,7 @@ runs_workzone/
 models/
 workzone_yolo/
 lightning_logs/
+workzone_phase1_1_yolo11_1080_wandb/
 
 # ---------------------------------
 # Logs and cache

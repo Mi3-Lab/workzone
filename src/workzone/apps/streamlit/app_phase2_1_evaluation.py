@@ -73,6 +73,7 @@ logger = setup_logger(__name__)
 # Models
 HARDNEG_WEIGHTS = "weights/yolo12s_hardneg_1280.pt"
 FUSION_BASELINE_WEIGHTS = "weights/yolo12s_fusion_baseline.pt"
+YOLO11_FINETUNE_WEIGHTS = "weights/yolo11s_finetune_1080px.pt"
 
 # Dataset videos
 DEMO_VIDEOS_DIR = Path("data/03_demo/videos")
@@ -2019,13 +2020,17 @@ def main():
     st.sidebar.header("YOLO Model")
     model_choice = st.sidebar.selectbox(
         "Model",
-        ["Hard-Negative Trained", "Fusion Baseline", "Upload Custom"],
+        ["Hard-Negative Trained", "YOLOv11 Fine-tuned", "Fusion Baseline", "Upload Custom"],
         index=0
     )
 
     if model_choice == "Hard-Negative Trained":
         selected_weights = HARDNEG_WEIGHTS
         st.sidebar.success("✅ Hard-Negative Trained")
+    elif model_choice == "YOLOv11 Fine-tuned":
+        selected_weights = YOLO11_FINETUNE_WEIGHTS
+        st.sidebar.success("✅ YOLOv11 Fine-tuned")
+        st.sidebar.info("mAP50: 0.366")
     elif model_choice == "Fusion Baseline":
         selected_weights = FUSION_BASELINE_WEIGHTS
         st.sidebar.success("✅ Fusion Baseline")

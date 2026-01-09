@@ -52,6 +52,7 @@ logger = setup_logger(__name__)
 # Configuration
 FUSION_BASELINE_WEIGHTS = "weights/yolo12s_fusion_baseline.pt"  # Fusion baseline (pre hard-neg)
 HARDNEG_WEIGHTS = "weights/yolo12s_hardneg_1280.pt"  # Hard-negative trained @1280px
+YOLO11_FINETUNE_WEIGHTS = "weights/yolo11s_finetune_1080px.pt"  # YOLOv11 fine-tuned @1080px
 DEMO_VIDEOS_DIR = Path("data/demo")
 VIDEOS_COMPRESSED_DIR = Path("data/videos_compressed")
 
@@ -854,18 +855,25 @@ def main() -> None:
     model_choice = st.sidebar.selectbox(
         "YOLO Model",
         [
-            "Hard-Negative Trained (latest)",
+            "Hard-Negative Trained (YOLOv12)",
+            "YOLOv11 Fine-tuned (latest)",
             "Fusion Baseline (pre hard-neg)",
             "Upload Custom Weights"
         ],
         index=0
     )
     
-    if model_choice == "Hard-Negative Trained (latest)":
+    if model_choice == "Hard-Negative Trained (YOLOv12)":
         selected_weights = HARDNEG_WEIGHTS
         st.sidebar.success("✅ **Hard-Negative Trained Model**")
         st.sidebar.code(selected_weights, language="text")
         st.sidebar.info("84.6% false positive reduction vs baseline")
+        use_uploaded_weights = False
+    elif model_choice == "YOLOv11 Fine-tuned (latest)":
+        selected_weights = YOLO11_FINETUNE_WEIGHTS
+        st.sidebar.success("✅ **YOLOv11 Fine-tuned Model**")
+        st.sidebar.code(selected_weights, language="text")
+        st.sidebar.info("mAP50: 0.366 | Fine-tuned from yolo11s.pt")
         use_uploaded_weights = False
     elif model_choice == "Fusion Baseline (pre hard-neg)":
         selected_weights = FUSION_BASELINE_WEIGHTS
