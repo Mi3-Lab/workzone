@@ -87,6 +87,38 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+### NVIDIA Jetson Installation (Orin / Nano - JetPack 6.2)
+
+For deployment on NVIDIA Jetson devices running **JetPack 6.2 (L4T 36.4.7)** with **CUDA 12.6**, follow these specialized steps to ensure GPU/TensorRT support:
+
+#### 1. Install Specialized PyTorch Wheels
+Standard PyPI wheels do not support Jetson GPU acceleration. Use the optimized wheels for JetPack 6:
+
+```bash
+# Recommended: PyTorch 2.8.0 + Torchvision 0.23.0
+wget https://github.com/davidl-nv/torch/raw/main/torch-2.8/torch-2.8.0-cp310-cp310-linux_aarch64.whl
+wget https://github.com/davidl-nv/torch/raw/main/torch-2.8/torchvision-0.23.0-cp310-cp310-linux_aarch64.whl
+
+source venv/bin/activate
+pip install torch-2.8.0-cp310-cp310-linux_aarch64.whl torchvision-0.23.0-cp310-cp310-linux_aarch64.whl
+```
+
+#### 2. Fix System Dependencies
+If you encounter `ImportError: libcusparseLt.so.0`, manually install the missing library:
+
+```bash
+wget https://developer.download.nvidia.com/compute/cusparselt/redist/libcusparse_lt/linux-aarch64/libcusparse_lt-linux-aarch64-0.6.2.3-archive.tar.xz
+tar -xf libcusparse_lt-linux-aarch64-0.6.2.3-archive.tar.xz
+export LD_LIBRARY_PATH=$(pwd)/libcusparse_lt-linux-aarch64-0.6.2.3-archive/lib:$LD_LIBRARY_PATH
+```
+
+#### 3. Resolve NumPy ABI Conflicts
+Jetson PyTorch wheels are often compiled against NumPy 1.x. Ensure compatibility:
+
+```bash
+pip install "numpy<2"
+```
+
 ### Step 4: Verify Installation
 
 ```bash

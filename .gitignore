@@ -185,3 +185,4 @@ Thumbs.db
 
 .vscode/
 .idea/
+*.whl

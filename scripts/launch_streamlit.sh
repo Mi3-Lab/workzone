@@ -24,8 +24,16 @@ echo "✅ Virtual environment activated"
 # Set PYTHONPATH to include src directory
 echo "🔧 Setting PYTHONPATH..."
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 export PYTHONPATH="${SCRIPT_DIR}/src:$PYTHONPATH"
 echo "✅ PYTHONPATH set"
+
+# Set LD_LIBRARY_PATH for Jetson (libcusparseLt)
+if [ -d "${PROJECT_ROOT}/libcusparse_lt-linux-aarch64-0.6.2.3-archive/lib" ]; then
+    echo "🔧 Setting LD_LIBRARY_PATH for libcusparseLt..."
+    export LD_LIBRARY_PATH="${PROJECT_ROOT}/libcusparse_lt-linux-aarch64-0.6.2.3-archive/lib:$LD_LIBRARY_PATH"
+    echo "✅ LD_LIBRARY_PATH set"
+fi
 
 # Check if streamlit is installed
 if ! command -v streamlit &> /dev/null; then

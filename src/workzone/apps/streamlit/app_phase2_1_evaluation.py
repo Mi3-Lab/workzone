@@ -76,7 +76,7 @@ FUSION_BASELINE_WEIGHTS = "weights/yolo12s_fusion_baseline.pt"
 YOLO11_FINETUNE_WEIGHTS = "weights/yolo11s_finetune_1080px.pt"
 
 # Dataset videos
-DEMO_VIDEOS_DIR = Path("data/03_demo/videos")
+DEMO_VIDEOS_DIR = Path("data/demo")
 VIDEOS_COMPRESSED_DIR = Path("data/videos_compressed")
 
 # CLIP configuration
