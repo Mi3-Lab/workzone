@@ -191,8 +191,19 @@ Thumbs.db
 # ---------------------------------
 # Jetson App Specific
 # ---------------------------------
-weights/*.engine
-weights/*.onnx
+# Ignore compiled torch wheels and other large binary distributions
+*.whl
+torch-*.whl
+
+# Model weights and large artifacts
 weights/clip/
+weights/**/blobs/
+weights/**/*.safetensors
+weights/*.onnx
+weights/*.engine
+weights/*.safetensors
+weights/*.pt
+
+# libcuda/cuSPARSE archived libs
 libcusparse_lt-linux-aarch64-0.6.2.3-archive/
 libcusparse_lt-linux-aarch64-0.6.2.3-archive.tar.xz
