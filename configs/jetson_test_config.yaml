@@ -1,0 +1,15 @@
+model:
+  path: "weights/yolo11s_finetune_1080px.pt"
+  conf: 0.4
+  iou: 0.5
+  imgsz: 1088
+
+video:
+  input: "data/demo/boston_workzone_short.mp4"
+  output_dir: "results/jetson_test"
+  max_frames: 30
+
+hardware:
+  device: 0
+  half: true
+  workspace: 4
