@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-"""
-Jetson Workzone App - High Performance CLI Inference
-Optimized for Jetson Orin with TensorRT, EMA Fusion, and CLIP Verification.
-Mirrors logic from src/workzone/apps/streamlit/app_semantic_fusion.py
-"""
-
 import os
 import sys
 import time
@@ -14,231 +8,192 @@ import yaml
 from pathlib import Path
 from collections import Counter
 
-# ============================================================ 
-# 0. ENVIRONMENT SETUP
-# ============================================================ 
+# 1. ENV SETUP
 def setup_environment():
     root_dir = Path(__file__).parent.parent
     lib_path = root_dir / "libcusparse_lt-linux-aarch64-0.6.2.3-archive/lib"
-    
     if lib_path.exists():
         lib_path_str = str(lib_path.absolute())
         current_ld = os.environ.get("LD_LIBRARY_PATH", "")
-        
         if lib_path_str not in current_ld:
             if os.environ.get("GEMINI_JETSON_RESTARTED") == "1": return
-            print(f"🔧 Setting LD_LIBRARY_PATH and restarting...")
             os.environ["LD_LIBRARY_PATH"] = f"{lib_path_str}:{current_ld}"
             os.environ["GEMINI_JETSON_RESTARTED"] = "1"
-            python_exe = sys.executable
-            script_path = str(Path(sys.argv[0]).resolve())
-            new_args = [python_exe, script_path] + sys.argv[1:]
-            try: os.execv(python_exe, new_args)
-            except Exception as e:
-                print(f"❌ Critical Error: {e}"); sys.exit(1)
-
+            os.execv(sys.executable, [sys.executable] + sys.argv)
 setup_environment()
 
 import cv2
 import torch
 import numpy as np
 from ultralytics import YOLO
-try:
-    import open_clip
-    from PIL import Image
-except ImportError:
-    print("❌ Missing dependencies. Run: pip install open_clip_torch pillow rich")
-    sys.exit(1)
-
+import open_clip
+from PIL import Image
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich import box
 
+# 2. CONSTANTS
+CHANNELIZATION = {"Cone", "Drum", "Barricade", "Barrier", "Vertical Panel", "Tubular Marker", "Fence"}
+WORKERS = {"Worker", "Police Officer"}
+VEHICLES = {"Work Vehicle", "Police Vehicle"}
+MESSAGE_BOARD = {"Temporary Traffic Control Message Board", "Arrow Board"}
+TTC_SIGNS = {"Temporary Traffic Control Sign"}
+
 console = Console()
 
-# ============================================================ 
-# LOGIC FUNCTIONS
-# ============================================================ 
-
+# 3. HELPERS
 def clamp01(x): return max(0.0, min(1.0, x))
 def logistic(x): return 1.0 / (1.0 + math.exp(-x))
 def safe_div(n, d): return n / d if d > 0 else 0.0
-def ema(current, new_val, alpha):
-    if current is None: return new_val
-    return (1.0 - alpha) * current + alpha * new_val
-
-def adaptive_alpha(evidence, alpha_min=0.10, alpha_max=0.50):
-    return float(alpha_min + (alpha_max - alpha_min) * clamp01(float(evidence)))
-
-def orange_ratio_hsv(frame_bgr, p):
-    if frame_bgr is None or frame_bgr.size == 0: return 0.0
-    hsv = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    mask = (h >= p['h_low']) & (h <= p['h_high']) & (s >= p['s_th']) & (v >= p['v_th'])
-    return clamp01(float(mask.sum()) / float(mask.size))
-
-def context_boost_from_orange(ratio, center=0.08, k=30.0):
-    return clamp01(float(logistic(k * (ratio - center))))
+def ema(prev, x, alpha):
+    if prev is None: return x
+    return alpha * x + (1.0 - alpha) * prev
 
 def yolo_frame_score(names, weights):
-    CHANNELIZATION = ["Cone", "Drum", "Barricade", "Barrier", "Vertical Panel"]
-    TTC_SIGNS = ["Temporary Traffic Control Sign"]
     total = len(names)
     c = Counter()
     for n in names:
         if n in CHANNELIZATION: c["channelization"] += 1
-        elif n == "Worker": c["workers"] += 1
-        elif n == "Work Vehicle": c["vehicles"] += 1
-        elif n in ["Arrow Board", "Temporary Traffic Control Message Board"]: c["message_board"] += 1
-        elif n in TTC_SIGNS: c["ttc_signs"] += 1
+        elif n in WORKERS: c["workers"] += 1
+        elif n in VEHICLES: c["vehicles"] += 1
+        elif n in MESSAGE_BOARD: c["message_board"] += 1
+        elif n.startswith("Temporary Traffic Control Sign"): c["ttc_signs"] += 1
     
     gc = dict(c)
     raw = weights.get("bias", -0.35)
     for k in ["channelization", "workers", "vehicles", "ttc_signs", "message_board"]:
         raw += weights.get(k, 0.0) * safe_div(gc.get(k, 0), total)
-
     return float(logistic(raw * 4.0)), total
 
 def clip_frame_score(clip_bundle, device, frame_bgr, pos_emb, neg_emb):
-    preprocess = clip_bundle["preprocess"]
-    model = clip_bundle["model"]
     pil = Image.fromarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
-    x = preprocess(pil).unsqueeze(0).to(device)
+    x = clip_bundle["preprocess"](pil).unsqueeze(0).to(device)
     with torch.no_grad():
-        img = model.encode_image(x)
+        img = clip_bundle["model"].encode_image(x)
         img = img / (img.norm(dim=-1, keepdim=True) + 1e-8)
         return float((img @ pos_emb.unsqueeze(-1)).squeeze().item() - (img @ neg_emb.unsqueeze(-1)).squeeze().item())
 
-def update_state(prev_state, score, inside_f, out_f, f_conf):
-    state = prev_state
+def update_state(prev, score, inside_f, out_f, f_conf):
+    state = prev
     if state == "INSIDE":
         inside_f += 1
         if score < f_conf['exit_th'] and inside_f >= f_conf['min_inside_frames']:
-            state, out_f = "EXITING", 0
+            return "EXITING", inside_f, 0
         return state, inside_f, out_f
-
     out_f += 1
     if score >= f_conf['enter_th'] and out_f >= f_conf['min_out_frames']:
         return "INSIDE", 0, 0
-    
     if score >= f_conf['approach_th']: state = "APPROACHING"
-    elif state == "EXITING" and out_f < 10: state = "EXITING" # Persist EXITING for visibility
+    elif state == "EXITING" and out_f < 15: state = "EXITING"
     else: state = "OUT"
     return state, inside_f, out_f
 
 def draw_hud(frame, state, score, clip_active, fps):
     h, w = frame.shape[:2]
+    pad_h = 80
+    
+    # Create padded frame
+    padded = np.full((h + pad_h, w, 3), 0, dtype=np.uint8)
+    padded[pad_h:h+pad_h, 0:w] = frame
+    
     colors = {"INSIDE": (0, 0, 255), "APPROACHING": (0, 165, 255), "EXITING": (255, 0, 255), "OUT": (0, 128, 0)}
-    lbl_map = {"INSIDE": "WORK ZONE", "OUT": "OUTSIDE"}
+    lbl = {"INSIDE": "WORK ZONE", "OUT": "OUTSIDE"}.get(state, state)
     color = colors.get(state, (0, 128, 0))
     
-    overlay = frame.copy()
-    cv2.rectangle(overlay, (0, h-70), (w, h), color, -1)
-    cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
-
-    text_l = f"{lbl_map.get(state, state)} | Score: {score:.2f}"
-    cv2.putText(frame, text_l, (20, h-25), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+    # Draw on top padding
+    cv2.rectangle(padded, (0, 0), (w, pad_h), color, -1)
     
-    text_r = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
-    (tw, _), _ = cv2.getTextSize(text_r, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
-    cv2.putText(frame, text_r, (w-tw-20, h-25), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA)
-    return frame
-
-# ============================================================ 
-# MAIN
-# ============================================================ 
-
-def process_video(video_path, model, clip_bundle, config, show_display):
-    cap = cv2.VideoCapture(str(video_path))
-    if not cap.isOpened(): return None
-    w, h, fps_in = int(cap.get(3)), int(cap.get(4)), cap.get(5) or 30
-    total = int(cap.get(7))
+    # Left: State + Score
+    cv2.putText(padded, f"{lbl}", (20, 50), 1, 2.0, (255, 255, 255), 3)
+    cv2.putText(padded, f"Score: {score:.2f}", (350, 50), 1, 1.5, (200, 200, 200), 2)
     
-    out_dir = Path(config['video']['output_dir'])
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / f"fused_{video_path.name}"
-    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h))
+    # Right: FPS + CLIP
+    info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
+    (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.5, 2)
+    cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.5, (255, 255, 255), 2)
     
-    f_conf = config['fusion']
+    return padded
+
+def ensure_model(config):
+    sys.path.append(str(Path(__file__).parent))
+    from optimize_for_jetson import export_yolo_tensorrt
+    pt = config['model']['path']
+    eng = Path(pt).with_suffix('.engine')
+    if eng.exists(): return str(eng), True
+    console.print(f"🚀 Exporting {pt} to RT Cores...")
+    if export_yolo_tensorrt(pt, half=config['hardware']['half'], imgsz=config['model']['imgsz']):
+        return str(eng), True
+    return pt, False
+
+# ...
+
+def process_video(v_path, model, clip_bundle, config, show):
+    cap = cv2.VideoCapture(str(v_path))
+    w, h, fps_in, total = int(cap.get(3)), int(cap.get(4)), cap.get(5) or 30, int(cap.get(7))
+    stride = config['video'].get('stride', 1)
+    out_path = Path(config['video']['output_dir']) / f"fused_{v_path.name}"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Adjusted height for padding
+    writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
+    
+    f_c = config['fusion']
     pos_emb, neg_emb = None, None
-    if f_conf['use_clip'] and clip_bundle:
-        tokens = clip_bundle["tokenizer"]([f_conf['clip_pos_text'], f_conf['clip_neg_text']]).to("cuda")
+    if clip_bundle:
+        toks = clip_bundle["tokenizer"]([f_c['clip_pos_text'], f_c['clip_neg_text']]).to("cuda")
         with torch.no_grad():
-            txt = clip_bundle["model"].encode_text(tokens)
+            txt = clip_bundle["model"].encode_text(toks)
             txt = txt / (txt.norm(dim=-1, keepdim=True) + 1e-8)
             pos_emb, neg_emb = txt[0], txt[1]
 
-    state, yolo_ema, fused_ema, inside_f, out_f = "OUT", None, None, 0, 999
-    frame_idx, proc_count, start_t = 0, 0, time.time()
-    stride = config['video'].get('stride', 1)
-
+    state, y_ema, f_ema, in_f, out_f, f_idx, start_t = "OUT", None, None, 0, 999, 0, time.time()
     try:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret: break
-            if stride > 1 and (frame_idx % stride != 0): frame_idx += 1; continue
-            
+            if stride > 1 and (f_idx % stride != 0): f_idx += 1; continue
             t0 = time.time()
-            results = model.predict(frame, conf=config['model']['conf'], imgsz=config['model']['imgsz'], device=config['hardware']['device'], verbose=False)
-            names = [model.names[cid] for cid in results[0].boxes.cls.int().cpu().tolist()] if results[0].boxes else []
-            y_score, total_objs = yolo_frame_score(names, f_conf['weights_yolo'])
-            
-            evidence = clamp01(0.5 * (total_objs/8.0) + 0.5 * y_score)
-            alpha = adaptive_alpha(evidence, f_conf['ema_alpha']*0.4, f_conf['ema_alpha']*1.2)
-            yolo_ema = ema(yolo_ema, y_score, alpha)
-            
-            fused, clip_active = y_score, False
-            if pos_emb is not None and yolo_ema >= f_conf['clip_trigger_th']:
-                c_score = logistic(clip_frame_score(clip_bundle, "cuda", frame, pos_emb, neg_emb) * 3.0)
-                fused = (1.0 - f_conf['clip_weight']) * fused + f_conf['clip_weight'] * c_score
-                clip_active = True
-            
-            if f_conf.get("enable_context_boost") and yolo_ema < f_conf.get("context_trigger_below", 0.55):
-                ratio = orange_ratio_hsv(frame, f_conf['orange_params'])
-                fused = (1.0 - f_conf['orange_weight']) * fused + f_conf['orange_weight'] * context_boost_from_orange(ratio)
-
-            fused_ema = ema(fused_ema, clamp01(fused), alpha)
-            state, inside_f, out_f = update_state(state, float(fused_ema), inside_f, out_f, f_conf)
-            
-            annotated = draw_hud(results[0].plot(), state, float(fused_ema), clip_active, 1.0/(time.time()-t0+1e-6))
-            writer.write(annotated)
-            if show_display:
-                cv2.imshow("Jetson Fusion", cv2.resize(annotated, (1280, 720)) if w > 1280 else annotated)
-                if cv2.waitKey(1) & 0xFF == ord('q'): break
-            frame_idx += 1; proc_count += 1
-            if frame_idx % 10 == 0: print(f"\rFrame {frame_idx}/{total} | State: {state} | Score: {fused_ema:.2f}", end="")
-    except KeyboardInterrupt: pass
-    finally:
-        cap.release(); writer.release(); print()
-    return {"video": video_path.name, "frames": proc_count, "avg_fps": proc_count / (time.time() - start_t), "output": out_path.name}
+            res = model.predict(frame, conf=config['model']['conf'], imgsz=config['model']['imgsz'], device=config['hardware']['device'], verbose=False)[0]
+            names = [model.names[cid] for cid in res.boxes.cls.int().cpu().tolist()] if res.boxes else []
+            y_s, n_obj = yolo_frame_score(names, f_c['weights_yolo'])
+            alpha = float(0.1 + (0.4) * clamp01(n_obj/8.0))
+            y_ema = ema(y_ema, y_s, alpha)
+            fused, clip_on = y_s, False
+            if pos_emb is not None and y_ema >= f_c['clip_trigger_th']:
+                c_s = logistic(clip_frame_score(clip_bundle, "cuda", frame, pos_emb, neg_emb) * 3.0)
+                fused, clip_on = (1.0 - f_c['clip_weight']) * fused + f_c['clip_weight'] * c_s, True
+            f_ema = ema(f_ema, clamp01(fused), alpha)
+            state, in_f, out_f = update_state(state, f_ema, in_f, out_f, f_c)
+            ann = draw_hud(res.plot(), state, f_ema, clip_on, 1.0/(time.time()-t0+1e-6))
+            for _ in range(stride): writer.write(ann)
+            if show:
+                cv2.imshow("Jetson", cv2.resize(ann, (1280, 720)) if w > 1280 else ann)
+                if cv2.waitKey(1) == ord('q'): break
+            f_idx += 1
+            if f_idx % 10 == 0: print(f"\rFrame {f_idx}/{total} | {state} | {f_ema:.2f}", end="")
+    finally: cap.release(); writer.release(); print()
+    return {"video": v_path.name, "frames": f_idx, "avg_fps": f_idx / (time.time() - start_t), "output": out_path.name}
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     args = parser.parse_args()
-    console.print(Panel.fit("[bold green]Jetson Workzone Fusion System[/bold green]"))
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
-    m_path = config['model']['path']
-    if Path(m_path).with_suffix('.engine').exists(): m_path = str(Path(m_path).with_suffix('.engine'))
-    model = YOLO(m_path, task='detect')
-    
-    clip_bundle = None
+    m_p, _ = ensure_model(config)
+    model = YOLO(m_p, task='detect')
+    cb = None
     if config['fusion']['use_clip']:
-        console.print("🧠 Loading CLIP..."); clip_bundle = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
-        model_clip, _, preprocess = clip_bundle
-        clip_bundle = {"model": model_clip.to("cuda").eval(), "preprocess": preprocess, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}
-    
-    videos = [Path(args.input)] if args.input else list(Path(config['video']['input']).glob("*.mp4"))
+        m_c, _, prep = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
+        cb = {"model": m_c.to("cuda").eval(), "preprocess": prep, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}
+    vids = [Path(args.input)] if args.input else list(Path(config['video']['input']).glob("*.mp4"))
     results = []
-    for v in videos:
-        console.print(f"🚀 Processing {v.name}..."); res = process_video(v, model, clip_bundle, config, args.show)
+    for v in vids:
+        console.print(f"🚀 Processing {v.name}..."); res = process_video(v, model, cb, config, args.show)
         if res: results.append(res)
-    
-    table = Table(title="📊 Inference Results", box=box.ROUNDED)
-    table.add_column("Video"); table.add_column("Frames", justify="right"); table.add_column("Avg FPS", style="green"); table.add_column("Output")
-    for r in results: table.add_row(r["video"], str(r["frames"]), f"{r['avg_fps']:.1f}", r["output"])
+    table = Table(title="📊 Results")
+    table.add_column("Video"); table.add_column("FPS", style="green"); table.add_column("Output")
+    for r in results: table.add_row(r["video"], f"{r['avg_fps']:.1f}", r["output"])
     console.print(table)
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()

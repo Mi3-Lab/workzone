@@ -1,0 +1,5 @@
+[console_scripts]
+workzone-alpamayo-inspector = workzone.apps.alpamayo.alpamayo_10hz_inspector:main
+workzone-alpamayo-threaded = workzone.apps.alpamayo.alpamayo_threaded:main
+workzone-infer = workzone.cli.infer_video:main
+workzone-train = workzone.cli.train_yolo:main

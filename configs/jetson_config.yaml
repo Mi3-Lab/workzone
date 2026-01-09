@@ -1,8 +1,8 @@
 model:
-  path: "weights/yolo11s_finetune_1080px.pt"
+  path: "weights/yolo12s_hardneg_1280.pt"
   conf: 0.25
   iou: 0.70
-  imgsz: 1088
+  imgsz: 960
 
 video:
   input: "data/demo"

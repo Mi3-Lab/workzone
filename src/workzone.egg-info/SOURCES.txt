@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+src/workzone/__init__.py
+src/workzone/config.py
+src/workzone/types.py
+src/workzone.egg-info/PKG-INFO
+src/workzone.egg-info/SOURCES.txt
+src/workzone.egg-info/dependency_links.txt
+src/workzone.egg-info/entry_points.txt
+src/workzone.egg-info/requires.txt
+src/workzone.egg-info/top_level.txt
+tests/test_config.py
+tests/test_models.py
+tests/test_ocr_debug.py
+tests/test_pipelines.py
