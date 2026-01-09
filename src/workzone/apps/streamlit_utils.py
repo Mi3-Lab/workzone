@@ -191,22 +191,44 @@ def resolve_device(device_choice: str) -> str:
 # VIDEO UTILITIES
 # ============================================================
 
-def list_demo_videos(demo_dir: Path) -> List[Path]:
+def list_demo_videos(demo_dir: Path, suffixes=("*.mp4", "*.mov", "*.avi", "*.mkv")) -> List[Path]:
     """
-    List available demo videos in a directory.
+    List available demo videos in a directory. This is resilient to the Streamlit
+    app's working directory by searching a few common locations (passed `demo_dir`,
+    current working directory, and the repository root).
 
     Args:
-        demo_dir: Directory containing demo videos
+        demo_dir: Directory containing demo videos (typically "data/demo")
+        suffixes: Glob patterns to match video files
 
     Returns:
         List of video file paths
     """
-    if not demo_dir.exists():
-        logger.warning(f"Demo directory not found: {demo_dir}")
+    candidates = [demo_dir, Path.cwd() / demo_dir]
+
+    # Try resolving relative to the package root (two levels up from this file)
+    try:
+        repo_root = Path(__file__).resolve().parents[2]
+        candidates.append(repo_root / demo_dir)
+    except Exception:
+        pass
+
+    found_dir = None
+    for c in candidates:
+        if c.exists():
+            found_dir = c
+            break
+
+    if found_dir is None:
+        logger.warning(f"Demo directory not found in candidates: {candidates}")
         return []
 
-    videos = sorted(demo_dir.glob("*.mp4"))
-    logger.info(f"Found {len(videos)} demo videos in {demo_dir}")
+    videos = []
+    for pattern in suffixes:
+        videos.extend(found_dir.glob(pattern))
+
+    videos = sorted(videos)
+    logger.info(f"Found {len(videos)} demo videos in {found_dir}")
     return videos
 
 

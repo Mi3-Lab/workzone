@@ -331,10 +331,12 @@ def main() -> None:
         if not demo_videos:
             st.warning("No demo videos found")
         else:
+            # Show where demos were found to help debug working-directory issues
+            st.caption(f"Found {len(demo_videos)} demo videos in: {demo_videos[0].parent}")
             demo_names = [p.name for p in demo_videos]
             selected_name = st.selectbox("Select demo", demo_names)
             if selected_name:
-                selected_demo = DEMO_VIDEOS_DIR / selected_name
+                selected_demo = demo_videos[[p.name for p in demo_videos].index(selected_name)]
 
     run_clicked = st.button("Run Detection", type="primary")
 

@@ -2339,10 +2339,11 @@ def main():
 
     video_path = None
     if source == "Demo":
-        videos = list_videos(DEMO_VIDEOS_DIR)
+        videos = list_demo_videos(DEMO_VIDEOS_DIR)
         if videos:
+            st.caption(f"Found {len(videos)} demo videos in: {videos[0].parent}")
             video_name = st.selectbox("Demo video", [v.name for v in videos])
-            video_path = DEMO_VIDEOS_DIR / video_name
+            video_path = videos[[v.name for v in videos].index(video_name)]
     elif source == "Dataset":
         videos = list_videos(VIDEOS_COMPRESSED_DIR)
         if videos:
