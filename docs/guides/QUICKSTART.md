@@ -133,44 +133,65 @@ python scripts/review_hard_negatives.py manifest \
 
 ## Training YOLO
 
-### Basic Training
+### Basic Training (YOLO12)
 
 ```bash
-# Train on workzone dataset
-yolo train \
-  data=data/05_workzone_yolo/workzone_yolo.yaml \
-  model=yolo12s.pt \
-  epochs=100 \
-  imgsz=1280 \
-  batch=16 \
-  device=0
+# Train on workzone dataset using CLI
+python -m workzone.cli.train_yolo \
+  --model yolo12s.pt \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1280 \
+  --batch 32 \
+  --epochs 100 \
+  --device 0 \
+  --run-name yolo12_basic_training \
+  --project workzone_yolo_training
 ```
 
-### Multi-GPU Training
+### Multi-GPU Training (YOLO12)
 
 ```bash
-# Use 2 GPUs
-yolo train \
-  data=data/05_workzone_yolo/workzone_yolo.yaml \
-  model=yolo12s.pt \
-  epochs=100 \
-  imgsz=1280 \
-  batch=16 \
-  device=0,1
+# Use 2 GPUs with DDP
+python -m workzone.cli.train_yolo \
+  --model yolo12s.pt \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1280 \
+  --batch 64 \
+  --epochs 100 \
+  --device 0,1 \
+  --run-name yolo12_multi_gpu_training \
+  --project workzone_yolo_training
+```
+
+### YOLO11 Training (Latest Architecture)
+
+```bash
+# Train with YOLO11 at 1080px resolution
+python -m workzone.cli.train_yolo \
+  --model yolo11.yaml \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1080 \
+  --batch 96 \
+  --epochs 100 \
+  --device 0,1 \
+  --run-name yolo11_1080px_training \
+  --project workzone_yolo11_training
 ```
 
 ### With Hard Negatives
 
 ```bash
 # After mining and reviewing hard negatives
-yolo train \
-  data=data/05_workzone_yolo/workzone_yolo.yaml \
-  model=weights/yolo12s_fusion_baseline.pt \
-  epochs=100 \
-  imgsz=1280 \
-  batch=16 \
-  device=0,1 \
-  patience=20
+python -m workzone.cli.train_yolo \
+  --model weights/yolo12s_fusion_baseline.pt \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1280 \
+  --batch 64 \
+  --epochs 100 \
+  --device 0,1 \
+  --run-name yolo12_hardneg_training \
+  --project workzone_yolo_training \
+  --workers 8
 ```
 
 ## Understanding Outputs

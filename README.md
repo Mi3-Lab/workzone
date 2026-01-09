@@ -461,14 +461,31 @@ workzone/
 #### YOLO Fine-tuning
 
 ```bash
-cd workzone-yolo-v12/
-yolo train \
-  data=workzone.yaml \
-  model=yolo12s.pt \
-  epochs=50 \
-  imgsz=1280 \
-  batch=8 \
-  device=0
+# Fine-tune YOLO12 on workzone dataset
+python -m workzone.cli.train_yolo \
+  --model yolo12s.pt \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1280 \
+  --batch 32 \
+  --epochs 50 \
+  --device 0 \
+  --run-name yolo12_fine_tuning \
+  --project workzone_yolo_fine_tuning
+```
+
+#### YOLO11 Training (Latest Architecture)
+
+```bash
+# Train with YOLO11 at 1080px resolution using 2 GPUs
+python -m workzone.cli.train_yolo \
+  --model yolo11.yaml \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1080 \
+  --batch 96 \
+  --epochs 100 \
+  --device 0,1 \
+  --run-name yolo11_1080px_training \
+  --project workzone_yolo11_training
 ```
 
 #### Scene Context Training
@@ -508,8 +525,15 @@ python scripts/review_hard_negatives.py
 python scripts/consolidate_candidates.py
 
 # 4. Retrain YOLO
-cd workzone-yolo-v12/
-yolo train data=workzone_hardneg.yaml model=yolo12s.pt ...
+python -m workzone.cli.train_yolo \
+  --model yolo12s.pt \
+  --data data/05_workzone_yolo/workzone_yolo.yaml \
+  --imgsz 1280 \
+  --device 0,1 \
+  --batch 32 \
+  --epochs 100 \
+  --run-name yolo12_hardneg_training \
+  --project workzone_yolo_training
 ```
 
 ---
