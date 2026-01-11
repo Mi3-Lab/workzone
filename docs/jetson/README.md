@@ -32,7 +32,24 @@ venv/bin/python scripts/jetson_app.py --input data/demo/boston.mp4 --show
 venv/bin/python scripts/jetson_app.py
 ```
 
-### 3. Configuration (`configs/jetson_config.yaml`)
+### 3. Speed Limit Detection (DLA Optimized) 🏎️
+We have a specialized, ultra-fast script running on the Orin's **DLA (Deep Learning Accelerator)** for speed limit verification.
+
+**Features:**
+- **DLA Usage:** Offloads inference to DLA Core 1, leaving GPU free for other tasks.
+- **Threaded Capture:** Decouples video reading from inference for maximum FPS.
+- **Anti-Flicker:** Uses ByteTrack + Temporal Voting (confirms sign only after stable detection).
+- **Driver Banner:** Displays a large "SPEED LIMIT XX mph" banner when confirmed.
+
+```bash
+# Run DLA Speed Limit Tracker
+venv/bin/python3 scripts/speed_limit_dla.py \
+  --input data/videos/boston_snippet.mp4 \
+  --show \
+  --stride 2
+```
+
+### 4. Configuration (`configs/jetson_config.yaml`)
 
 | Parameter | Default | Description |
 | :--- | :--- | :--- |
@@ -60,3 +77,5 @@ venv/bin/python scripts/jetson_app.py
 
 ## 📊 Outputs
 Results are saved to `results/jetson/` as encoded MP4 files with the HUD overlay.
+
+```

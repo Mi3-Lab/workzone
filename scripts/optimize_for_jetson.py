@@ -39,6 +39,7 @@ def export_yolo_tensorrt(
     int8: bool = False,
     imgsz: int = 1280,
     workspace: int = 4,
+    dla_core: int = None,
 ):
     """
     Export YOLO model to TensorRT engine.
@@ -73,15 +74,51 @@ def export_yolo_tensorrt(
     
     # Export
     try:
-        export_path = model.export(
-            format='engine',
-            device=0,
-            half=half,
-            int8=int8,
-            imgsz=imgsz,
-            workspace=workspace,
-            verbose=True,
-        )
+        # Step 1: Export to ONNX first (required for trtexec DLA conversion)
+        onnx_path = Path(model_path).with_suffix('.onnx')
+        if not onnx_path.exists():
+            print("Exporting to ONNX...")
+            onnx_path = model.export(format='onnx', imgsz=imgsz, half=half, opset=12)
+        else:
+            print(f"✓ ONNX model already exists at {onnx_path}")
+        
+        # Step 2: Use trtexec for DLA if requested
+        if dla_core is not None:
+            engine_path = Path(onnx_path).with_suffix('.engine')
+            print(f"🚀 Using trtexec to build for DLA Core {dla_core}...")
+            import subprocess
+            
+            # Common Jetson path for trtexec
+            trtexec_bin = "/usr/src/tensorrt/bin/trtexec"
+            if not Path(trtexec_bin).exists():
+                trtexec_bin = "trtexec" # Fallback to path
+
+            cmd = [
+                trtexec_bin,
+                f"--onnx={onnx_path}",
+                f"--saveEngine={engine_path}",
+                f"--useDLACore={dla_core}",
+                "--allowGPUFallback",
+                f"--memPoolSize=workspace:{workspace * 1024}",
+            ]
+            if half: cmd.append("--fp16")
+            
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"❌ trtexec failed: {result.stderr}")
+                return False
+            export_path = str(engine_path)
+        else:
+            # Standard GPU Export
+            export_path = model.export(
+                format='engine',
+                device=0,
+                half=half,
+                int8=int8,
+                imgsz=imgsz,
+                workspace=workspace,
+                verbose=True,
+            )
         
         engine_path = Path(export_path)
         engine_size = engine_path.stat().st_size / 1e6
@@ -214,6 +251,12 @@ def main():
         default=4,
         help="TensorRT workspace size in GB (default: 4)"
     )
+    parser.add_argument(
+        "--dla",
+        type=int,
+        choices=[0, 1],
+        help="Use DLA core (0 or 1) instead of GPU"
+    )
     
     args = parser.parse_args()
     
@@ -236,6 +279,7 @@ def main():
             int8=args.int8,
             imgsz=args.imgsz,
             workspace=args.workspace,
+            dla_core=args.dla
         )
         sys.exit(0 if success else 1)
     else:
