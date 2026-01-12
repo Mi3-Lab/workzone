@@ -1,38 +1,30 @@
 model:
-  path: "weights/yolo12s_hardneg_1280.pt"
+  path: weights/yolo12s_hardneg_1280.pt
   conf: 0.25
-  iou: 0.70
+  iou: 0.7
   imgsz: 960
-
 video:
-  input: "data/demo"
-  output_dir: "results/jetson"
+  input: data/demo
+  output_dir: results/jetson
   max_frames: 0
   stride: 2
-
 hardware:
   device: 0
   half: true
   workspace: 4
-
 fusion:
-  ema_alpha: 0.25
-  
-  # State Machine
-  enter_th: 0.70
-  exit_th: 0.45
-  approach_th: 0.55
-  min_inside_frames: 25
-  min_out_frames: 15
-
-  # CLIP
+  ema_alpha: 0.1
+  enter_th: 0.5
+  exit_th: 0.3
+  approach_th: 0.2
+  min_inside_frames: 6
+  min_out_frames: 20
   use_clip: true
-  clip_pos_text: "a road work zone with traffic cones, barriers, workers, construction signs"
-  clip_neg_text: "a normal road with no construction and no work zone"
+  clip_pos_text: a road work zone with traffic cones, barriers, workers, construction
+    signs
+  clip_neg_text: a normal road with no construction and no work zone
   clip_weight: 0.35
-  clip_trigger_th: 0.45
-
-  # YOLO Semantic Weights
+  clip_trigger_th: 0.2
   weights_yolo:
     bias: -0.35
     channelization: 0.9
@@ -40,11 +32,9 @@ fusion:
     vehicles: 0.5
     ttc_signs: 0.7
     message_board: 0.6
-
-  # Context Boost (Orange)
   enable_context_boost: true
   orange_weight: 0.25
-  context_trigger_below: 0.55
+  context_trigger_below: 0.5
   orange_params:
     h_low: 5
     h_high: 25

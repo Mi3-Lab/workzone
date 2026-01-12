@@ -1,0 +1,14 @@
+/home/mi3-jetson/workzone/venv/lib/python3.10/site-packages/open_clip/factory.py:450: UserWarning: QuickGELU mismatch between final model config (quick_gelu=False) and pretrained tag 'openai' (quick_gelu=True).
+  warnings.warn(
+🚀 Processing 
+boston_2bdb5a72602342a5991b402beb8b7ab4_000000_02640_snippet.mp4...
+Loading weights/yolo12s_hardneg_1280.engine for TensorRT inference...
+[01/11/2026-20:14:56] [TRT] [I] Loaded engine size: 22 MiB
+[01/11/2026-20:14:56] [TRT] [I] [MemUsageChange] TensorRT-managed allocation in IExecutionContext creation: CPU +1, GPU +81, now: CPU 1, GPU 98 (MiB)
+
+                                   📊 Results                                   
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ Video                             ┃ FPS  ┃ Output                            ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ boston_2bdb5a72602342a5991b402be… │ 34.2 │ fused_boston_2bdb5a72602342a5991… │
+└───────────────────────────────────┴──────┴───────────────────────────────────┘
