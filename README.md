@@ -1,16 +1,16 @@
 # Work Zone Detection System (Jetson Orin)
 
-This repository contains the high-performance inference system for Work Zone Detection, optimized for NVIDIA Jetson Orin. It implements a multi-stage fusion pipeline combining object detection, semantic verification, and temporal smoothing.
+This repository contains the high-performance inference system for Work Zone Detection, optimized for NVIDIA Jetson Orin. It implements a multi-stage fusion pipeline combining object detection (YOLO), semantic verification (CLIP), and robust temporal state tracking.
 
 ## 🚀 Features
 
-- **Object Detection:** YOLO11 (Optimized with TensorRT) for detecting cones, workers, and signs.
-- **Semantic Fusion:** OpenCLIP integration to verify scene context (e.g., "is this actually a construction zone?").
-- **Temporal Consistency:** Adaptive EMA (Exponential Moving Average) and a State Machine (`OUT` -> `APPROACHING` -> `INSIDE` -> `EXITING`) to prevent flicker.
-- **Optimized for Jetson:**
-  - `FP16` precision via TensorRT.
-  - Custom environment handling for `libcusparseLt`.
-  - Minimal overhead CLI HUD.
+- **Object Detection:** YOLO12 (Optimized with TensorRT FP16) for detecting cones, workers, and signs.
+- **Semantic Fusion:** OpenCLIP integration to verify scene context (e.g., "is this actually a construction zone?") with reduced stride for performance.
+- **Robust State Machine:** Phase 2.1 logic with Adaptive EMA and Hysteresis (`OUT` -> `APPROACHING` -> `INSIDE` -> `EXITING`) to prevent false alerts and flickering.
+- **Production Ready:**
+  - **Threaded Video I/O:** Asynchronous writing for maximum FPS.
+  - **Fast Resize:** Optimized pre-processing for CLIP.
+  - **GUI Launcher:** Complete control panel for easy operation.
 
 ## 🛠️ Installation
 
@@ -18,21 +18,31 @@ This repository contains the high-performance inference system for Work Zone Det
    ```bash
    # Run the setup script to create venv and install dependencies
    ./scripts/setup.sh
-   
-   # Or manually:
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
    ```
 
 2. **Download Models:**
-   - Place your YOLO `.pt` model in `weights/`.
-   - CLIP weights are downloaded automatically to `weights/clip` on first run (or run `scripts/setup_clip.py`).
+   - Place your YOLO `.pt` model in `weights/` (default: `yolo12s_hardneg_1280.pt`).
+   - CLIP weights are downloaded automatically to `weights/clip` on first run.
 
 ## 🏃 Usage
 
-### 1. Jetson Fusion App (Main)
-The primary application for real-time inference and fusion.
+### 1. Jetson Launcher (GUI) - Recommended
+The easiest way to configure and run the system.
+
+```bash
+make jetson
+# or
+python3 scripts/jetson_launcher.py
+```
+
+**Features:**
+- **Stateless:** Resets to default settings every time you open it.
+- **Import/Export:** Save your tuning presets to JSON files.
+- **Hot Reload:** Adjust thresholds and weights while the video is running to see immediate effects.
+- **Run/Stop:** Control the inference process directly.
+
+### 2. CLI Usage (Advanced)
+For headless operation or scripting.
 
 ```bash
 # Run on all videos in data/demo
@@ -42,30 +52,32 @@ venv/bin/python scripts/jetson_app.py
 venv/bin/python scripts/jetson_app.py --input data/demo/charlotte.mp4 --show
 ```
 
-### 2. Configuration
-All parameters (thresholds, CLIP prompts, weights) are in `configs/jetson_config.yaml`.
+## 🏗️ Architecture (Phase 2.1)
 
-```yaml
-fusion:
-  use_clip: true
-  clip_trigger_th: 0.45  # Only run CLIP if YOLO confidence > 0.45
-  weights_yolo:          # Semantic weights for state calculation
-    channelization: 0.9
-    workers: 0.8
-```
+1. **Detection (YOLO):** Runs at ~30-70 FPS using TensorRT FP16.
+2. **Scoring Logic:** Linear combination of semantic groups (Channelization, Workers, Vehicles) with fixed normalization.
+3. **Adaptive Smoothing:** EMA Alpha adapts based on "Evidence" (Score + Object Density).
+4. **Verification (CLIP):** Triggers when YOLO score > 0.20 to verify context.
+5. **State Machine:**
+   - **OUT:** Score < 0.20
+   - **APPROACHING:** Score >= 0.20 (With hysteresis: drops to OUT only if < 0.15)
+   - **INSIDE:** Score >= 0.42 for 6 frames.
+   - **EXITING:** Score < 0.30 (Persistent for 20 frames).
 
-## 🏗️ Architecture
+## ⚙️ Configuration
 
-1. **Detection (YOLO):** Runs at ~30-70 FPS (depending on resolution).
-2. **Logic (Python):** Calculates a frame score based on object density and types.
-3. **Verification (CLIP):** Triggers *only* when YOLO detects potential activity. Compares frame embedding against "road work" vs "normal road".
-4. **State Machine:**
-   - **OUT:** Score < 0.55
-   - **APPROACHING:** Score > 0.55
-   - **INSIDE:** Score > 0.70 for N frames.
-   - **EXITING:** Score drops < 0.45 (persistent for visibility).
+The system uses `configs/jetson_config.yaml`.
+- **Defaults:** The launcher loads from `configs/jetson_config_defaults.yaml`.
+- **Runtime:** The app reads from `configs/jetson_config.yaml`.
+
+| Parameter | Default | Description |
+| :--- | :--- | :--- |
+| `enter_th` | `0.42` | Threshold to enter INSIDE state |
+| `approach_th` | `0.20` | Threshold to trigger APPROACHING |
+| `clip_trigger_th` | `0.20` | When to run CLIP verification |
+| `ema_alpha` | `0.10` | Smoothing factor (lower = smoother) |
 
 ## ⚠️ Troubleshooting
 
-- **`libcusparseLt` Error:** The app automatically handles `LD_LIBRARY_PATH`. If it fails, ensure `libcusparse_lt-linux-aarch64...` is present in the root.
-- **Performance:** Set `imgsz: 960` in `jetson_config.yaml` for a balance of speed and accuracy.
+- **`libcusparseLt` Error:** The app automatically handles `LD_LIBRARY_PATH`. If it fails, ensure the library folder exists in the root.
+- **Performance:** Ensure you run `sudo jetson_clocks` before inference for maximum performance.
