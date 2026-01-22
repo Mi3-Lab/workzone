@@ -1,13 +1,13 @@
 model:
   path: weights/yolo12s_hardneg_1280.pt
-  conf: 0.4
+  conf: 0.25
   iou: 0.7
   imgsz: 960
 video:
   input: data/demo
   output_dir: results/jetson
   max_frames: 0
-  stride: 1
+  stride: 2
 hardware:
   device: 0
   half: true
@@ -20,11 +20,12 @@ fusion:
   min_inside_frames: 6
   min_out_frames: 20
   use_clip: true
-  clip_pos_text: a road work zone with traffic cones, barriers, workers, construction
-    signs
-  clip_neg_text: a normal road with no construction and no work zone
+  clip_pos_text: driving through a road construction work zone with orange barrels,
+    traffic cones, concrete barriers, lane closure signs, and construction workers
+  clip_neg_text: driving on a clear normal road or highway with regular traffic, no
+    construction, no orange cones, no work zone barriers
   clip_weight: 0.35
-  clip_trigger_th: 0.2
+  clip_trigger_th: 0.15
   weights_yolo:
     bias: -0.35
     channelization: 0.9
@@ -42,3 +43,5 @@ fusion:
     v_th: 50
     center: 0.08
     k: 30.0
+  use_per_cue: true
+  per_cue_th: 0.05
