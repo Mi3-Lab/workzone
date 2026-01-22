@@ -13,7 +13,7 @@ help:
 	@echo "  make app-semantic-fusion  Run the Semantic Fusion Streamlit app"
 	@echo "  make app-basic-detection  Run the Basic Detection Streamlit app"
 	@echo "  make app-advanced-scoring Run the Advanced Scoring Streamlit app"
-	@echo "  make jetson            Run the Jetson Orin Launcher (GUI)"
+	@echo "  make workzone         Run the Jetson Orin Launcher (GUI)"
 	@echo "  make test              Run all tests"
 	@echo "  make test-coverage     Run tests with coverage report"
 	@echo "  make lint              Run linting checks"
@@ -51,8 +51,8 @@ app:
 
 streamlit: app
 
-jetson:
-	@echo "🚀 Launching Jetson Orin Controller..."
+workzone:
+	@echo "🚀 Launching WorkZone Controller (Jetson Orin)..."
 	@python3 scripts/jetson_launcher.py
 
 test:

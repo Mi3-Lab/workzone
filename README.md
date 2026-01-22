@@ -30,7 +30,7 @@ This repository contains the high-performance inference system for Work Zone Det
 The easiest way to configure and run the system.
 
 ```bash
-make jetson
+make workzone
 # or
 python3 scripts/jetson_launcher.py
 ```
