@@ -143,10 +143,42 @@ class PerCueVerifier:
             # Cosine similarity
             sim_pos = float(torch.dot(img_emb, pos_emb))
             sim_neg = float(torch.dot(img_emb, neg_emb))
-            
-            # Score: Difference + Logistic or just raw difference
-            # Using raw diff similar to global clip
             return sim_pos - sim_neg
+
+    def verify_batch(self, crops_bgr, categories):
+        """Batch processing for multiple crops."""
+        if not crops_bgr: return []
+        
+        # Preprocess all crops
+        inputs = []
+        valid_indices = []
+        
+        for i, (crop, cat) in enumerate(zip(crops_bgr, categories)):
+            if cat in self.embeddings:
+                pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+                inputs.append(self.clip["preprocess"](pil_img))
+                valid_indices.append(i)
+        
+        if not inputs: return [0.0] * len(crops_bgr)
+        
+        # Stack and encode
+        img_batch = torch.stack(inputs).to(self.device)
+        scores = [0.0] * len(crops_bgr)
+        
+        with torch.no_grad():
+            img_embs = self.clip["model"].encode_image(img_batch)
+            img_embs = img_embs / (img_embs.norm(dim=-1, keepdim=True) + 1e-8)
+            
+            for i, idx in enumerate(valid_indices):
+                cat = categories[idx]
+                pos_emb, neg_emb = self.embeddings[cat]
+                emb = img_embs[i]
+                
+                sim_pos = float(torch.dot(emb, pos_emb))
+                sim_neg = float(torch.dot(emb, neg_emb))
+                scores[idx] = sim_pos - sim_neg
+                
+        return scores
 
 console = Console()
 
@@ -343,6 +375,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     # Per-Cue Settings
     use_per_cue = f_c.get('use_per_cue', True)
     per_cue_th = f_c.get('per_cue_th', 0.05)
+    PER_CUE_INTERVAL = 3 # Run verification every N frames
     
     try:
         while cap.isOpened():
@@ -376,42 +409,75 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
             counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
             plot_boxes = [] # (xyxy, label, color)
             
+            # Collect candidates
+            candidates = [] # (box, name, conf, category, crop)
+            
             if res.boxes:
                 boxes = res.boxes.xyxy.cpu().numpy()
                 cls_ids = res.boxes.cls.int().cpu().tolist()
                 confs = res.boxes.conf.cpu().tolist()
                 
+                h_img, w_img = frame.shape[:2]
+                
                 for box, cid, conf in zip(boxes, cls_ids, confs):
                     name = model.names[cid]
                     cat = get_cue_category(name)
                     
-                    verified = False
-                    color = (128, 128, 128) # Gray default
-                    
-                    if cat and per_cue_verifier and use_per_cue:
-                        # Extract crop with padding
+                    if cat:
+                        # Extract crop for potential verification
                         x1, y1, x2, y2 = map(int, box)
-                        h_img, w_img = frame.shape[:2]
                         pad = 10
                         x1, y1 = max(0, x1-pad), max(0, y1-pad)
                         x2, y2 = min(w_img, x2+pad), min(h_img, y2+pad)
                         crop = frame[y1:y2, x1:x2]
-                        
-                        if crop.size > 0:
-                            score = per_cue_verifier.verify(crop, cat)
-                            if score > per_cue_th:
-                                verified = True
-                                counts[cat] += 1
-                                color = (0, 255, 0) # Green verified
-                            else:
-                                color = (0, 0, 255) # Red rejected
-                    elif cat:
-                        # If no verifier (CLIP disabled) or disabled per-cue, count automatically
-                        counts[cat] += 1
-                        color = (0, 255, 255) # Yellow (unverified but counted)
-                    
-                    # Store for drawing
-                    plot_boxes.append((box, f"{name} {conf:.2f}", color))
+                        candidates.append({'box': box, 'name': name, 'conf': conf, 'cat': cat, 'crop': crop})
+            
+            # Logic:
+            # 1. If Per-Cue Disabled or No Verifier -> Accept all (Yellow)
+            # 2. If Per-Cue Enabled:
+            #    a. Active Frame -> Run Batch Verify -> Green/Red
+            #    b. Skip Frame -> Accept all (Yellow) to maintain responsiveness/counts
+            
+            should_verify = (use_per_cue and per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
+            
+            if should_verify and candidates:
+                # Batch Verification
+                batch_crops = [c['crop'] for c in candidates]
+                batch_cats = [c['cat'] for c in candidates]
+                
+                # Limit batch size to prevent OOM/Latency spikes (e.g., max 12 objects)
+                MAX_BATCH = 12
+                if len(batch_crops) > MAX_BATCH:
+                    batch_crops = batch_crops[:MAX_BATCH]
+                    batch_cats = batch_cats[:MAX_BATCH]
+                    # Remaining candidates default to unverified
+                
+                if batch_crops:
+                    scores = per_cue_verifier.verify_batch(batch_crops, batch_cats)
+                else:
+                    scores = []
+                
+                # Assign results
+                for i, c in enumerate(candidates):
+                    if i < len(scores):
+                        s = scores[i]
+                        if s > per_cue_th:
+                            counts[c['cat']] += 1
+                            plot_boxes.append((c['box'], f"{c['name']} {s:.2f}", (0, 255, 0))) # Green
+                        else:
+                            # Rejected
+                            plot_boxes.append((c['box'], f"{c['name']} {s:.2f}", (0, 0, 255))) # Red
+                    else:
+                        # Overflow candidates (accepted fallback)
+                        counts[c['cat']] += 1
+                        plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255))) # Yellow
+            
+            else:
+                # Fallback / Skip Frame
+                for c in candidates:
+                    counts[c['cat']] += 1
+                    # Yellow indicates "Unverified" (YOLO raw confidence)
+                    plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255)))
 
             # Draw custom boxes
             annotated = frame.copy()
