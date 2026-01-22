@@ -391,179 +391,252 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     last_clip_score = 0.0
     clip_interval = 3 
     
-    # Per-Cue Settings
-    use_per_cue = f_c.get('use_per_cue', True)
-    per_cue_th = f_c.get('per_cue_th', 0.05)
-    PER_CUE_INTERVAL = 3 # Run verification every N frames
-    
-    try:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret: break
+class FrameProcessor(threading.Thread):
+    def __init__(self, source, config, model, clip_bundle, result_queue):
+        super().__init__(daemon=True)
+        self.source = source
+        self.config = config
+        self.model = model
+        self.result_queue = result_queue
+        self.running = True
+        self.cap = None
+        
+        # Logic State
+        self.state = "OUT"
+        self.y_ema = None
+        self.f_ema = None
+        self.in_f = 0
+        self.out_f = 0
+        self.last_clip_score = 0.0
+        self.counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
+        
+        # Components
+        self.per_cue_verifier = None
+        if clip_bundle:
+            self.per_cue_verifier = PerCueVerifier(clip_bundle, config['hardware']['device'])
+            self.clip_bundle = clip_bundle
             
-            # Hot-Reload Config (Check every 5 frames for responsiveness)
-            if config_path and f_idx % 5 == 0:
-                try:
-                    mtime = os.path.getmtime(config_path)
-                    if mtime > last_config_mtime:
-                        with open(config_path, 'r') as f: new_cfg = yaml.safe_load(f)
-                        config = new_cfg # Update GLOBAL config object
-                        f_c = config['fusion']
-                        use_per_cue = f_c.get('use_per_cue', True)
-                        per_cue_th = f_c.get('per_cue_th', 0.05)
-                        last_config_mtime = mtime
-                        # Print clear confirmation of reload (clearing line first)
-                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')} | PerCueTh: {per_cue_th}")
-                except Exception: pass
+            # Global CLIP embeddings
+            f_c = config['fusion']
+            toks = clip_bundle["tokenizer"]([f_c['clip_pos_text'], f_c['clip_neg_text']]).to(config['hardware']['device'])
+            with torch.no_grad():
+                txt = clip_bundle["model"].encode_text(toks)
+                txt = txt / (txt.norm(dim=-1, keepdim=True) + 1e-8)
+                self.pos_emb, self.neg_emb = txt[0], txt[1]
+        else:
+            self.clip_bundle = None
+            self.pos_emb, self.neg_emb = None, None
+
+    def run(self):
+        # Open Capture
+        is_camera = str(self.source).isdigit() or (isinstance(self.source, str) and self.source.startswith("/dev/video"))
+        if is_camera:
+            try:
+                self.cap = cv2.VideoCapture(int(self.source))
+            except:
+                self.cap = cv2.VideoCapture(self.source)
+        else:
+            self.cap = cv2.VideoCapture(str(self.source))
             
-            stride = config['video'].get('stride', 1)
+        f_idx = 0
+        f_c = self.config['fusion']
+        use_per_cue = f_c.get('use_per_cue', True)
+        per_cue_th = f_c.get('per_cue_th', 0.05)
+        PER_CUE_INTERVAL = 3
+        clip_interval = 3
+        stride = self.config['video'].get('stride', 1)
+
+        while self.running and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if not ret:
+                self.running = False
+                break
+            
             if stride > 1 and (f_idx % stride != 0):
                 f_idx += 1
                 continue
+
+            # YOLO
+            res = self.model.predict(frame, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
+                                   device=self.config['hardware']['device'], verbose=False)[0]
             
-            t0 = time.time()
-            res = model.predict(frame, conf=config['model']['conf'], imgsz=config['model']['imgsz'], device=config['hardware']['device'], verbose=False)[0]
-            
-            # --- Per-Cue Verification & Counting ---
-            counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
-            plot_boxes = [] # (xyxy, label, color)
-            
-            # Collect candidates
-            candidates = [] # (box, name, conf, category, crop)
+            # --- Per-Cue Verification ---
+            plot_boxes = []
+            candidates = []
             
             if res.boxes:
                 boxes = res.boxes.xyxy.cpu().numpy()
                 cls_ids = res.boxes.cls.int().cpu().tolist()
                 confs = res.boxes.conf.cpu().tolist()
-                
                 h_img, w_img = frame.shape[:2]
                 
                 for box, cid, conf in zip(boxes, cls_ids, confs):
-                    name = model.names[cid]
+                    name = self.model.names[cid]
                     cat = get_cue_category(name)
-                    
                     if cat:
-                        # Extract crop for potential verification
                         x1, y1, x2, y2 = map(int, box)
                         pad = 10
                         x1, y1 = max(0, x1-pad), max(0, y1-pad)
                         x2, y2 = min(w_img, x2+pad), min(h_img, y2+pad)
                         crop = frame[y1:y2, x1:x2]
                         candidates.append({'box': box, 'name': name, 'conf': conf, 'cat': cat, 'crop': crop})
+
+            should_verify = (use_per_cue and self.per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
             
-            # Logic:
-            # 1. If Per-Cue Disabled or No Verifier -> Accept all (Yellow)
-            # 2. If Per-Cue Enabled:
-            #    a. Active Frame -> Run Batch Verify -> Green/Red
-            #    b. Skip Frame -> Accept all (Yellow) to maintain responsiveness/counts
-            
-            should_verify = (use_per_cue and per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
+            # Reset counts for this frame (instantaneous)
+            # In a threaded model, we might want to smooth counts, but for now we reset
+            curr_counts = {k:0 for k in self.counts} 
             
             if should_verify and candidates:
-                # Batch Verification
-                # OPTIMIZATION: Sort by confidence and limit batch size
                 candidates.sort(key=lambda x: x['conf'], reverse=True)
-                
-                # Limit batch size to prevent Latency spikes (Strict Budget: 4)
                 MAX_BATCH = 4
-                candidates_to_verify = candidates[:MAX_BATCH]
-                remaining_candidates = candidates[MAX_BATCH:]
+                to_verify = candidates[:MAX_BATCH]
+                remaining = candidates[MAX_BATCH:]
                 
-                batch_crops = [c['crop'] for c in candidates_to_verify]
-                batch_cats = [c['cat'] for c in candidates_to_verify]
+                scores = self.per_cue_verifier.verify_batch([c['crop'] for c in to_verify], [c['cat'] for c in to_verify])
                 
-                if batch_crops:
-                    scores = per_cue_verifier.verify_batch(batch_crops, batch_cats)
-                else:
-                    scores = []
+                for i, c in enumerate(to_verify):
+                    if i < len(scores) and scores[i] > per_cue_th:
+                        curr_counts[c['cat']] += 1
+                        plot_boxes.append((c['box'], f"{c['name']} {scores[i]:.2f}", (0, 255, 0)))
+                    else:
+                        plot_boxes.append((c['box'], f"{c['name']} {scores[i] if i<len(scores) else 0:.2f}", (0, 0, 255)))
                 
-                # Assign results for Verified
-                for i, c in enumerate(candidates_to_verify):
-                    if i < len(scores):
-                        s = scores[i]
-                        if s > per_cue_th:
-                            counts[c['cat']] += 1
-                            plot_boxes.append((c['box'], f"{c['name']} {s:.2f}", (0, 255, 0))) # Green
-                        else:
-                            # Rejected
-                            plot_boxes.append((c['box'], f"{c['name']} {s:.2f}", (0, 0, 255))) # Red
-                
-                # Assign results for Overflow (Unverified -> Yellow)
-                for c in remaining_candidates:
-                    counts[c['cat']] += 1
+                for c in remaining:
+                    curr_counts[c['cat']] += 1
                     plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255)))
-            
             else:
-                # Fallback / Skip Frame
                 for c in candidates:
-                    counts[c['cat']] += 1
-                    # Yellow indicates "Unverified" (YOLO raw confidence)
+                    curr_counts[c['cat']] += 1
                     plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255)))
+            
+            self.counts = curr_counts
 
-            # Draw custom boxes
-            annotated = frame.copy()
-            for box, label, color in plot_boxes:
-                p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
-                cv2.rectangle(annotated, p1, p2, color, 2)
-                cv2.putText(annotated, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
-
-            y_s, feats = yolo_frame_score(counts, f_c['weights_yolo'])
+            # --- Logic Fusion ---
+            y_s, feats = yolo_frame_score(self.counts, f_c['weights_yolo'])
+            
+            # EMA
             total_objs = feats.get("total_objs", 0.0)
-            obj_evidence = clamp01(total_objs / 8.0)
-            score_evidence = clamp01(y_s)
-            evidence = clamp01(0.5 * obj_evidence + 0.5 * score_evidence)
+            evidence = clamp01(0.5 * clamp01(total_objs / 8.0) + 0.5 * clamp01(y_s))
+            alpha = adaptive_alpha(evidence, f_c.get('ema_alpha', 0.25) * 0.4, f_c.get('ema_alpha', 0.25) * 1.2)
+            self.y_ema = ema(self.y_ema, y_s, alpha)
             
-            user_alpha = f_c.get('ema_alpha', 0.25)
-            alpha_eff = adaptive_alpha(evidence, alpha_min=user_alpha * 0.4, alpha_max=user_alpha * 1.2)
-            y_ema = ema(y_ema, y_s, alpha_eff)
-            
+            # Global CLIP
             fused, clip_on = y_s, False
-            if pos_emb is not None and y_ema >= f_c['clip_trigger_th']:
+            if self.pos_emb is not None and self.y_ema >= f_c['clip_trigger_th']:
                 if f_idx % clip_interval == 0:
-                    c_s = logistic(clip_frame_score(clip_bundle, "cuda", frame, pos_emb, neg_emb) * 3.0)
-                    last_clip_score = c_s
-                else: c_s = last_clip_score
-                fused, clip_on = (1.0 - f_c['clip_weight']) * fused + f_c['clip_weight'] * c_s, True
+                    self.last_clip_score = logistic(clip_frame_score(self.clip_bundle, self.config['hardware']['device'], 
+                                                                   frame, self.pos_emb, self.neg_emb) * 3.0)
+                fused = (1.0 - f_c['clip_weight']) * fused + f_c['clip_weight'] * self.last_clip_score
+                clip_on = True
             
-            if f_c.get('enable_context_boost', False) and y_ema < f_c.get('context_trigger_below', 0.55):
+            # Context Boost
+            if f_c.get('enable_context_boost', False) and self.y_ema < f_c.get('context_trigger_below', 0.55):
                 hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
                 op = f_c.get('orange_params', {})
-                h_low = f_c.get('orange_h_low', op.get('h_low', 5))
-                h_high = f_c.get('orange_h_high', op.get('h_high', 25))
-                s_th = f_c.get('orange_s_th', op.get('s_th', 80))
-                v_th = f_c.get('orange_v_th', op.get('v_th', 50))
-                mask = cv2.inRange(hsv, np.array([h_low, s_th, v_th]), np.array([h_high, 255, 255]))
+                h_low, h_high = f_c.get('orange_h_low', 5), f_c.get('orange_h_high', 25)
+                mask = cv2.inRange(hsv, np.array([h_low, 80, 50]), np.array([h_high, 255, 255]))
                 ratio = np.count_nonzero(mask) / mask.size
-                center = f_c.get('orange_center', op.get('center', 0.08))
-                k = f_c.get('orange_k', op.get('k', 30.0))
-                ctx_score = clamp01(float(logistic(k * (ratio - center))))
+                ctx = clamp01(float(logistic(30.0 * (ratio - 0.08))))
                 cw = f_c.get('orange_weight', 0.25)
-                fused = (1.0 - cw) * fused + cw * ctx_score
+                fused = (1.0 - cw) * fused + cw * ctx
 
-            alpha_eff_fused = adaptive_alpha(evidence, alpha_min=user_alpha * 0.4, alpha_max=user_alpha * 1.2)
-            f_ema = ema(f_ema, clamp01(fused), alpha_eff_fused)
-            state, in_f, out_f = update_state(state, f_ema, in_f, out_f, f_c)
-            fps_cur = 1.0/(time.time()-t0+1e-6)
-            ann = draw_hud(annotated, state, f_ema, clip_on, fps_cur)
-            for _ in range(stride): writer.write(ann)
-            if show:
-                elapsed = time.time() - t0
-                target_delay = (1.0 / fps_in) * stride
-                wait_ms = max(1, int((target_delay - elapsed) * 1000))
-                cv2.imshow("Jetson", cv2.resize(ann, (1280, 720)) if w > 1280 else ann)
-                if cv2.waitKey(wait_ms) == ord('q'): break
+            self.f_ema = ema(self.f_ema, clamp01(fused), alpha)
+            self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, f_c)
+            
+            # Pack Result
+            result = {
+                "frame": frame,
+                "plot_boxes": plot_boxes,
+                "state": self.state,
+                "score": self.f_ema,
+                "clip_on": clip_on,
+                "fps_proc": 0.0 # Placeholder
+            }
+            
+            # Blocking put with timeout to allow exit
+            try:
+                self.result_queue.put(result, timeout=1.0)
+            except queue.Full:
+                # Drop oldest if full to keep latency low
+                try: self.result_queue.get_nowait()
+                except: pass
+                self.result_queue.put(result)
+            
             f_idx += 1
-            if f_idx % 30 == 0:
-                _score, _feats = yolo_frame_score(counts, f_c['weights_yolo'])
-                print(f"\r[DEBUG] Frame {f_idx} | Score: {_score:.2f} | Cues: {_feats} | Alpha: {alpha_eff:.3f} | State: {state}", end="")
+        
+        self.cap.release()
+        self.running = False
+
+def process_video(source, model, clip_bundle, config, show, config_path=None):
+    # Setup Output
+    is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
+    source_name = f"camera_{source}" if is_camera else Path(source).name
+    timestamp = int(time.time())
+    out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Thread communication
+    result_queue = queue.Queue(maxsize=3) # Small buffer
+    processor = FrameProcessor(source, config, model, clip_bundle, result_queue)
+    processor.start()
+    
+    # Wait for first frame
+    try:
+        first_res = result_queue.get(timeout=10.0)
+        h, w = first_res["frame"].shape[:2]
+        fps_in = 30 # Default/Target
+    except:
+        console.print("[red]Failed to start video stream.[/red]")
+        return None
+
+    writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
+    
+    # Main UI Loop
+    t_last_render = time.time()
+    frames_rendered = 0
+    start_t = time.time()
+    
+    last_result = first_res
+    
+    try:
+        while processor.running or not result_queue.empty():
+            # Try get new frame (Non-blocking or short timeout)
+            try:
+                # If we are ahead of schedule, we can wait a bit
+                res = result_queue.get(timeout=0.005)
+                last_result = res
+            except queue.Empty:
+                pass # Reuse last result (Zero-Order Hold for smooth UI)
+            
+            # Render Logic
+            frame = last_result["frame"].copy()
+            for box, label, color in last_result["plot_boxes"]:
+                p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+                cv2.rectangle(frame, p1, p2, color, 2)
+                cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
+            
+            fps_real = frames_rendered / (time.time() - start_t + 1e-6)
+            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real)
+            
+            writer.write(hud)
+            
+            if show:
+                cv2.imshow("Jetson WorkZone", cv2.resize(hud, (1280, 720)) if w > 1280 else hud)
+                if cv2.waitKey(1) == ord('q'):
+                    processor.running = False
+                    break
+            
+            frames_rendered += 1
+            
     except KeyboardInterrupt:
-        pass
-    finally: 
-        cap.release()
+        processor.running = False
+    finally:
+        processor.join()
         writer.release()
         cv2.destroyAllWindows()
-        print()
-    return {"video": source_name, "frames": f_idx, "avg_fps": f_idx / (time.time() - start_t), "output": out_path.name}
+        
+    return {"video": source_name, "frames": frames_rendered, "avg_fps": frames_rendered / (time.time() - start_t), "output": out_path.name}
 
 def main():
     parser = argparse.ArgumentParser()
