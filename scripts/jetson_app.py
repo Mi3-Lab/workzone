@@ -42,6 +42,29 @@ VEHICLES = {"Work Vehicle", "Police Vehicle"}
 MESSAGE_BOARD = {"Temporary Traffic Control Message Board", "Arrow Board"}
 TTC_SIGNS = {"Temporary Traffic Control Sign"}
 
+CUE_PROMPTS = {
+    "channelization": {
+        "pos": ["traffic cone", "orange construction barrel", "orange and white striped barricade", "road barrier", "vertical panel marker"],
+        "neg": ["tree trunk", "street light pole", "mailbox", "pedestrian", "car wheel", "fire hydrant", "electricity pole", "bush"]
+    },
+    "workers": {
+        "pos": ["construction worker in high-visibility safety vest", "person wearing hard hat and safety gear", "road worker"],
+        "neg": ["pedestrian in casual clothes", "business person in suit", "runner", "cyclist", "mannequin", "statue"]
+    },
+    "vehicles": {
+        "pos": ["yellow construction excavator", "dump truck", "pickup truck with flashing amber lights", "road roller", "utility work truck"],
+        "neg": ["sedan car", "family suv", "sports car", "motorcycle", "city bus", "taxi"]
+    },
+    "ttc_signs": {
+        "pos": ["orange diamond construction sign", "road work ahead sign", "temporary traffic control sign", "white rectangular speed limit sign"],
+        "neg": ["commercial billboard advertisement", "shop sign", "street name sign", "parking sign", "restaurant sign"]
+    },
+    "message_board": {
+        "pos": ["electronic arrow board trailer", "variable message sign with lights", "digital traffic sign"],
+        "neg": ["parked cargo trailer", "billboard", "back of a truck", "container"]
+    }
+}
+
 class ThreadedVideoWriter:
     def __init__(self, path, fourcc, fps, frame_size, queue_size=128):
         self.writer = cv2.VideoWriter(path, fourcc, fps, frame_size)
@@ -71,6 +94,60 @@ class ThreadedVideoWriter:
         self.thread.join()
         self.writer.release()
 
+class PerCueVerifier:
+    def __init__(self, clip_bundle, device):
+        self.clip = clip_bundle
+        self.device = device
+        self.embeddings = {}
+        self._precompute_embeddings()
+    
+    def _precompute_embeddings(self):
+        # Pre-compute embeddings for all cue categories
+        if not self.clip: return
+        tokenizer = self.clip["tokenizer"]
+        model = self.clip["model"]
+        
+        for category, prompts in CUE_PROMPTS.items():
+            # Encode positives
+            pos_toks = tokenizer(prompts["pos"]).to(self.device)
+            neg_toks = tokenizer(prompts["neg"]).to(self.device)
+            
+            with torch.no_grad():
+                pos_emb = model.encode_text(pos_toks)
+                pos_emb = pos_emb / (pos_emb.norm(dim=-1, keepdim=True) + 1e-8)
+                pos_mean = pos_emb.mean(dim=0) # Average positive embedding
+                pos_mean = pos_mean / (pos_mean.norm() + 1e-8)
+                
+                neg_emb = model.encode_text(neg_toks)
+                neg_emb = neg_emb / (neg_emb.norm(dim=-1, keepdim=True) + 1e-8)
+                neg_mean = neg_emb.mean(dim=0) # Average negative embedding
+                neg_mean = neg_mean / (neg_mean.norm() + 1e-8)
+                
+                self.embeddings[category] = (pos_mean, neg_mean)
+        print("[PerCueVerifier] Embeddings pre-computed for: ", list(self.embeddings.keys()))
+
+    def verify(self, crop_bgr, category):
+        if category not in self.embeddings: return 0.0
+        
+        # Preprocess crop
+        pil_img = Image.fromarray(cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB))
+        img_input = self.clip["preprocess"](pil_img).unsqueeze(0).to(self.device)
+        
+        pos_emb, neg_emb = self.embeddings[category]
+        
+        with torch.no_grad():
+            img_emb = self.clip["model"].encode_image(img_input)
+            img_emb = img_emb / (img_emb.norm(dim=-1, keepdim=True) + 1e-8)
+            img_emb = img_emb.squeeze()
+            
+            # Cosine similarity
+            sim_pos = float(torch.dot(img_emb, pos_emb))
+            sim_neg = float(torch.dot(img_emb, neg_emb))
+            
+            # Score: Difference + Logistic or just raw difference
+            # Using raw diff similar to global clip
+            return sim_pos - sim_neg
+
 console = Console()
 
 # 3. HELPERS
@@ -89,21 +166,30 @@ def adaptive_alpha(evidence, alpha_min, alpha_max):
 def is_ttc_sign(name):
     return name.startswith("Temporary Traffic Control Sign")
 
-def yolo_frame_score(names, weights):
+def get_cue_category(name):
+    if name in CHANNELIZATION: return "channelization"
+    if name in WORKERS: return "workers"
+    if name in VEHICLES: return "vehicles"
+    if is_ttc_sign(name): return "ttc_signs"
+    if name in MESSAGE_BOARD: return "message_board"
+    return None
+
+def yolo_frame_score(counts, weights):
     """
     Compute semantic score matching app_phase2_1_evaluation.py
-    Linear combination with fixed normalizers (5.0, 3.0, etc.)
+    Accepts counts dict directly.
     """
-    count_channelization = sum(1 for name in names if name in CHANNELIZATION)
-    count_workers = sum(1 for name in names if name in WORKERS)
-    count_vehicles = sum(1 for name in names if name in VEHICLES)
-    count_ttc = sum(1 for name in names if is_ttc_sign(name))
-    count_msg = sum(1 for name in names if name in MESSAGE_BOARD)
+    count_channelization = counts.get("channelization", 0)
+    count_workers = counts.get("workers", 0)
+    count_vehicles = counts.get("vehicles", 0)
+    count_ttc = counts.get("ttc_signs", 0)
+    count_msg = counts.get("message_board", 0)
     
     total_objs = count_channelization + count_workers + count_vehicles + count_ttc + count_msg
 
-    score = float(weights.get("bias", 0.0))
-    # Weights and divisors from app_phase2_1_evaluation.py
+    # Bias adjusted to -0.35 to match Streamlit
+    score = float(weights.get("bias", -0.35))
+    
     score += float(weights.get("channelization", 0.9)) * safe_div(count_channelization, 5.0)
     score += float(weights.get("workers", 0.8)) * safe_div(count_workers, 3.0)
     score += float(weights.get("vehicles", 0.5)) * safe_div(count_vehicles, 2.0)
@@ -208,43 +294,130 @@ def ensure_model(config):
         return str(eng), True
     return str(path_in), False
 
-def process_video(v_path, model, clip_bundle, config, show, config_path=None):
-    cap = cv2.VideoCapture(str(v_path))
+def process_video(source, model, clip_bundle, config, show, config_path=None):
+    # Determine if source is a camera (int or /dev/video)
+    is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
+    
+    if is_camera:
+        # Camera setup
+        try:
+            cam_idx = int(source)
+            cap = cv2.VideoCapture(cam_idx)
+        except ValueError:
+            cap = cv2.VideoCapture(source)
+        source_name = f"camera_{source}"
+    else:
+        # File setup
+        source_path = Path(source)
+        cap = cv2.VideoCapture(str(source_path))
+        source_name = source_path.name
+
     w, h, fps_in, total = int(cap.get(3)), int(cap.get(4)), cap.get(5) or 30, int(cap.get(7))
     stride = config['video'].get('stride', 1)
-    out_path = Path(config['video']['output_dir']) / f"fused_{v_path.name}"
+    
+    # Timestamped output to avoid overwrites and handle camera streams unique names
+    timestamp = int(time.time())
+    out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    
     writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
     f_c = config['fusion']
     last_config_mtime = os.path.getmtime(config_path) if config_path else 0
     pos_emb, neg_emb = None, None
+    per_cue_verifier = None
+    
     if clip_bundle:
         toks = clip_bundle["tokenizer"]([f_c['clip_pos_text'], f_c['clip_neg_text']]).to("cuda")
         with torch.no_grad():
             txt = clip_bundle["model"].encode_text(toks)
             txt = txt / (txt.norm(dim=-1, keepdim=True) + 1e-8)
             pos_emb, neg_emb = txt[0], txt[1]
+        
+        # Initialize Per-Cue Verifier
+        per_cue_verifier = PerCueVerifier(clip_bundle, "cuda")
+
     state, y_ema, f_ema, in_f, out_f, f_idx, start_t = "OUT", None, None, 0, 999, 0, time.time()
     last_clip_score = 0.0
     clip_interval = 3 
+    
+    # Per-Cue Settings
+    PER_CUE_TH = 0.05 # Slightly positive evidence needed
+    
     try:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret: break
-            if config_path and f_idx % 30 == 0:
+            
+            # Hot-Reload Config (Check every 5 frames for responsiveness)
+            if config_path and f_idx % 5 == 0:
                 try:
                     mtime = os.path.getmtime(config_path)
                     if mtime > last_config_mtime:
                         with open(config_path, 'r') as f: new_cfg = yaml.safe_load(f)
-                        f_c = new_cfg['fusion']
+                        config = new_cfg # Update GLOBAL config object
+                        f_c = config['fusion']
                         last_config_mtime = mtime
+                        # Print clear confirmation of reload (clearing line first)
+                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')}")
                 except Exception: pass
-            if stride > 1 and (f_idx % stride != 0): f_idx += 1; continue
+            
+            stride = config['video'].get('stride', 1)
+            if stride > 1 and (f_idx % stride != 0):
+                f_idx += 1
+                continue
+            
             t0 = time.time()
             res = model.predict(frame, conf=config['model']['conf'], imgsz=config['model']['imgsz'], device=config['hardware']['device'], verbose=False)[0]
-            names = [model.names[cid] for cid in res.boxes.cls.int().cpu().tolist()] if res.boxes else []
             
-            y_s, feats = yolo_frame_score(names, f_c['weights_yolo'])
+            # --- Per-Cue Verification & Counting ---
+            counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
+            plot_boxes = [] # (xyxy, label, color)
+            
+            if res.boxes:
+                boxes = res.boxes.xyxy.cpu().numpy()
+                cls_ids = res.boxes.cls.int().cpu().tolist()
+                confs = res.boxes.conf.cpu().tolist()
+                
+                for box, cid, conf in zip(boxes, cls_ids, confs):
+                    name = model.names[cid]
+                    cat = get_cue_category(name)
+                    
+                    verified = False
+                    color = (128, 128, 128) # Gray default
+                    
+                    if cat and per_cue_verifier:
+                        # Extract crop with padding
+                        x1, y1, x2, y2 = map(int, box)
+                        h_img, w_img = frame.shape[:2]
+                        pad = 10
+                        x1, y1 = max(0, x1-pad), max(0, y1-pad)
+                        x2, y2 = min(w_img, x2+pad), min(h_img, y2+pad)
+                        crop = frame[y1:y2, x1:x2]
+                        
+                        if crop.size > 0:
+                            score = per_cue_verifier.verify(crop, cat)
+                            if score > PER_CUE_TH:
+                                verified = True
+                                counts[cat] += 1
+                                color = (0, 255, 0) # Green verified
+                            else:
+                                color = (0, 0, 255) # Red rejected
+                    elif cat:
+                        # If no verifier (CLIP disabled), count automatically but default color
+                        counts[cat] += 1
+                        color = (0, 255, 255) # Yellow (unverified but counted)
+                    
+                    # Store for drawing
+                    plot_boxes.append((box, f"{name} {conf:.2f}", color))
+
+            # Draw custom boxes
+            annotated = frame.copy()
+            for box, label, color in plot_boxes:
+                p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+                cv2.rectangle(annotated, p1, p2, color, 2)
+                cv2.putText(annotated, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
+
+            y_s, feats = yolo_frame_score(counts, f_c['weights_yolo'])
             total_objs = feats.get("total_objs", 0.0)
             obj_evidence = clamp01(total_objs / 8.0)
             score_evidence = clamp01(y_s)
@@ -281,7 +454,7 @@ def process_video(v_path, model, clip_bundle, config, show, config_path=None):
             f_ema = ema(f_ema, clamp01(fused), alpha_eff_fused)
             state, in_f, out_f = update_state(state, f_ema, in_f, out_f, f_c)
             fps_cur = 1.0/(time.time()-t0+1e-6)
-            ann = draw_hud(res.plot(), state, f_ema, clip_on, fps_cur)
+            ann = draw_hud(annotated, state, f_ema, clip_on, fps_cur)
             for _ in range(stride): writer.write(ann)
             if show:
                 elapsed = time.time() - t0
@@ -291,13 +464,16 @@ def process_video(v_path, model, clip_bundle, config, show, config_path=None):
                 if cv2.waitKey(wait_ms) == ord('q'): break
             f_idx += 1
             if f_idx % 30 == 0:
-                _score, _feats = yolo_frame_score(names, f_c['weights_yolo'])
+                _score, _feats = yolo_frame_score(counts, f_c['weights_yolo'])
                 print(f"\r[DEBUG] Frame {f_idx} | Score: {_score:.2f} | Cues: {_feats} | Alpha: {alpha_eff:.3f} | State: {state}", end="")
+    except KeyboardInterrupt:
+        pass
     finally: 
         cap.release()
         writer.release()
+        cv2.destroyAllWindows()
         print()
-    return {"video": v_path.name, "frames": f_idx, "avg_fps": f_idx / (time.time() - start_t), "output": out_path.name}
+    return {"video": source_name, "frames": f_idx, "avg_fps": f_idx / (time.time() - start_t), "output": out_path.name}
 
 def main():
     parser = argparse.ArgumentParser()
@@ -310,11 +486,25 @@ def main():
     if config['fusion']['use_clip']:
         m_c, _, prep = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
         cb = {"model": m_c.to("cuda").eval(), "preprocess": prep, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}
-    vids = [Path(args.input)] if args.input else list(Path(config['video']['input']).glob("*.mp4"))
+    
+    # Determine input sources
+    if args.input and (args.input.isdigit() or args.input.startswith("/dev/video")):
+        # Single camera source
+        sources = [args.input]
+    elif args.input:
+        # File or Directory
+        p = Path(args.input)
+        sources = [p] if p.is_file() else list(p.glob("*.mp4"))
+    else:
+        # Default config directory
+        sources = list(Path(config['video']['input']).glob("*.mp4"))
+
     results = []
-    for v in vids:
-        console.print(f"🚀 Processing {v.name}..."); res = process_video(v, model, cb, config, args.show, config_path=args.config)
+    for src in sources:
+        console.print(f"🚀 Processing {src}..."); 
+        res = process_video(src, model, cb, config, args.show, config_path=args.config)
         if res: results.append(res)
+    
     table = Table(title="📊 Results")
     table.add_column("Video"); table.add_column("FPS", style="green"); table.add_column("Output")
     for r in results: table.add_row(r["video"], f"{r['avg_fps']:.1f}", r["output"])

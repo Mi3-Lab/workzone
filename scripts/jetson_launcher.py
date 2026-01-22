@@ -209,15 +209,39 @@ class JetsonLauncher(tk.Tk):
     def setup_general_tab(self):
         parent = self.tab_general
         # Video Input
-        lf_vid = ttk.LabelFrame(parent, text="Input Video")
+        lf_vid = ttk.LabelFrame(parent, text="Input Source")
         lf_vid.pack(fill=tk.X, padx=10, pady=5)
-        f_vid = tk.Frame(lf_vid)
-        f_vid.pack(fill=tk.X, padx=5, pady=5)
         
+        # Input Mode Selection
+        self.input_mode = tk.StringVar(value="file")
+        f_mode = tk.Frame(lf_vid)
+        f_mode.pack(fill=tk.X, padx=5, pady=2)
+        ttk.Radiobutton(f_mode, text="File / Folder", variable=self.input_mode, value="file", command=self.toggle_input_mode).pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(f_mode, text="Live Camera", variable=self.input_mode, value="camera", command=self.toggle_input_mode).pack(side=tk.LEFT, padx=10)
+
+        # File Input Frame
+        self.f_file_input = tk.Frame(lf_vid)
+        self.f_file_input.pack(fill=tk.X, padx=5, pady=5)
         self.video_path_var = tk.StringVar(value=self.config_data.get('video', {}).get('input', ''))
-        ttk.Entry(f_vid, textvariable=self.video_path_var).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-        ttk.Button(f_vid, text="Browse File", command=self.browse_video_file).pack(side=tk.LEFT)
-        ttk.Button(f_vid, text="Folder", command=self.browse_video_folder).pack(side=tk.LEFT, padx=5)
+        ttk.Entry(self.f_file_input, textvariable=self.video_path_var).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        ttk.Button(self.f_file_input, text="Browse File", command=self.browse_video_file).pack(side=tk.LEFT)
+        ttk.Button(self.f_file_input, text="Folder", command=self.browse_video_folder).pack(side=tk.LEFT, padx=5)
+
+        # Camera Input Frame
+        self.f_cam_input = tk.Frame(lf_vid)
+        # Packed conditionally in toggle_input_mode
+        ttk.Label(self.f_cam_input, text="Camera Index:").pack(side=tk.LEFT, padx=5)
+        
+        self.camera_idx_var = tk.StringVar(value="4")
+        self.combo_cam = ttk.Combobox(self.f_cam_input, textvariable=self.camera_idx_var, 
+                                      values=["0", "1", "2", "3", "4", "5", "6"], width=5)
+        self.combo_cam.pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(self.f_cam_input, text="Preview", command=self.preview_camera).pack(side=tk.LEFT, padx=5)
+        ttk.Label(self.f_cam_input, text="(Select or Type)").pack(side=tk.LEFT, padx=5)
+
+        # Initialize visibility
+        self.toggle_input_mode()
 
         # Model
         lf_mod = ttk.LabelFrame(parent, text="Model")
@@ -255,6 +279,29 @@ class JetsonLauncher(tk.Tk):
         
         self.show_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(lf_hw, text="Show Window", variable=self.show_var).pack(side=tk.LEFT, padx=10)
+
+    def toggle_input_mode(self):
+        mode = self.input_mode.get()
+        if mode == "file":
+            self.f_cam_input.pack_forget()
+            self.f_file_input.pack(fill=tk.X, padx=5, pady=5)
+        else:
+            self.f_file_input.pack_forget()
+            self.f_cam_input.pack(fill=tk.X, padx=5, pady=5)
+
+    def preview_camera(self):
+        idx = self.camera_idx_var.get()
+        # Sanitize index
+        clean_idx = ''.join(filter(str.isdigit, str(idx))) if str(idx).isdigit() else idx
+        
+        preview_script = ROOT_DIR / "scripts/preview_camera.py"
+        cmd = [str(VENV_PYTHON), str(preview_script), str(clean_idx)]
+        
+        try:
+            subprocess.Popen(cmd)
+            self.status_var.set(f"Preview launched for Camera {clean_idx}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to launch preview: {e}")
 
     # ---------------- TAB 2: WEIGHTS & LOGIC ----------------
     def setup_logic_tab(self):
@@ -343,7 +390,21 @@ class JetsonLauncher(tk.Tk):
         s = tk.Scale(f, from_=vmin, to=vmax, resolution=res, orient=tk.HORIZONTAL)
         s.set(val)
         s.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Hot-Reload: Save config when slider is released
+        s.bind("<ButtonRelease-1>", lambda event: self.auto_save())
         return s
+
+    def auto_save(self):
+        """Silently save config to trigger hot-reload in running app"""
+        if self.process is not None:
+            self.sync_ui_to_config()
+            try:
+                with open(CONFIG_PATH, 'w') as f:
+                    yaml.dump(self.config_data, f, sort_keys=False)
+                # Flash status briefly
+                self.status_var.set("Config updated (Hot-Reload) ⚡")
+                self.after(1000, lambda: self.status_var.set("Running Inference..."))
+            except: pass
 
     def create_action_buttons(self):
         f = tk.Frame(self, pady=10)
@@ -360,8 +421,16 @@ class JetsonLauncher(tk.Tk):
         
         # Run Button
         self.btn_run = tk.Button(f, text="🚀 RUN INFERENCE", bg="#27ae60", fg="white", font=("Arial", 12, "bold"), 
-                            command=self.run_inference, height=2)
+                            command=self.toggle_inference, height=2)
         self.btn_run.pack(side=tk.RIGHT, padx=20, fill=tk.X, expand=True)
+        
+        # Handle Window Close
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        if self.process is not None:
+            self.stop_inference()
+        self.destroy()
 
     def browse_video_file(self):
         f = filedialog.askopenfilename(initialdir=str(ROOT_DIR / "data"), title="Select Video File",
@@ -385,19 +454,27 @@ class JetsonLauncher(tk.Tk):
                 rel_files.append(f)
         return sorted(list(set(rel_files)))
 
-    def run_inference(self):
-        # STOP Logic
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
-            self.status_var.set("Stopping...")
-            return
+    def toggle_inference(self):
+        if self.process is not None:
+            self.stop_inference()
+        else:
+            self.start_inference()
 
-        # START Logic
+    def start_inference(self):
         if not self.save_config(): return
             
         cmd = [str(VENV_PYTHON), str(SCRIPT_PATH)]
-        input_path = self.video_path_var.get()
-        if input_path: cmd.extend(["--input", input_path])
+        
+        # Explicitly pass the config path to ensure sync
+        cmd.extend(["--config", str(CONFIG_PATH)])
+        
+        # Select input based on mode
+        if self.input_mode.get() == "camera":
+            input_val = self.camera_idx_var.get()
+        else:
+            input_val = self.video_path_var.get()
+            
+        if input_val: cmd.extend(["--input", input_val])
         if self.show_var.get(): cmd.append("--show")
             
         self.status_var.set(f"Running: {' '.join(cmd)}")
@@ -405,11 +482,23 @@ class JetsonLauncher(tk.Tk):
         
         try:
             self.process = subprocess.Popen(cmd, cwd=str(ROOT_DIR))
-            self.btn_run.config(text="🛑 STOP", bg="#c0392b")
+            self.btn_run.config(text="🛑 STOP INFERENCE", bg="#c0392b")
             self.monitor_process()
         except Exception as e:
             messagebox.showerror("Execution Error", str(e))
             self.status_var.set("Error starting process")
+
+    def stop_inference(self):
+        if self.process:
+            self.status_var.set("Stopping...")
+            self.process.terminate()
+            try:
+                self.process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self.process.kill()
+            self.process = None
+            self.btn_run.config(text="🚀 RUN INFERENCE", bg="#27ae60")
+            self.status_var.set("Stopped")
 
     def monitor_process(self):
         if self.process is not None:
