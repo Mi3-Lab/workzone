@@ -102,6 +102,8 @@ class PerCueVerifier:
         self.clip = clip_bundle
         self.device = device
         self.embeddings = {}
+        # Enable FP16 for speed on Jetson Orin
+        self.use_fp16 = True 
         self._precompute_embeddings()
     
     def _precompute_embeddings(self):
@@ -136,56 +138,64 @@ class PerCueVerifier:
                     inactive_mean = inactive_mean / (inactive_mean.norm() + 1e-8)
                 
                 self.embeddings[category] = (pos_mean, neg_mean, inactive_mean)
-        print("[PerCueVerifier] Embeddings pre-computed for: ", list(self.embeddings.keys()))
+        print("[PerCueVerifier] Embeddings pre-computed (FP16 enabled)")
 
     def verify(self, crop_bgr, category):
-        # Single verify not used in optimized batch mode, but updating for consistency
+        # Single verify not used in optimized batch mode
         if category not in self.embeddings: return 0.0
         return self.verify_batch([crop_bgr], [category])[0]
 
     def verify_batch(self, crops_bgr, categories):
-        """Batch processing for multiple crops with Contextual Rejection."""
+        """Optimized Batch processing."""
         if not crops_bgr: return []
         
-        # Preprocess all crops
+        # Preprocess all crops (Fast OpenCV Resize)
         inputs = []
         valid_indices = []
         
         for i, (crop, cat) in enumerate(zip(crops_bgr, categories)):
-            if cat in self.embeddings:
-                pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
+            if cat in self.embeddings and crop.size > 0:
+                # OPTIMIZATION: Resize with OpenCV (C++) instead of PIL
+                # CLIP standard size is 224x224
+                resized = cv2.resize(crop, (224, 224), interpolation=cv2.INTER_LINEAR)
+                rgb = cv2.cvtColor(resized, cv2.COLOR_BGR2RGB)
+                pil_img = Image.fromarray(rgb)
+                
+                # Preprocess (ToTensor + Normalize)
                 inputs.append(self.clip["preprocess"](pil_img))
                 valid_indices.append(i)
         
         if not inputs: return [0.0] * len(crops_bgr)
         
-        # Stack and encode
+        # Stack and encode (Force FP16 context if model supports it)
         img_batch = torch.stack(inputs).to(self.device)
-        scores = [0.0] * len(crops_bgr)
         
-        with torch.no_grad():
+        # Auto-cast to FP16 if available (Orin optimization)
+        with torch.no_grad(), torch.autocast(device_type='cuda', enabled=self.use_fp16):
             img_embs = self.clip["model"].encode_image(img_batch)
             img_embs = img_embs / (img_embs.norm(dim=-1, keepdim=True) + 1e-8)
             
-            for i, idx in enumerate(valid_indices):
-                cat = categories[idx]
-                pos_emb, neg_emb, inactive_emb = self.embeddings[cat]
-                emb = img_embs[i]
-                
-                sim_pos = float(torch.dot(emb, pos_emb))
-                sim_neg = float(torch.dot(emb, neg_emb))
-                
-                # Contextual Rejection Logic
-                reject_score = sim_neg
-                if inactive_emb is not None:
-                    sim_inactive = float(torch.dot(emb, inactive_emb))
-                    # If it looks more like "inactive/stacked" than "active/road", REJECT HARD
-                    if sim_inactive > sim_pos:
-                        scores[idx] = -1.0 # Hard reject
-                        continue
-                    reject_score = max(sim_neg, sim_inactive)
-                
-                scores[idx] = sim_pos - reject_score
+        scores = [0.0] * len(crops_bgr)
+        
+        # Calculate Scores
+        for i, idx in enumerate(valid_indices):
+            cat = categories[idx]
+            pos_emb, neg_emb, inactive_emb = self.embeddings[cat]
+            emb = img_embs[i]
+            
+            sim_pos = float(torch.dot(emb, pos_emb))
+            sim_neg = float(torch.dot(emb, neg_emb))
+            
+            # Contextual Rejection Logic
+            reject_score = sim_neg
+            if inactive_emb is not None:
+                sim_inactive = float(torch.dot(emb, inactive_emb))
+                if sim_inactive > sim_pos:
+                    scores[idx] = -1.0 # Hard reject
+                    continue
+                reject_score = max(sim_neg, sim_inactive)
+            
+            scores[idx] = sim_pos - reject_score
                 
         return scores
 
@@ -451,23 +461,24 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
             
             if should_verify and candidates:
                 # Batch Verification
-                batch_crops = [c['crop'] for c in candidates]
-                batch_cats = [c['cat'] for c in candidates]
+                # OPTIMIZATION: Sort by confidence and limit batch size
+                candidates.sort(key=lambda x: x['conf'], reverse=True)
                 
-                # Limit batch size to prevent OOM/Latency spikes (e.g., max 12 objects)
-                MAX_BATCH = 12
-                if len(batch_crops) > MAX_BATCH:
-                    batch_crops = batch_crops[:MAX_BATCH]
-                    batch_cats = batch_cats[:MAX_BATCH]
-                    # Remaining candidates default to unverified
+                # Limit batch size to prevent Latency spikes (Strict Budget: 4)
+                MAX_BATCH = 4
+                candidates_to_verify = candidates[:MAX_BATCH]
+                remaining_candidates = candidates[MAX_BATCH:]
+                
+                batch_crops = [c['crop'] for c in candidates_to_verify]
+                batch_cats = [c['cat'] for c in candidates_to_verify]
                 
                 if batch_crops:
                     scores = per_cue_verifier.verify_batch(batch_crops, batch_cats)
                 else:
                     scores = []
                 
-                # Assign results
-                for i, c in enumerate(candidates):
+                # Assign results for Verified
+                for i, c in enumerate(candidates_to_verify):
                     if i < len(scores):
                         s = scores[i]
                         if s > per_cue_th:
@@ -476,10 +487,11 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                         else:
                             # Rejected
                             plot_boxes.append((c['box'], f"{c['name']} {s:.2f}", (0, 0, 255))) # Red
-                    else:
-                        # Overflow candidates (accepted fallback)
-                        counts[c['cat']] += 1
-                        plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255))) # Yellow
+                
+                # Assign results for Overflow (Unverified -> Yellow)
+                for c in remaining_candidates:
+                    counts[c['cat']] += 1
+                    plot_boxes.append((c['box'], f"{c['name']}", (0, 255, 255)))
             
             else:
                 # Fallback / Skip Frame
