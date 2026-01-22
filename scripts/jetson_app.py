@@ -341,7 +341,8 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     clip_interval = 3 
     
     # Per-Cue Settings
-    PER_CUE_TH = 0.05 # Slightly positive evidence needed
+    use_per_cue = f_c.get('use_per_cue', True)
+    per_cue_th = f_c.get('per_cue_th', 0.05)
     
     try:
         while cap.isOpened():
@@ -356,9 +357,11 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                         with open(config_path, 'r') as f: new_cfg = yaml.safe_load(f)
                         config = new_cfg # Update GLOBAL config object
                         f_c = config['fusion']
+                        use_per_cue = f_c.get('use_per_cue', True)
+                        per_cue_th = f_c.get('per_cue_th', 0.05)
                         last_config_mtime = mtime
                         # Print clear confirmation of reload (clearing line first)
-                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')}")
+                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')} | PerCueTh: {per_cue_th}")
                 except Exception: pass
             
             stride = config['video'].get('stride', 1)
@@ -385,7 +388,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                     verified = False
                     color = (128, 128, 128) # Gray default
                     
-                    if cat and per_cue_verifier:
+                    if cat and per_cue_verifier and use_per_cue:
                         # Extract crop with padding
                         x1, y1, x2, y2 = map(int, box)
                         h_img, w_img = frame.shape[:2]
@@ -396,14 +399,14 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                         
                         if crop.size > 0:
                             score = per_cue_verifier.verify(crop, cat)
-                            if score > PER_CUE_TH:
+                            if score > per_cue_th:
                                 verified = True
                                 counts[cat] += 1
                                 color = (0, 255, 0) # Green verified
                             else:
                                 color = (0, 0, 255) # Red rejected
                     elif cat:
-                        # If no verifier (CLIP disabled), count automatically but default color
+                        # If no verifier (CLIP disabled) or disabled per-cue, count automatically
                         counts[cat] += 1
                         color = (0, 255, 255) # Yellow (unverified but counted)
                     

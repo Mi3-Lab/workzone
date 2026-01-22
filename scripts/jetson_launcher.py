@@ -120,6 +120,10 @@ class JetsonLauncher(tk.Tk):
         self.ctx_boost.set(f.get('enable_context_boost', True))
         self.orange_weight.set(f.get('orange_weight', 0.25))
         self.ctx_trigger.set(f.get('context_trigger_below', 0.55))
+        
+        # Per-Cue
+        self.per_cue_var.set(f.get('use_per_cue', True))
+        self.per_cue_th_scale.set(f.get('per_cue_th', 0.05))
 
     def import_preset(self):
         f = filedialog.askopenfilename(title="Import JSON Preset", filetypes=(("JSON files", "*.json"),))
@@ -186,6 +190,10 @@ class JetsonLauncher(tk.Tk):
         self.config_data['fusion']['enable_context_boost'] = bool(self.ctx_boost.get())
         self.config_data['fusion']['orange_weight'] = float(self.orange_weight.get())
         self.config_data['fusion']['context_trigger_below'] = float(self.ctx_trigger.get())
+        
+        # Per-Cue
+        self.config_data['fusion']['use_per_cue'] = bool(self.per_cue_var.get())
+        self.config_data['fusion']['per_cue_th'] = float(self.per_cue_th_scale.get())
 
     def save_config(self):
         try:
@@ -381,6 +389,15 @@ class JetsonLauncher(tk.Tk):
         
         self.orange_weight = self.create_slider(lf_b, "Boost Weight", 0.0, 0.6, 0.05, f.get('orange_weight', 0.25))
         self.ctx_trigger = self.create_slider(lf_b, "Trigger Below Score", 0.0, 1.0, 0.05, f.get('context_trigger_below', 0.55))
+
+        # Per-Cue Verification
+        lf_pc = ttk.LabelFrame(parent, text="Per-Cue Verification (Robust CLIP)")
+        lf_pc.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.per_cue_var = tk.BooleanVar(value=f.get('use_per_cue', True))
+        ttk.Checkbutton(lf_pc, text="Enable Per-Cue Filtering", variable=self.per_cue_var).pack(anchor=tk.W, padx=5)
+        
+        self.per_cue_th_scale = self.create_slider(lf_pc, "CLIP Verification Th", -0.2, 0.5, 0.01, f.get('per_cue_th', 0.05))
 
     # ---------------- HELPERS ----------------
     def create_slider(self, parent, label, vmin, vmax, res, val):
