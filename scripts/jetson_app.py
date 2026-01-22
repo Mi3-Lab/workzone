@@ -44,24 +44,27 @@ TTC_SIGNS = {"Temporary Traffic Control Sign"}
 
 CUE_PROMPTS = {
     "channelization": {
-        "pos": ["traffic cone", "orange construction barrel", "orange and white striped barricade", "road barrier", "vertical panel marker"],
-        "neg": ["tree trunk", "street light pole", "mailbox", "pedestrian", "car wheel", "fire hydrant", "electricity pole", "bush"]
+        "pos": ["traffic cone on road", "orange construction barrel on asphalt", "striped barricade on road", "road barrier", "vertical panel marker"],
+        "neg": ["tree trunk", "street light pole", "mailbox", "pedestrian", "car wheel", "fire hydrant", "electricity pole", "bush"],
+        "inactive": ["traffic cones stacked on a truck bed", "cones stored in a pile", "construction barrels on a trailer", "equipment in storage yard"]
     },
     "workers": {
-        "pos": ["construction worker in high-visibility safety vest", "person wearing hard hat and safety gear", "road worker"],
+        "pos": ["construction worker in high-visibility safety vest", "person wearing hard hat and safety gear", "road worker flagging traffic"],
         "neg": ["pedestrian in casual clothes", "business person in suit", "runner", "cyclist", "mannequin", "statue"]
     },
     "vehicles": {
-        "pos": ["yellow construction excavator", "dump truck", "pickup truck with flashing amber lights", "road roller", "utility work truck"],
+        "pos": ["yellow construction excavator", "dump truck on road", "pickup truck with flashing amber lights", "road roller", "utility work truck"],
         "neg": ["sedan car", "family suv", "sports car", "motorcycle", "city bus", "taxi"]
     },
     "ttc_signs": {
-        "pos": ["orange diamond construction sign", "road work ahead sign", "temporary traffic control sign", "white rectangular speed limit sign"],
-        "neg": ["commercial billboard advertisement", "shop sign", "street name sign", "parking sign", "restaurant sign"]
+        "pos": ["orange diamond construction sign facing camera", "road work ahead sign", "speed limit sign facing camera", "white rectangular regulatory sign"],
+        "neg": ["commercial billboard advertisement", "shop sign", "street name sign", "parking sign", "restaurant sign"],
+        "inactive": ["back of a road sign", "grey metal sign back", "sign facing away", "oblique sign edge"]
     },
     "message_board": {
-        "pos": ["electronic arrow board trailer", "variable message sign with lights", "digital traffic sign"],
-        "neg": ["parked cargo trailer", "billboard", "back of a truck", "container"]
+        "pos": ["electronic arrow board trailer with lights on", "variable message sign displaying text", "digital traffic sign"],
+        "neg": ["parked cargo trailer", "billboard", "back of a truck", "container"],
+        "inactive": ["message board turned off", "black screen message board", "folded arrow board"]
     }
 }
 
@@ -123,30 +126,25 @@ class PerCueVerifier:
                 neg_mean = neg_emb.mean(dim=0) # Average negative embedding
                 neg_mean = neg_mean / (neg_mean.norm() + 1e-8)
                 
-                self.embeddings[category] = (pos_mean, neg_mean)
+                # Handle Inactive (Contextual Rejection) if present
+                inactive_mean = None
+                if "inactive" in prompts:
+                    inact_toks = tokenizer(prompts["inactive"]).to(self.device)
+                    inact_emb = model.encode_text(inact_toks)
+                    inact_emb = inact_emb / (inact_emb.norm(dim=-1, keepdim=True) + 1e-8)
+                    inactive_mean = inact_emb.mean(dim=0)
+                    inactive_mean = inactive_mean / (inactive_mean.norm() + 1e-8)
+                
+                self.embeddings[category] = (pos_mean, neg_mean, inactive_mean)
         print("[PerCueVerifier] Embeddings pre-computed for: ", list(self.embeddings.keys()))
 
     def verify(self, crop_bgr, category):
+        # Single verify not used in optimized batch mode, but updating for consistency
         if category not in self.embeddings: return 0.0
-        
-        # Preprocess crop
-        pil_img = Image.fromarray(cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB))
-        img_input = self.clip["preprocess"](pil_img).unsqueeze(0).to(self.device)
-        
-        pos_emb, neg_emb = self.embeddings[category]
-        
-        with torch.no_grad():
-            img_emb = self.clip["model"].encode_image(img_input)
-            img_emb = img_emb / (img_emb.norm(dim=-1, keepdim=True) + 1e-8)
-            img_emb = img_emb.squeeze()
-            
-            # Cosine similarity
-            sim_pos = float(torch.dot(img_emb, pos_emb))
-            sim_neg = float(torch.dot(img_emb, neg_emb))
-            return sim_pos - sim_neg
+        return self.verify_batch([crop_bgr], [category])[0]
 
     def verify_batch(self, crops_bgr, categories):
-        """Batch processing for multiple crops."""
+        """Batch processing for multiple crops with Contextual Rejection."""
         if not crops_bgr: return []
         
         # Preprocess all crops
@@ -171,12 +169,23 @@ class PerCueVerifier:
             
             for i, idx in enumerate(valid_indices):
                 cat = categories[idx]
-                pos_emb, neg_emb = self.embeddings[cat]
+                pos_emb, neg_emb, inactive_emb = self.embeddings[cat]
                 emb = img_embs[i]
                 
                 sim_pos = float(torch.dot(emb, pos_emb))
                 sim_neg = float(torch.dot(emb, neg_emb))
-                scores[idx] = sim_pos - sim_neg
+                
+                # Contextual Rejection Logic
+                reject_score = sim_neg
+                if inactive_emb is not None:
+                    sim_inactive = float(torch.dot(emb, inactive_emb))
+                    # If it looks more like "inactive/stacked" than "active/road", REJECT HARD
+                    if sim_inactive > sim_pos:
+                        scores[idx] = -1.0 # Hard reject
+                        continue
+                    reject_score = max(sim_neg, sim_inactive)
+                
+                scores[idx] = sim_pos - reject_score
                 
         return scores
 
