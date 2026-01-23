@@ -54,17 +54,20 @@ class JetsonLauncher(tk.Tk):
         self.tab_logic = ttk.Frame(self.tabs)
         self.tab_state = ttk.Frame(self.tabs)
         self.tab_clip = ttk.Frame(self.tabs)
+        self.tab_scene = ttk.Frame(self.tabs)
         
         self.tabs.add(self.tab_general, text="General")
         self.tabs.add(self.tab_logic, text="Weights & Logic")
         self.tabs.add(self.tab_state, text="State Machine")
         self.tabs.add(self.tab_clip, text="CLIP & Fusion")
+        self.tabs.add(self.tab_scene, text="Scene Context")
         
         # Populate Tabs
         self.setup_general_tab()
         self.setup_logic_tab()
         self.setup_state_tab()
         self.setup_clip_tab()
+        self.setup_scene_tab()
         
         self.create_action_buttons()
         
@@ -124,6 +127,10 @@ class JetsonLauncher(tk.Tk):
         # Per-Cue
         self.per_cue_var.set(f.get('use_per_cue', True))
         self.per_cue_th_scale.set(f.get('per_cue_th', 0.05))
+        
+        # Scene Context
+        self.scene_context_var.set(self.config_data.get('scene_context', {}).get('enabled', False))
+        self.refresh_scene_sliders() # Updates scene tab sliders
 
     def import_preset(self):
         f = filedialog.askopenfilename(title="Import JSON Preset", filetypes=(("JSON files", "*.json"),))
@@ -194,6 +201,11 @@ class JetsonLauncher(tk.Tk):
         # Per-Cue
         self.config_data['fusion']['use_per_cue'] = bool(self.per_cue_var.get())
         self.config_data['fusion']['per_cue_th'] = float(self.per_cue_th_scale.get())
+        
+        # Scene Context
+        if 'scene_context' not in self.config_data: self.config_data['scene_context'] = {}
+        self.config_data['scene_context']['enabled'] = bool(self.scene_context_var.get())
+        # Note: Presets are synced in real-time via save_scene_slider_change, so we don't overwrite them here to avoid race conditions with the combobox
 
     def save_config(self):
         try:
@@ -287,6 +299,12 @@ class JetsonLauncher(tk.Tk):
         
         self.show_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(lf_hw, text="Show Window", variable=self.show_var).pack(side=tk.LEFT, padx=10)
+
+        # Scene Context
+        lf_sc = ttk.LabelFrame(parent, text="Automation")
+        lf_sc.pack(fill=tk.X, padx=10, pady=5)
+        self.scene_context_var = tk.BooleanVar(value=self.config_data.get('scene_context', {}).get('enabled', False))
+        ttk.Checkbutton(lf_sc, text="Enable Scene Context Adaptation (SOTA)", variable=self.scene_context_var, command=self.auto_save).pack(side=tk.LEFT, padx=10)
 
     def toggle_input_mode(self):
         mode = self.input_mode.get()
@@ -398,6 +416,93 @@ class JetsonLauncher(tk.Tk):
         ttk.Checkbutton(lf_pc, text="Enable Per-Cue Filtering", variable=self.per_cue_var).pack(anchor=tk.W, padx=5)
         
         self.per_cue_th_scale = self.create_slider(lf_pc, "CLIP Verification Th", -0.2, 0.5, 0.01, f.get('per_cue_th', 0.05))
+
+    # ---------------- TAB 5: SCENE CONTEXT ----------------
+    def setup_scene_tab(self):
+        parent = self.tab_scene
+        
+        # Header / Selector
+        f_sel = tk.Frame(parent, pady=10)
+        f_sel.pack(fill=tk.X, padx=10)
+        
+        ttk.Label(f_sel, text="Select Scenario to Edit:", font=("Arial", 11, "bold")).pack(side=tk.LEFT)
+        self.scene_sel_var = tk.StringVar(value="highway")
+        self.combo_scene = ttk.Combobox(f_sel, textvariable=self.scene_sel_var, values=["highway", "urban", "suburban", "mixed"], state="readonly")
+        self.combo_scene.pack(side=tk.LEFT, padx=10)
+        self.combo_scene.bind("<<ComboboxSelected>>", self.refresh_scene_sliders)
+        
+        # Sliders Frame
+        self.lf_scene_weights = ttk.LabelFrame(parent, text="Scenario-Specific Weights")
+        self.lf_scene_weights.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        # Initialize vars
+        self.s_w_bias = tk.DoubleVar()
+        self.s_w_chan = tk.DoubleVar()
+        self.s_w_work = tk.DoubleVar()
+        self.s_w_veh = tk.DoubleVar()
+        self.s_w_ttc = tk.DoubleVar()
+        self.s_w_msg = tk.DoubleVar()
+        
+        # Create Sliders (similar to Logic tab but bound to scene vars)
+        self.create_scene_slider("Bias (Sensitivity)", -1.0, 0.5, 0.05, self.s_w_bias)
+        self.create_scene_slider("Channelization", 0.0, 2.0, 0.05, self.s_w_chan)
+        self.create_scene_slider("Workers", 0.0, 2.0, 0.05, self.s_w_work)
+        self.create_scene_slider("Vehicles", 0.0, 2.0, 0.05, self.s_w_veh)
+        self.create_scene_slider("TTC Signs", 0.0, 2.0, 0.05, self.s_w_ttc)
+        self.create_scene_slider("Message Boards", 0.0, 2.0, 0.05, self.s_w_msg)
+        
+        # Load initial values
+        self.refresh_scene_sliders()
+
+    def create_scene_slider(self, label, vmin, vmax, res, variable):
+        f = tk.Frame(self.lf_scene_weights)
+        f.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Label(f, text=label, width=20).pack(side=tk.LEFT)
+        s = tk.Scale(f, from_=vmin, to=vmax, resolution=res, orient=tk.HORIZONTAL, variable=variable)
+        s.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        s.bind("<ButtonRelease-1>", lambda e: self.save_scene_slider_change())
+        return s
+
+    def refresh_scene_sliders(self, event=None):
+        scene = self.scene_sel_var.get()
+        presets = self.config_data.get('scene_context', {}).get('presets', {})
+        
+        # Default fallbacks if scene missing in config
+        defaults = {
+            "highway": {"bias": 0.1, "channelization": 1.2, "workers": 0.8, "vehicles": 0.6, "ttc_signs": 0.8, "message_board": 0.7},
+            "urban": {"bias": -0.1, "channelization": 0.5, "workers": 0.9, "vehicles": 0.5, "ttc_signs": 0.9, "message_board": 0.8},
+            "suburban": {"bias": 0.0, "channelization": 0.9, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.7, "message_board": 0.6},
+            "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6}
+        }
+        
+        data = presets.get(scene, defaults.get(scene, defaults["suburban"]))
+        
+        self.s_w_bias.set(data.get('bias', 0.0))
+        self.s_w_chan.set(data.get('channelization', 0.9))
+        self.s_w_work.set(data.get('workers', 0.8))
+        self.s_w_veh.set(data.get('vehicles', 0.5))
+        self.s_w_ttc.set(data.get('ttc_signs', 0.7))
+        self.s_w_msg.set(data.get('message_board', 0.6))
+
+    def save_scene_slider_change(self):
+        # Update config_data with current slider values for the selected scene
+        scene = self.scene_sel_var.get()
+        if 'scene_context' not in self.config_data: self.config_data['scene_context'] = {}
+        if 'presets' not in self.config_data['scene_context']: self.config_data['scene_context']['presets'] = {}
+        
+        # Ensure dict exists for this scene
+        if scene not in self.config_data['scene_context']['presets']:
+            self.config_data['scene_context']['presets'][scene] = {}
+            
+        target = self.config_data['scene_context']['presets'][scene]
+        target['bias'] = float(self.s_w_bias.get())
+        target['channelization'] = float(self.s_w_chan.get())
+        target['workers'] = float(self.s_w_work.get())
+        target['vehicles'] = float(self.s_w_veh.get())
+        target['ttc_signs'] = float(self.s_w_ttc.get())
+        target['message_board'] = float(self.s_w_msg.get())
+        
+        self.auto_save()
 
     # ---------------- HELPERS ----------------
     def create_slider(self, parent, label, vmin, vmax, res, val):

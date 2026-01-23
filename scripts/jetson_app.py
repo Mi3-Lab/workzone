@@ -491,9 +491,16 @@ class FrameProcessor(threading.Thread):
         self.per_cue_verifier = None
         
         # Scene Context
+        self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
+        # Load presets from config or fallback to code defaults
+        self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
+        
         try:
-            self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", config['hardware']['device'])
-            self.current_scene = "suburban"
+            if self.scene_enabled:
+                self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", config['hardware']['device'])
+            else:
+                self.scene_predictor = None
+            self.current_scene = "suburban" if self.scene_enabled else "manual"
             self.scene_conf = 0.0
         except Exception as e:
             print(f"[Warning] Scene Context model not found or failed: {e}")
@@ -541,6 +548,17 @@ class FrameProcessor(threading.Thread):
                 self.running = False
                 break
             
+                        # Update Scene Config
+                        self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
+                        self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
+                        
+                        last_config_mtime = mtime
+                        # Print clear confirmation of reload (clearing line first)
+                        print(f"
+[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')} | Scene: {self.scene_enabled}")
+                except Exception: pass
+            
+            stride = config['video'].get('stride', 1)
             if stride > 1 and (f_idx % stride != 0):
                 f_idx += 1
                 continue
@@ -548,18 +566,23 @@ class FrameProcessor(threading.Thread):
             # Night Mode Boost
             frame_ai, is_night = enhance_night_frame(frame)
             
-            # Scene Context Update
-            if self.scene_predictor and (f_idx % SCENE_INTERVAL == 0):
-                self.current_scene, self.scene_conf = self.scene_predictor.predict(frame) # Use original frame for context
-            
-            # Adaptive Weights Selection
-            active_weights = SCENE_PRESETS.get(self.current_scene, SCENE_PRESETS["suburban"]).copy()
+            # Scene Context Update & Weights
+            if self.scene_enabled and self.scene_predictor:
+                if f_idx % SCENE_INTERVAL == 0:
+                    self.current_scene, self.scene_conf = self.scene_predictor.predict(frame)
+                
+                # Use Scene Specific Presets
+                active_weights = self.scene_presets.get(self.current_scene, self.scene_presets.get("suburban", SCENE_PRESETS["suburban"])).copy()
+            else:
+                # Use Manual Config Weights
+                self.current_scene = "manual"
+                active_weights = self.config['fusion']['weights_yolo'].copy()
             
             # Apply Night Mode Modifiers (Increase reliance on reflective signs)
             if is_night:
                 active_weights["bias"] = active_weights.get("bias", 0.0) + 0.15 # Boost base sensitivity for dark scenes
                 active_weights["ttc_signs"] = 1.2 # Trust reflective signs more
-                active_weights["channelization"] *= 0.9 # Trust cones slightly less (noise)
+                active_weights["channelization"] = active_weights.get("channelization", 0.9) * 0.9 # Trust cones slightly less (noise)
 
             # YOLO (Use Enhanced Frame)
             res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
