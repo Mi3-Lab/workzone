@@ -25,7 +25,7 @@ fusion:
   clip_neg_text: driving on a clear normal road or highway with regular traffic, no
     construction, no orange cones, no work zone barriers
   clip_weight: 0.35
-  clip_trigger_th: 0.15
+  clip_trigger_th: 0.2
   weights_yolo:
     bias: -0.35
     channelization: 0.9
