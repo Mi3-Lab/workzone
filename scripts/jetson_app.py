@@ -657,7 +657,16 @@ def main():
     elif args.input:
         # File or Directory
         p = Path(args.input)
-        sources = [p] if p.is_file() else list(p.glob("*.mp4"))
+        if p.is_file():
+            sources = [p]
+        else:
+            # Recursive search for multiple video formats
+            sources = []
+            for ext in ["*.mp4", "*.avi", "*.mov", "*.mkv"]:
+                sources.extend(list(p.rglob(ext)))
+            sources = sorted(list(set(sources)))
+            if not sources:
+                console.print(f"[yellow]⚠️  No video files found in {p}. Checking subdirectories recursively...[/yellow]")
     else:
         # Default config directory
         sources = list(Path(config['video']['input']).glob("*.mp4"))
