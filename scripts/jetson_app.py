@@ -225,6 +225,32 @@ def get_cue_category(name):
     if name in MESSAGE_BOARD: return "message_board"
     return None
 
+def enhance_night_frame(frame):
+    """
+    Boost contrast and brightness for night scenes to help YOLO/CLIP.
+    Returns: (enhanced_frame, is_night)
+    """
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(hsv)
+    brightness = np.mean(v)
+    
+    if brightness < 60: # Night threshold
+        # 1. CLAHE on V channel (Contrast)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        v = clahe.apply(v)
+        
+        # 2. Gamma Correction (Lift shadows)
+        gamma = 0.7
+        invGamma = 1.0 / gamma
+        table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+        v = cv2.LUT(v, table)
+        
+        # Merge back
+        hsv_enhanced = cv2.merge([h, s, v])
+        frame_enhanced = cv2.cvtColor(hsv_enhanced, cv2.COLOR_HSV2BGR)
+        return frame_enhanced, True
+    return frame, False
+
 def yolo_frame_score(counts, weights):
     """
     Compute semantic score matching app_phase2_1_evaluation.py
@@ -309,7 +335,7 @@ def update_state(prev, score, inside_f, out_f, f_conf):
 
     return prev, inside_f, out_f
 
-def draw_hud(frame, state, score, clip_active, fps):
+def draw_hud(frame, state, score, clip_active, fps, is_night=False):
     h, w = frame.shape[:2]
     pad_h = 80
     padded = np.full((h + pad_h, w, 3), 0, dtype=np.uint8)
@@ -323,6 +349,9 @@ def draw_hud(frame, state, score, clip_active, fps):
     text_left = f"{lbl} | Score: {score:.2f}"
     cv2.putText(padded, text_left, (20, 50), 1, 1.8, (255, 255, 255), 2, cv2.LINE_AA)
     info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
+    if is_night:
+        info_txt += " | 🌙 NIGHT"
+        
     (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.3, 2)
     cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.3, (255, 255, 255), 2, cv2.LINE_AA)
     return padded
@@ -456,8 +485,11 @@ class FrameProcessor(threading.Thread):
                 f_idx += 1
                 continue
 
-            # YOLO
-            res = self.model.predict(frame, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
+            # Night Mode Boost
+            frame_ai, is_night = enhance_night_frame(frame)
+
+            # YOLO (Use Enhanced Frame)
+            res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
                                    device=self.config['hardware']['device'], verbose=False)[0]
             
             # --- Per-Cue Verification ---
@@ -468,7 +500,7 @@ class FrameProcessor(threading.Thread):
                 boxes = res.boxes.xyxy.cpu().numpy()
                 cls_ids = res.boxes.cls.int().cpu().tolist()
                 confs = res.boxes.conf.cpu().tolist()
-                h_img, w_img = frame.shape[:2]
+                h_img, w_img = frame_ai.shape[:2]
                 
                 for box, cid, conf in zip(boxes, cls_ids, confs):
                     name = self.model.names[cid]
@@ -478,7 +510,7 @@ class FrameProcessor(threading.Thread):
                         pad = 10
                         x1, y1 = max(0, x1-pad), max(0, y1-pad)
                         x2, y2 = min(w_img, x2+pad), min(h_img, y2+pad)
-                        crop = frame[y1:y2, x1:x2]
+                        crop = frame_ai[y1:y2, x1:x2] # Use Enhanced Crop for CLIP
                         candidates.append({'box': box, 'name': name, 'conf': conf, 'cat': cat, 'crop': crop})
 
             should_verify = (use_per_cue and self.per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
@@ -551,7 +583,8 @@ class FrameProcessor(threading.Thread):
                 "state": self.state,
                 "score": self.f_ema,
                 "clip_on": clip_on,
-                "fps_proc": 0.0 # Placeholder
+                "fps_proc": 0.0,
+                "is_night": is_night
             }
             
             # Blocking put with timeout to allow exit
@@ -617,7 +650,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                 cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
             
             fps_real = frames_rendered / (time.time() - start_t + 1e-6)
-            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real)
+            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real, last_result.get("is_night", False))
             
             writer.write(hud)
             
