@@ -35,12 +35,52 @@ from rich.panel import Panel
 from rich.table import Table
 from rich import box
 
+# Add scripts to path for local imports
+sys.path.append(str(Path(__file__).parent))
+from scene_context import SceneContextPredictor
+
 # 2. CONSTANTS & CLASSES
 CHANNELIZATION = {"Cone", "Drum", "Barricade", "Barrier", "Vertical Panel", "Tubular Marker", "Fence"}
 WORKERS = {"Worker", "Police Officer"}
 VEHICLES = {"Work Vehicle", "Police Vehicle"}
 MESSAGE_BOARD = {"Temporary Traffic Control Message Board", "Arrow Board"}
 TTC_SIGNS = {"Temporary Traffic Control Sign"}
+
+# Context-Aware Weight Presets (Adaptive Fusion)
+SCENE_PRESETS = {
+    "highway": {
+        "bias": 0.1, 
+        "channelization": 1.2, # Cones are trusted on highways
+        "workers": 0.8,
+        "vehicles": 0.6,
+        "ttc_signs": 0.8,
+        "message_board": 0.7
+    },
+    "urban": {
+        "bias": -0.1, 
+        "channelization": 0.5, # Cones are noisy in cities (parking, etc)
+        "workers": 0.9, # Rely more on workers/signs
+        "vehicles": 0.5,
+        "ttc_signs": 0.9,
+        "message_board": 0.8
+    },
+    "suburban": {
+        "bias": 0.0, # Default
+        "channelization": 0.9,
+        "workers": 0.8,
+        "vehicles": 0.5,
+        "ttc_signs": 0.7,
+        "message_board": 0.6
+    },
+    "mixed": { # Conservative
+        "bias": -0.05,
+        "channelization": 0.8,
+        "workers": 0.8,
+        "vehicles": 0.5,
+        "ttc_signs": 0.8,
+        "message_board": 0.6
+    }
+}
 
 CUE_PROMPTS = {
     "channelization": {
@@ -335,7 +375,7 @@ def update_state(prev, score, inside_f, out_f, f_conf):
 
     return prev, inside_f, out_f
 
-def draw_hud(frame, state, score, clip_active, fps, is_night=False):
+def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     h, w = frame.shape[:2]
     pad_h = 80
     padded = np.full((h + pad_h, w, 3), 0, dtype=np.uint8)
@@ -353,11 +393,14 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False):
     (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.3, 2)
     cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.3, (255, 255, 255), 2, cv2.LINE_AA)
     
-    if is_night:
-        night_txt = "[NIGHT MODE]"
-        (nw, _), _ = cv2.getTextSize(night_txt, 1, 1.3, 2)
-        # Draw below the FPS text
-        cv2.putText(padded, night_txt, (w - nw - 20, 90), 1, 1.3, (255, 200, 0), 2, cv2.LINE_AA)
+    # Extra Info Line
+    extra_txt = ""
+    if is_night: extra_txt += "[NIGHT MODE] "
+    if scene: extra_txt += f"[{scene.upper()}]"
+    
+    if extra_txt:
+        (ew, _), _ = cv2.getTextSize(extra_txt, 1, 1.3, 2)
+        cv2.putText(padded, extra_txt, (w - ew - 20, 90), 1, 1.3, (255, 200, 0), 2, cv2.LINE_AA)
         
     return padded
 
@@ -446,6 +489,17 @@ class FrameProcessor(threading.Thread):
         
         # Components
         self.per_cue_verifier = None
+        
+        # Scene Context
+        try:
+            self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", config['hardware']['device'])
+            self.current_scene = "suburban"
+            self.scene_conf = 0.0
+        except Exception as e:
+            print(f"[Warning] Scene Context model not found or failed: {e}")
+            self.scene_predictor = None
+            self.current_scene = "suburban"
+
         if clip_bundle:
             self.per_cue_verifier = PerCueVerifier(clip_bundle, config['hardware']['device'])
             self.clip_bundle = clip_bundle
@@ -477,6 +531,7 @@ class FrameProcessor(threading.Thread):
         use_per_cue = f_c.get('use_per_cue', True)
         per_cue_th = f_c.get('per_cue_th', 0.05)
         PER_CUE_INTERVAL = 3
+        SCENE_INTERVAL = 30 # Check scene every ~1s
         clip_interval = 3
         stride = self.config['video'].get('stride', 1)
 
@@ -492,6 +547,19 @@ class FrameProcessor(threading.Thread):
 
             # Night Mode Boost
             frame_ai, is_night = enhance_night_frame(frame)
+            
+            # Scene Context Update
+            if self.scene_predictor and (f_idx % SCENE_INTERVAL == 0):
+                self.current_scene, self.scene_conf = self.scene_predictor.predict(frame) # Use original frame for context
+            
+            # Adaptive Weights Selection
+            active_weights = SCENE_PRESETS.get(self.current_scene, SCENE_PRESETS["suburban"]).copy()
+            
+            # Apply Night Mode Modifiers (Increase reliance on reflective signs)
+            if is_night:
+                active_weights["bias"] = active_weights.get("bias", 0.0) + 0.15 # Boost base sensitivity for dark scenes
+                active_weights["ttc_signs"] = 1.2 # Trust reflective signs more
+                active_weights["channelization"] *= 0.9 # Trust cones slightly less (noise)
 
             # YOLO (Use Enhanced Frame)
             res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
@@ -528,7 +596,7 @@ class FrameProcessor(threading.Thread):
                 candidates.sort(key=lambda x: x['conf'], reverse=True)
                 MAX_BATCH = 4
                 to_verify = candidates[:MAX_BATCH]
-                remaining = candidates[MAX_BATCH:]
+                remaining = candidates[:MAX_BATCH]
                 
                 scores = self.per_cue_verifier.verify_batch([c['crop'] for c in to_verify], [c['cat'] for c in to_verify])
                 
@@ -549,8 +617,8 @@ class FrameProcessor(threading.Thread):
             
             self.counts = curr_counts
 
-            # --- Logic Fusion ---
-            y_s, feats = yolo_frame_score(self.counts, f_c['weights_yolo'])
+            # --- Logic Fusion (Adaptive Weights) ---
+            y_s, feats = yolo_frame_score(self.counts, active_weights)
             
             # EMA
             total_objs = feats.get("total_objs", 0.0)
@@ -563,7 +631,7 @@ class FrameProcessor(threading.Thread):
             if self.pos_emb is not None and self.y_ema >= f_c['clip_trigger_th']:
                 if f_idx % clip_interval == 0:
                     self.last_clip_score = logistic(clip_frame_score(self.clip_bundle, self.config['hardware']['device'], 
-                                                                   frame, self.pos_emb, self.neg_emb) * 3.0)
+                                                                   frame_ai, self.pos_emb, self.neg_emb) * 3.0)
                 fused = (1.0 - f_c['clip_weight']) * fused + f_c['clip_weight'] * self.last_clip_score
                 clip_on = True
             
@@ -589,7 +657,8 @@ class FrameProcessor(threading.Thread):
                 "score": self.f_ema,
                 "clip_on": clip_on,
                 "fps_proc": 0.0,
-                "is_night": is_night
+                "is_night": is_night,
+                "scene": self.current_scene
             }
             
             # Blocking put with timeout to allow exit
@@ -655,7 +724,8 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
                 cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
             
             fps_real = frames_rendered / (time.time() - start_t + 1e-6)
-            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real, last_result.get("is_night", False))
+            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real, 
+                         last_result.get("is_night", False), last_result.get("scene", None))
             
             writer.write(hud)
             
