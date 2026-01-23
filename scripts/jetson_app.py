@@ -349,11 +349,16 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False):
     text_left = f"{lbl} | Score: {score:.2f}"
     cv2.putText(padded, text_left, (20, 50), 1, 1.8, (255, 255, 255), 2, cv2.LINE_AA)
     info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
-    if is_night:
-        info_txt += " | 🌙 NIGHT"
-        
+    
     (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.3, 2)
     cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.3, (255, 255, 255), 2, cv2.LINE_AA)
+    
+    if is_night:
+        night_txt = "[NIGHT MODE]"
+        (nw, _), _ = cv2.getTextSize(night_txt, 1, 1.3, 2)
+        # Draw below the FPS text
+        cv2.putText(padded, night_txt, (w - nw - 20, 90), 1, 1.3, (255, 200, 0), 2, cv2.LINE_AA)
+        
     return padded
 
 def ensure_model(config):
