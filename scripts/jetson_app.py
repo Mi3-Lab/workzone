@@ -396,11 +396,17 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     # Extra Info Line
     extra_txt = ""
     if is_night: extra_txt += "[NIGHT MODE] "
-    if scene: extra_txt += f"[{scene.upper()}]"
+    
+    # Scene Label
+    if scene == "manual":
+        extra_txt += "[MANUAL CTRL]"
+    elif scene:
+        extra_txt += f"[{scene.upper()} MODE]"
     
     if extra_txt:
-        (ew, _), _ = cv2.getTextSize(extra_txt, 1, 1.3, 2)
-        cv2.putText(padded, extra_txt, (w - ew - 20, 90), 1, 1.3, (255, 200, 0), 2, cv2.LINE_AA)
+        (ew, _), _ = cv2.getTextSize(extra_txt, 1, 1.1, 1)
+        # Use a bright Cyan for visibility
+        cv2.putText(padded, extra_txt, (w - ew - 20, 75), 1, 1.1, (255, 255, 0), 1, cv2.LINE_AA)
         
     return padded
 
@@ -469,10 +475,11 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     clip_interval = 3 
     
 class FrameProcessor(threading.Thread):
-    def __init__(self, source, config, model, clip_bundle, result_queue):
+    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None):
         super().__init__(daemon=True)
         self.source = source
         self.config = config
+        self.config_path = config_path
         self.model = model
         self.result_queue = result_queue
         self.running = True
@@ -541,6 +548,8 @@ class FrameProcessor(threading.Thread):
         SCENE_INTERVAL = 30 # Check scene every ~1s
         clip_interval = 3
         stride = self.config['video'].get('stride', 1)
+        
+        last_config_mtime = os.path.getmtime(self.config_path) if self.config_path else 0
 
         while self.running and self.cap.isOpened():
             ret, frame = self.cap.read()
@@ -548,23 +557,41 @@ class FrameProcessor(threading.Thread):
                 self.running = False
                 break
             
+            # Hot-Reload Config (Check every 5 frames for responsiveness)
+            if self.config_path and f_idx % 5 == 0:
+                try:
+                    mtime = os.path.getmtime(self.config_path)
+                    if mtime > last_config_mtime:
+                        with open(self.config_path, 'r') as f: config = yaml.safe_load(f)
+                        self.config = config
+                        f_c = config['fusion']
+                        use_per_cue = f_c.get('use_per_cue', True)
+                        per_cue_th = f_c.get('per_cue_th', 0.05)
+                        
                         # Update Scene Config
                         self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
                         self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
                         
                         last_config_mtime = mtime
-                        # Print clear confirmation of reload (clearing line first)
-                        print(f"
-[HOT-RELOAD] ⚡ Config updated! Conf: {config['model']['conf']} | Alpha: {f_c.get('ema_alpha')} | Scene: {self.scene_enabled}")
+                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Scene: {self.scene_enabled}")
                 except Exception: pass
             
-            stride = config['video'].get('stride', 1)
+            stride = self.config['video'].get('stride', 1)
             if stride > 1 and (f_idx % stride != 0):
                 f_idx += 1
                 continue
 
             # Night Mode Boost
             frame_ai, is_night = enhance_night_frame(frame)
+            
+            # Lazy Load Scene Predictor (if enabled via hot-reload)
+            if self.scene_enabled and self.scene_predictor is None:
+                try:
+                    print("[INFO] Loading Scene Context model dynamically...")
+                    self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", self.config['hardware']['device'])
+                except Exception as e:
+                    print(f"[ERROR] Failed to load Scene Context model: {e}")
+                    self.scene_enabled = False # Disable to prevent retry loop spam
             
             # Scene Context Update & Weights
             if self.scene_enabled and self.scene_predictor:
@@ -619,7 +646,7 @@ class FrameProcessor(threading.Thread):
                 candidates.sort(key=lambda x: x['conf'], reverse=True)
                 MAX_BATCH = 4
                 to_verify = candidates[:MAX_BATCH]
-                remaining = candidates[:MAX_BATCH]
+                remaining = candidates[MAX_BATCH:]
                 
                 scores = self.per_cue_verifier.verify_batch([c['crop'] for c in to_verify], [c['cat'] for c in to_verify])
                 
@@ -708,7 +735,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     
     # Thread communication
     result_queue = queue.Queue(maxsize=3) # Small buffer
-    processor = FrameProcessor(source, config, model, clip_bundle, result_queue)
+    processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path)
     processor.start()
     
     # Wait for first frame
