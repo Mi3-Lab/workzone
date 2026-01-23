@@ -6,7 +6,12 @@ import cv2
 
 class SceneContextPredictor:
     def __init__(self, model_path, device="cuda"):
-        self.device = device
+        # Handle int device (e.g. 0 -> "cuda:0")
+        if isinstance(device, int):
+            self.device = f"cuda:{device}"
+        else:
+            self.device = str(device)
+            
         self.classes = ['highway', 'urban', 'suburban', 'mixed']
         self.model = self._load_model(model_path)
         self.preprocess = transforms.Compose([
@@ -17,8 +22,8 @@ class SceneContextPredictor:
         print(f"[SceneContext] Loaded model from {model_path}")
 
     def _load_model(self, path):
-        # ResNet18 architecture matching training
-        model = models.resnet18(weights=None)
+        # ResNet18 architecture matching training (use legacy pretrained=False for max compat)
+        model = models.resnet18(pretrained=False)
         num_ftrs = model.fc.in_features
         model.fc = nn.Linear(num_ftrs, len(self.classes))
         
