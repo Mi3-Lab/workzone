@@ -344,8 +344,11 @@ def update_state(prev, score, state_dur, out_f, f_conf):
     min_inside = f_conf['min_inside_frames']
     min_out = f_conf['min_out_frames']
     
-    # Safety Timeout: If APPROACHING for > 5 seconds (150 frames) without entering, reset.
-    MAX_APPROACH_DUR = 150 
+    # Safety Timeout: If APPROACHING for > 10 seconds (300 frames) without entering, reset.
+    MAX_APPROACH_DUR = 300 
+    
+    # Hysteresis: Score must drop significantly below approach_th to leave
+    drop_th = max(0.05, approach_th - 0.10)
 
     if prev == "OUT":
         if score >= approach_th:
@@ -353,19 +356,21 @@ def update_state(prev, score, state_dur, out_f, f_conf):
         return "OUT", 0, out_f + 1
 
     elif prev == "APPROACHING":
-        # Check Timeout
+        # Check Timeout (Stuck in limbo)
         if state_dur > MAX_APPROACH_DUR:
             return "OUT", 0, 0
             
         if score >= enter_th:
             return "INSIDE", 0, 0
-        elif score <= (approach_th - 0.05): # Changed < to <= to fix exact bias match lock
-            # Persistence Logic
-            if out_f >= (min_out * 2):
+        elif score <= drop_th:
+            # Score is weak. Check persistence before dropping.
+            if out_f >= min_out:
                 return "OUT", 0, 0
+            # Increment drop counter, keep duration
             return "APPROACHING", state_dur + 1, out_f + 1
         else:
-            # Score healthy, keep counting duration
+            # Score is healthy (between drop_th and enter_th). 
+            # Reset drop counter.
             return "APPROACHING", state_dur + 1, 0
 
     elif prev == "INSIDE":
