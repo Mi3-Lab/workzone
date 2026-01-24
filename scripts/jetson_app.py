@@ -54,7 +54,10 @@ SCENE_PRESETS = {
         "workers": 0.4,       # Low: Workers are usually hidden behind barriers
         "vehicles": 0.5,
         "ttc_signs": 1.3,     # High: Signs are the earliest reliable warning
-        "message_board": 0.8
+        "message_board": 0.8,
+        "approach_th": 0.20,
+        "enter_th": 0.50,
+        "exit_th": 0.30
     },
     "urban": {
         "bias": -0.15,        # Skeptical: City is full of distractions
@@ -62,7 +65,10 @@ SCENE_PRESETS = {
         "workers": 1.2,       # High: Detecting a worker is critical in cities
         "vehicles": 0.6,
         "ttc_signs": 0.9,
-        "message_board": 1.0  # Arrow boards are common in urban diversions
+        "message_board": 1.0,  # Arrow boards are common in urban diversions
+        "approach_th": 0.30,
+        "enter_th": 0.60,
+        "exit_th": 0.40
     },
     "suburban": {
         "bias": -0.35,        # Standard Baseline (matches Manual Mode)
@@ -70,7 +76,10 @@ SCENE_PRESETS = {
         "workers": 0.8,
         "vehicles": 0.5,
         "ttc_signs": 0.7,
-        "message_board": 0.6
+        "message_board": 0.6,
+        "approach_th": 0.25, # User request: from 0.20 to 0.25
+        "enter_th": 0.50,
+        "exit_th": 0.30
     },
     "mixed": { 
         "bias": -0.05,
@@ -78,7 +87,10 @@ SCENE_PRESETS = {
         "workers": 0.8,
         "vehicles": 0.5,
         "ttc_signs": 0.8,
-        "message_board": 0.6
+        "message_board": 0.6,
+        "approach_th": 0.20,
+        "enter_th": 0.50,
+        "exit_th": 0.30
     }
 }
 
@@ -624,10 +636,17 @@ class FrameProcessor(threading.Thread):
                 
                 # Use Scene Specific Presets
                 active_weights = self.scene_presets.get(self.current_scene, self.scene_presets.get("suburban", SCENE_PRESETS["suburban"])).copy()
+                
+                # Dynamic Thresholds based on Scene
+                effective_f_c = f_c.copy()
+                for th_key in ['enter_th', 'exit_th', 'approach_th']:
+                    if th_key in active_weights:
+                        effective_f_c[th_key] = active_weights.pop(th_key) # Extract and override
             else:
                 # Use Manual Config Weights
                 self.current_scene = "manual"
                 active_weights = self.config['fusion']['weights_yolo'].copy()
+                effective_f_c = f_c # Use global sliders
             
             # Apply Night Mode Modifiers (Increase reliance on reflective signs)
             if is_night:
@@ -721,7 +740,7 @@ class FrameProcessor(threading.Thread):
                 fused = (1.0 - cw) * fused + cw * ctx
 
             self.f_ema = ema(self.f_ema, clamp01(fused), alpha)
-            self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, f_c)
+            self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
             
             # Pack Result
             result = {
