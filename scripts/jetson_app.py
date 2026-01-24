@@ -46,33 +46,33 @@ VEHICLES = {"Work Vehicle", "Police Vehicle"}
 MESSAGE_BOARD = {"Temporary Traffic Control Message Board", "Arrow Board"}
 TTC_SIGNS = {"Temporary Traffic Control Sign"}
 
-# Context-Aware Weight Presets (Adaptive Fusion)
+# Context-Aware Weight Presets (Adaptive Fusion) - Tuned for Real-World Safety
 SCENE_PRESETS = {
     "highway": {
-        "bias": 0.1, 
-        "channelization": 1.2, # Cones are trusted on highways
-        "workers": 0.8,
+        "bias": 0.0,          # Zero bias: Don't hallucinate at high speeds
+        "channelization": 1.5, # AUTHORITATIVE: Barrels/Cones on hwy = Workzone
+        "workers": 0.4,       # Low: Workers are usually hidden behind barriers
+        "vehicles": 0.5,
+        "ttc_signs": 1.3,     # High: Signs are the earliest reliable warning
+        "message_board": 0.8
+    },
+    "urban": {
+        "bias": -0.15,        # Skeptical: City is full of distractions
+        "channelization": 0.4, # Low: Parking cones, valet, etc are noise
+        "workers": 1.2,       # High: Detecting a worker is critical in cities
         "vehicles": 0.6,
+        "ttc_signs": 0.9,
+        "message_board": 1.0  # Arrow boards are common in urban diversions
+    },
+    "suburban": {
+        "bias": -0.05,
+        "channelization": 1.0, # Standard reliance
+        "workers": 0.9,
+        "vehicles": 0.5,
         "ttc_signs": 0.8,
         "message_board": 0.7
     },
-    "urban": {
-        "bias": -0.1, 
-        "channelization": 0.5, # Cones are noisy in cities (parking, etc)
-        "workers": 0.9, # Rely more on workers/signs
-        "vehicles": 0.5,
-        "ttc_signs": 0.9,
-        "message_board": 0.8
-    },
-    "suburban": {
-        "bias": 0.0, # Default
-        "channelization": 0.9,
-        "workers": 0.8,
-        "vehicles": 0.5,
-        "ttc_signs": 0.7,
-        "message_board": 0.6
-    },
-    "mixed": { # Conservative
+    "mixed": { 
         "bias": -0.05,
         "channelization": 0.8,
         "workers": 0.8,
@@ -331,17 +331,21 @@ def clip_frame_score(clip_bundle, device, frame_bgr, pos_emb, neg_emb):
         img = img / (img.norm(dim=-1, keepdim=True) + 1e-8)
         return float((img @ pos_emb.unsqueeze(-1)).squeeze().item() - (img @ neg_emb.unsqueeze(-1)).squeeze().item())
 
-def update_state(prev, score, inside_f, out_f, f_conf):
+def update_state(prev, score, state_dur, out_f, f_conf):
     """
     Update state machine matching app_phase2_1_evaluation.py exactly.
     Handles OUT -> APPROACHING -> INSIDE -> EXITING transitions with hysteresis.
+    state_dur: Replaces 'inside_f', acts as duration counter for the ACTIVE state (Approaching or Inside).
     """
-    # Unpack config for clarity (matches streamlit func signature)
+    # Unpack config
     enter_th = f_conf['enter_th']
     exit_th = f_conf['exit_th']
     approach_th = f_conf['approach_th']
     min_inside = f_conf['min_inside_frames']
     min_out = f_conf['min_out_frames']
+    
+    # Safety Timeout: If APPROACHING for > 5 seconds (150 frames) without entering, reset.
+    MAX_APPROACH_DUR = 150 
 
     if prev == "OUT":
         if score >= approach_th:
@@ -349,31 +353,35 @@ def update_state(prev, score, inside_f, out_f, f_conf):
         return "OUT", 0, out_f + 1
 
     elif prev == "APPROACHING":
+        # Check Timeout
+        if state_dur > MAX_APPROACH_DUR:
+            return "OUT", 0, 0
+            
         if score >= enter_th:
             return "INSIDE", 0, 0
-        elif score < (approach_th - 0.05):
-            # Persistence Logic: Don't drop to OUT immediately. Wait for sustained silence.
-            # Using 2x min_out_frames allows for ~1-2 seconds of occlusion/noise without dropping the alert.
+        elif score <= (approach_th - 0.05): # Changed < to <= to fix exact bias match lock
+            # Persistence Logic
             if out_f >= (min_out * 2):
                 return "OUT", 0, 0
-            return "APPROACHING", inside_f, out_f + 1
+            return "APPROACHING", state_dur + 1, out_f + 1
         else:
-            # Score is healthy (above drop threshold), reset timeout
-            return "APPROACHING", inside_f, 0
+            # Score healthy, keep counting duration
+            return "APPROACHING", state_dur + 1, 0
 
     elif prev == "INSIDE":
         if score < exit_th:
             return "EXITING", 0, 0
-        return "INSIDE", inside_f + 1, 0
+        return "INSIDE", state_dur + 1, 0
 
     elif prev == "EXITING":
         if score >= enter_th:
-            return "INSIDE", 0, 0
+            # Re-entered
+            return "INSIDE", state_dur, 0 # Keep previous duration? Or reset? Let's keep context
         elif out_f >= min_out:
             return "OUT", 0, 0
-        return "EXITING", 0, out_f + 1
+        return "EXITING", state_dur, out_f + 1
 
-    return prev, inside_f, out_f
+    return prev, state_dur, out_f
 
 def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     h, w = frame.shape[:2]
