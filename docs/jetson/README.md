@@ -1,81 +1,78 @@
-# Jetson Orin Workzone Fusion System
+# Jetson Orin Workzone Fusion System (SOTA Edition)
 
-A high-performance, real-time work zone detection system optimized for NVIDIA Jetson Orin. This application combines **YOLOv12** object detection with **OpenCLIP** semantic verification and temporal state tracking.
+A high-performance, real-time work zone detection system optimized for NVIDIA Jetson Orin. This application combines **YOLOv12 (TensorRT)**, **OpenCLIP**, and **ResNet18 (Scene Context)** to achieve State-of-the-Art (SOTA) robustness in complex environments.
 
 ## 🌟 Key Features
 
-- **Semantic Fusion:** Combines object detection confidence with whole-frame semantic understanding (CLIP) to validate work zones.
-- **State Machine:** Robust transition logic (`OUT` → `APPROACHING` → `INSIDE` → `EXITING`) prevents flickering detections.
-- **Hardware Acceleration:** 
-  - YOLOv12 export to **TensorRT (FP16)** for maximum throughput on Orin RT Cores.
-  - Asynchronous video writing.
-- **Zero-Overlap HUD:** Interface rendered in a dedicated top bar, preserving full video visibility.
+### 🧠 SOTA Intelligence
+- **Scene Context Adaptation:** Automatically detects the environment (`[HIGHWAY]`, `[URBAN]`, `[SUBURBAN]`) and adjusts detection sensitivity dynamically.
+    - *Highway:* High trust in infrastructure (Cones/Barrels).
+    - *Urban:* Low trust in cones (noise), high reliance on workers/signs.
+- **Per-Cue Verification:** Each detected object is individually verified by CLIP.
+    - **Contextual Rejection:** Distinguishes between "active cones on road" vs "inactive cones stacked on a truck", rejecting false positives.
+- **Night Mode Boost:** Automatic low-light detection (`[NIGHT MODE]`) activates Gamma Correction and CLAHE to enhance visibility of reflective strips.
+
+### ⚡ Performance & Architecture
+- **Threaded Inference:** Producer-Consumer architecture separates AI processing (variable FPS) from UI rendering (stable 30 FPS), ensuring fluid video output without stutter.
+- **Batch Processing:** CLIP processes crop verification in optimized batches on the GPU.
+- **FP16 Acceleration:** Full FP16 support for YOLO, CLIP, and Scene Classifier on Orin Tensor Cores.
+
+### 🎮 Control & UI
+- **Jetson Launcher (GUI):** Complete control panel with Hot-Reload (adjust weights live).
+- **Zero-Overlap HUD:** Interface rendered in a dedicated top bar.
+- **Visual Feedback:** 
+    - 🟩 Green Box: Verified Object.
+    - 🟥 Red Box: Rejected Object (Contextual Mismatch).
+    - 🟨 Yellow Box: Raw Detection (during throttling).
 
 ## 🚀 Quick Start
 
-### 1. Installation
-Ensure you are on JetPack 6.0+ (Ubuntu 22.04).
+### 1. Launch the Controller
+Use the dedicated make command to open the GUI launcher:
 
 ```bash
-# Setup environment (creates venv and installs dependencies)
-./scripts/setup.sh
+make workzone
 ```
 
-### 2. Run Inference
-To process a video with visualization:
-
-```bash
-# Process a specific video
-venv/bin/python scripts/jetson_app.py --input data/demo/boston.mp4 --show
-
-# Process all videos in the configured folder
-venv/bin/python scripts/jetson_app.py
-```
+### 2. Modes of Operation
+- **Automation (Recommended):** Enable "Scene Context Adaptation" in the launcher. The system will auto-tune parameters based on the video content.
+- **Manual:** Disable automation to manually set weights via sliders.
 
 ### 3. Speed Limit Detection (DLA Optimized) 🏎️
-We have a specialized, ultra-fast script running on the Orin's **DLA (Deep Learning Accelerator)** for speed limit verification.
-
-**Features:**
-- **DLA Usage:** Offloads inference to DLA Core 1, leaving GPU free for other tasks.
-- **Threaded Capture:** Decouples video reading from inference for maximum FPS.
-- **Anti-Flicker:** Uses ByteTrack + Temporal Voting (confirms sign only after stable detection).
-- **Driver Banner:** Displays a large "SPEED LIMIT XX mph" banner when confirmed.
+Specialized script running on the **DLA (Deep Learning Accelerator)** for speed limit verification.
 
 ```bash
 # Run DLA Speed Limit Tracker
-venv/bin/python3 scripts/speed_limit_dla.py \
-  --input data/videos/boston_snippet.mp4 \
-  --show \
-  --stride 2
+venv/bin/python3 scripts/speed_limit_dla.py --input data/demo/boston.mp4 --show
 ```
 
-### 4. Configuration (`configs/jetson_config.yaml`)
+## 🏗️ Technical Architecture
 
-| Parameter | Default | Description |
+### 1. The Frame Processor (Producer Thread)
+- **Input:** Reads frame (supports recursive search for mp4/avi/mov/mkv).
+- **Night Boost:** Checks brightness (<60). If dark, applies CLAHE + Gamma 0.7.
+- **Scene Context:** ResNet18 classifies scene every 30 frames.
+- **YOLOv12:** Detects objects on the *enhanced* frame.
+- **Per-Cue Verifier:** 
+    - Extracts crops of detections.
+    - Compares CLIP embedding against "Active" vs "Inactive" prompts.
+    - Rejects objects that match "Inactive" (e.g., cones on truck).
+- **Adaptive Fusion:** Calculates score using weights specific to the detected scene.
+
+### 2. The Render Loop (Consumer Thread)
+- **Stable FPS:** Renders HUD at steady 30 FPS.
+- **Smoothing:** Uses Zero-Order Hold (repeats last valid state) if inference lags slightly, preventing video jitter.
+
+## 📊 Configuration (`configs/jetson_config.yaml`)
+
+The system auto-saves settings here. Key sections:
+
+| Section | Parameter | Description |
 | :--- | :--- | :--- |
-| `model.path` | `weights/yolo12s...pt` | Base YOLO model (auto-converts to .engine) |
-| `model.imgsz` | `960` | Input resolution (lower = faster) |
-| `fusion.use_clip` | `true` | Enable semantic verification |
-| `video.stride` | `1` | Frame skip factor (increase for speed) |
+| `scene_context` | `enabled` | Toggle SOTA scene adaptation |
+| `fusion` | `use_per_cue` | Toggle individual object verification |
+| `fusion` | `per_cue_th` | CLIP threshold for verification (default 0.05) |
+| `fusion.weights_yolo` | `...` | Fallback weights for Manual Mode |
 
-## 🏗️ Architecture
-
-### Pipeline Steps
-1.  **Input:** Video frame capture.
-2.  **YOLO Inference:** Detects cones, signs, workers.
-3.  **Logic Score:** Calculates weighted score based on object counts.
-4.  **EMA:** Smooths score over time.
-5.  **CLIP Trigger:** If potential work zone detected, runs CLIP embedding to confirm.
-6.  **Fusion:** Weighted average of YOLO + CLIP scores.
-7.  **State Machine:** Updates global state (e.g., enters "INSIDE" only if score > 0.7 for 25 frames).
-8.  **Render:** Draws HUD on padded frame and saves video.
-
-### Optimization
-- **TensorRT:** The script automatically exports `.pt` models to `.engine` on first run.
-- **Memory:** CLIP model is cached locally in `weights/clip`.
-- **Environment:** Automatically handles `LD_LIBRARY_PATH` for `libcusparseLt`.
-
-## 📊 Outputs
-Results are saved to `results/jetson/` as encoded MP4 files with the HUD overlay.
-
-```
+## 💾 Outputs
+Annotated videos are saved to `results/jetson/` with timestamped filenames.

@@ -12,7 +12,8 @@ class SceneContextPredictor:
         else:
             self.device = str(device)
             
-        self.classes = ['highway', 'urban', 'suburban', 'mixed']
+        # Checkpoint has 3 classes (size mismatch fix)
+        self.classes = ['highway', 'urban', 'suburban'] 
         self.model = self._load_model(model_path)
         self.preprocess = transforms.Compose([
             transforms.Resize((224, 224)),
