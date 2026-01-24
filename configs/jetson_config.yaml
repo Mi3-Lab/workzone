@@ -1,6 +1,6 @@
 model:
   path: weights/yolo12s_hardneg_1280.pt
-  conf: 0.25
+  conf: 0.4
   iou: 0.7
   imgsz: 960
 video:
@@ -16,7 +16,7 @@ fusion:
   ema_alpha: 0.1
   enter_th: 0.5
   exit_th: 0.3
-  approach_th: 0.25
+  approach_th: 0.2
   min_inside_frames: 6
   min_out_frames: 20
   use_clip: true
@@ -46,4 +46,4 @@ fusion:
   use_per_cue: true
   per_cue_th: 0.05
 scene_context:
-  enabled: false
+  enabled: true
