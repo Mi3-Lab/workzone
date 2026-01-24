@@ -451,9 +451,6 @@ class JetsonLauncher(tk.Tk):
         self.create_scene_slider("TTC Signs", 0.0, 2.0, 0.05, self.s_w_ttc)
         self.create_scene_slider("Message Boards", 0.0, 2.0, 0.05, self.s_w_msg)
         
-        # Load initial values
-        self.refresh_scene_sliders()
-
         # State Thresholds Frame
         self.lf_scene_state = ttk.LabelFrame(parent, text="State Machine Thresholds")
         self.lf_scene_state.pack(fill=tk.X, padx=10, pady=5)
