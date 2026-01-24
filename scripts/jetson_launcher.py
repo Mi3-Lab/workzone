@@ -454,8 +454,32 @@ class JetsonLauncher(tk.Tk):
         # Load initial values
         self.refresh_scene_sliders()
 
+        # State Thresholds Frame
+        self.lf_scene_state = ttk.LabelFrame(parent, text="State Machine Thresholds")
+        self.lf_scene_state.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.s_th_approach = tk.DoubleVar()
+        self.s_th_enter = tk.DoubleVar()
+        self.s_th_exit = tk.DoubleVar()
+        
+        self.create_scene_thresh_slider(self.lf_scene_state, "Approach (>)", 0.1, 0.9, 0.01, self.s_th_approach)
+        self.create_scene_thresh_slider(self.lf_scene_state, "Enter INSIDE (>)", 0.5, 0.95, 0.01, self.s_th_enter)
+        self.create_scene_thresh_slider(self.lf_scene_state, "Exit INSIDE (<)", 0.05, 0.7, 0.01, self.s_th_exit)
+        
+        # Trigger refresh again to populate thresholds
+        self.refresh_scene_sliders()
+
     def create_scene_slider(self, label, vmin, vmax, res, variable):
         f = tk.Frame(self.lf_scene_weights)
+        f.pack(fill=tk.X, padx=5, pady=5)
+        ttk.Label(f, text=label, width=20).pack(side=tk.LEFT)
+        s = tk.Scale(f, from_=vmin, to=vmax, resolution=res, orient=tk.HORIZONTAL, variable=variable)
+        s.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        s.bind("<ButtonRelease-1>", lambda e: self.save_scene_slider_change())
+        return s
+
+    def create_scene_thresh_slider(self, parent, label, vmin, vmax, res, variable):
+        f = tk.Frame(parent)
         f.pack(fill=tk.X, padx=5, pady=5)
         ttk.Label(f, text=label, width=20).pack(side=tk.LEFT)
         s = tk.Scale(f, from_=vmin, to=vmax, resolution=res, orient=tk.HORIZONTAL, variable=variable)
@@ -469,20 +493,26 @@ class JetsonLauncher(tk.Tk):
         
         # Default fallbacks if scene missing in config
         defaults = {
-            "highway": {"bias": 0.1, "channelization": 1.2, "workers": 0.8, "vehicles": 0.6, "ttc_signs": 0.8, "message_board": 0.7},
-            "urban": {"bias": -0.1, "channelization": 0.5, "workers": 0.9, "vehicles": 0.5, "ttc_signs": 0.9, "message_board": 0.8},
-            "suburban": {"bias": 0.0, "channelization": 0.9, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.7, "message_board": 0.6},
-            "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6}
+            "highway": {"bias": 0.0, "channelization": 1.5, "workers": 0.4, "vehicles": 0.5, "ttc_signs": 1.3, "message_board": 0.8, "approach_th": 0.20, "enter_th": 0.50, "exit_th": 0.30},
+            "urban": {"bias": -0.15, "channelization": 0.4, "workers": 1.2, "vehicles": 0.6, "ttc_signs": 0.9, "message_board": 1.0, "approach_th": 0.30, "enter_th": 0.60, "exit_th": 0.40},
+            "suburban": {"bias": -0.35, "channelization": 0.9, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.7, "message_board": 0.6, "approach_th": 0.25, "enter_th": 0.50, "exit_th": 0.30},
+            "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6, "approach_th": 0.20, "enter_th": 0.50, "exit_th": 0.30}
         }
         
         data = presets.get(scene, defaults.get(scene, defaults["suburban"]))
         
+        # Weights
         self.s_w_bias.set(data.get('bias', 0.0))
         self.s_w_chan.set(data.get('channelization', 0.9))
         self.s_w_work.set(data.get('workers', 0.8))
         self.s_w_veh.set(data.get('vehicles', 0.5))
         self.s_w_ttc.set(data.get('ttc_signs', 0.7))
         self.s_w_msg.set(data.get('message_board', 0.6))
+        
+        # Thresholds
+        self.s_th_approach.set(data.get('approach_th', 0.20))
+        self.s_th_enter.set(data.get('enter_th', 0.50))
+        self.s_th_exit.set(data.get('exit_th', 0.30))
 
     def save_scene_slider_change(self):
         # Update config_data with current slider values for the selected scene
@@ -495,12 +525,19 @@ class JetsonLauncher(tk.Tk):
             self.config_data['scene_context']['presets'][scene] = {}
             
         target = self.config_data['scene_context']['presets'][scene]
+        
+        # Save Weights
         target['bias'] = float(self.s_w_bias.get())
         target['channelization'] = float(self.s_w_chan.get())
         target['workers'] = float(self.s_w_work.get())
         target['vehicles'] = float(self.s_w_veh.get())
         target['ttc_signs'] = float(self.s_w_ttc.get())
         target['message_board'] = float(self.s_w_msg.get())
+        
+        # Save Thresholds
+        target['approach_th'] = float(self.s_th_approach.get())
+        target['enter_th'] = float(self.s_th_enter.get())
+        target['exit_th'] = float(self.s_th_exit.get())
         
         self.auto_save()
 
