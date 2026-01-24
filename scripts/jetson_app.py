@@ -6,7 +6,7 @@ import argparse
 import math
 import yaml
 from pathlib import Path
-from collections import Counter
+from collections import Counter, deque
 import threading
 import queue
 
@@ -65,12 +65,12 @@ SCENE_PRESETS = {
         "message_board": 1.0  # Arrow boards are common in urban diversions
     },
     "suburban": {
-        "bias": -0.05,
-        "channelization": 1.0, # Standard reliance
-        "workers": 0.9,
+        "bias": -0.35,        # Standard Baseline (matches Manual Mode)
+        "channelization": 0.9,
+        "workers": 0.8,
         "vehicles": 0.5,
-        "ttc_signs": 0.8,
-        "message_board": 0.7
+        "ttc_signs": 0.7,
+        "message_board": 0.6
     },
     "mixed": { 
         "bias": -0.05,
@@ -510,6 +510,9 @@ class FrameProcessor(threading.Thread):
         # Load presets from config or fallback to code defaults
         self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
         
+        # SOTA Stability: Temporal Voting Buffer
+        self.scene_buffer = deque(maxlen=7) # Vote over last ~3 seconds (at 15 frame interval)
+        
         try:
             if self.scene_enabled:
                 self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", config['hardware']['device'])
@@ -553,7 +556,7 @@ class FrameProcessor(threading.Thread):
         use_per_cue = f_c.get('use_per_cue', True)
         per_cue_th = f_c.get('per_cue_th', 0.05)
         PER_CUE_INTERVAL = 3
-        SCENE_INTERVAL = 30 # Check scene every ~1s
+        SCENE_INTERVAL = 15 # Check scene every ~0.5s for responsiveness
         clip_interval = 3
         stride = self.config['video'].get('stride', 1)
         
@@ -601,10 +604,16 @@ class FrameProcessor(threading.Thread):
                     print(f"[ERROR] Failed to load Scene Context model: {e}")
                     self.scene_enabled = False # Disable to prevent retry loop spam
             
-            # Scene Context Update & Weights
+            # Scene Context Update & Weights (Temporal Voting)
             if self.scene_enabled and self.scene_predictor:
                 if f_idx % SCENE_INTERVAL == 0:
-                    self.current_scene, self.scene_conf = self.scene_predictor.predict(frame)
+                    raw_scene, self.scene_conf = self.scene_predictor.predict(frame)
+                    self.scene_buffer.append(raw_scene)
+                    
+                    # SOTA Stability: Majority Vote
+                    if self.scene_buffer:
+                        winner = Counter(self.scene_buffer).most_common(1)[0][0]
+                        self.current_scene = winner
                 
                 # Use Scene Specific Presets
                 active_weights = self.scene_presets.get(self.current_scene, self.scene_presets.get("suburban", SCENE_PRESETS["suburban"])).copy()
