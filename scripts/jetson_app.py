@@ -604,16 +604,23 @@ class FrameProcessor(threading.Thread):
                     print(f"[ERROR] Failed to load Scene Context model: {e}")
                     self.scene_enabled = False # Disable to prevent retry loop spam
             
-            # Scene Context Update & Weights (Temporal Voting)
+            # Scene Context Update & Weights (Confidence-Weighted Voting)
             if self.scene_enabled and self.scene_predictor:
                 if f_idx % SCENE_INTERVAL == 0:
                     raw_scene, self.scene_conf = self.scene_predictor.predict(frame)
-                    self.scene_buffer.append(raw_scene)
+                    self.scene_buffer.append((raw_scene, self.scene_conf))
                     
-                    # SOTA Stability: Majority Vote
-                    if self.scene_buffer:
-                        winner = Counter(self.scene_buffer).most_common(1)[0][0]
+                    # SOTA Stability: Confidence Weighted Vote
+                    if len(self.scene_buffer) >= 4: # Warm-up: Wait for 4 reliable samples
+                        scores = {}
+                        for sc, conf in self.scene_buffer:
+                            scores[sc] = scores.get(sc, 0.0) + conf
+                        
+                        # Winner is the one with highest accumulated confidence
+                        winner = max(scores, key=scores.get)
                         self.current_scene = winner
+                    else:
+                        self.current_scene = "suburban" # Default safe state during warm-up
                 
                 # Use Scene Specific Presets
                 active_weights = self.scene_presets.get(self.current_scene, self.scene_presets.get("suburban", SCENE_PRESETS["suburban"])).copy()
