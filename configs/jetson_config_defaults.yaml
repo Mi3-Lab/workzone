@@ -16,7 +16,7 @@ fusion:
   ema_alpha: 0.1
   enter_th: 0.5
   exit_th: 0.3
-  approach_th: 0.2
+  approach_th: 0.25
   min_inside_frames: 6
   min_out_frames: 20
   use_clip: true

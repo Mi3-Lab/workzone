@@ -29,11 +29,20 @@ This repository contains the high-performance inference system for Work Zone Det
 ### 1. Jetson Launcher (GUI) - Recommended
 The easiest way to configure and run the system.
 
+**Production Mode (Stable):**
 ```bash
 make workzone
-# or
-python3 scripts/jetson_launcher.py
 ```
+Runs the verified Phase 2.1 pipeline (YOLO + CLIP + Adaptive EMA). Best for deployment.
+
+**SOTA Experimental Mode (VLM Copilot):**
+```bash
+make workzone2
+```
+Runs the advanced hybrid engine with **Qwen2.5-VL Copilot**.
+- **Async Threading:** VLM reasoning runs in parallel without blocking video.
+- **Hybrid Fusion:** VLM semantic score blends with YOLO detections.
+- **Enhanced HUD:** Visualizes "Copilot Check" status.
 
 **Features:**
 - **Stateless:** Resets to default settings every time you open it.
@@ -59,8 +68,8 @@ venv/bin/python scripts/jetson_app.py --input data/demo/charlotte.mp4 --show
 3. **Adaptive Smoothing:** EMA Alpha adapts based on "Evidence" (Score + Object Density).
 4. **Verification (CLIP):** Triggers when YOLO score > 0.20 to verify context.
 5. **State Machine:**
-   - **OUT:** Score < 0.20
-   - **APPROACHING:** Score >= 0.20 (With hysteresis: drops to OUT only if < 0.15)
+   - **OUT:** Score < 0.25
+   - **APPROACHING:** Score >= 0.25 (With hysteresis: drops to OUT only if < 0.20)
    - **INSIDE:** Score >= 0.42 for 6 frames.
    - **EXITING:** Score < 0.30 (Persistent for 20 frames).
 
@@ -73,7 +82,7 @@ The system uses `configs/jetson_config.yaml`.
 | Parameter | Default | Description |
 | :--- | :--- | :--- |
 | `enter_th` | `0.42` | Threshold to enter INSIDE state |
-| `approach_th` | `0.20` | Threshold to trigger APPROACHING |
+| `approach_th` | `0.25` | Threshold to trigger APPROACHING |
 | `clip_trigger_th` | `0.20` | When to run CLIP verification |
 | `ema_alpha` | `0.10` | Smoothing factor (lower = smoother) |
 

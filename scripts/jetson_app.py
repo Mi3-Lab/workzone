@@ -38,7 +38,6 @@ from rich import box
 # Add scripts to path for local imports
 sys.path.append(str(Path(__file__).parent))
 from scene_context import SceneContextPredictor
-from vlm_verifier import VLMVerifier
 
 # 2. CONSTANTS & CLASSES
 CHANNELIZATION = {"Cone", "Drum", "Barricade", "Barrier", "Vertical Panel", "Tubular Marker", "Fence"}
@@ -56,7 +55,7 @@ SCENE_PRESETS = {
         "vehicles": 0.5,
         "ttc_signs": 1.3,     # High: Signs are the earliest reliable warning
         "message_board": 0.8,
-        "approach_th": 0.20,
+        "approach_th": 0.25,
         "enter_th": 0.50,
         "exit_th": 0.30
     },
@@ -89,7 +88,7 @@ SCENE_PRESETS = {
         "vehicles": 0.5,
         "ttc_signs": 0.8,
         "message_board": 0.6,
-        "approach_th": 0.20,
+        "approach_th": 0.25,
         "enter_th": 0.50,
         "exit_th": 0.30
     }
@@ -396,7 +395,7 @@ def update_state(prev, score, state_dur, out_f, f_conf):
 
     return prev, state_dur, out_f
 
-def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None, vlm_info=None):
+def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     h, w = frame.shape[:2]
     pad_h = 80
     padded = np.full((h + pad_h, w, 3), 0, dtype=np.uint8)
@@ -420,21 +419,14 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None, 
     
     # Scene Label
     if scene == "manual":
-        extra_txt += "[MANUAL CTRL] "
+        extra_txt += "[MANUAL CTRL]"
     elif scene:
-        extra_txt += f"[{scene.upper()} MODE] "
-        
+        extra_txt += f"[{scene.upper()} MODE]"
+    
     if extra_txt:
         (ew, _), _ = cv2.getTextSize(extra_txt, 1, 1.1, 1)
         # Use a bright Cyan for visibility
         cv2.putText(padded, extra_txt, (w - ew - 20, 75), 1, 1.1, (255, 255, 0), 1, cv2.LINE_AA)
-    
-    # VLM Indicator
-    if vlm_info:
-        is_wz, conf, _ = vlm_info
-        vlm_txt = f"QWEN: {'YES' if is_wz else 'VETO'} ({conf:.2f})"
-        v_col = (0, 255, 0) if is_wz else (0, 0, 255)
-        cv2.putText(padded, vlm_txt, (20, 75), 1, 1.1, v_col, 1, cv2.LINE_AA)
         
     return padded
 
@@ -544,12 +536,6 @@ class FrameProcessor(threading.Thread):
             print(f"[Warning] Scene Context model not found or failed: {e}")
             self.scene_predictor = None
             self.current_scene = "suburban"
-
-        # VLM Verifier (Qwen2-VL) - Copilot
-        # We initialize it regardless, it handles its own availability check
-        self.vlm_verifier = VLMVerifier("weights/qwen2_vl_trt", "weights/qwen2_vl_hf", device=config['hardware']['device'])
-        self.vlm_result = None # (is_workzone, conf, text)
-        self.last_vlm_check = 0
 
         if clip_bundle:
             self.per_cue_verifier = PerCueVerifier(clip_bundle, config['hardware']['device'])
@@ -756,22 +742,6 @@ class FrameProcessor(threading.Thread):
             self.f_ema = ema(self.f_ema, clamp01(fused), alpha)
             self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
             
-            # --- VLM Copilot Check (SOTA Reasoning) ---
-            # Only check if we are in a critical state (APPROACHING/INSIDE) to save compute
-            if self.vlm_verifier.available and (self.state in ["APPROACHING", "INSIDE"]):
-                # Check every 60 frames (~2s) or if status changed recently
-                if (f_idx - self.last_vlm_check) > 60:
-                    # Run Qwen2-VL
-                    is_wz, vlm_conf, vlm_text = self.vlm_verifier.verify_scene(frame)
-                    self.vlm_result = (is_wz, vlm_conf, vlm_text)
-                    self.last_vlm_check = f_idx
-                    
-                    # VETO Logic: If VLM is confident it's NOT a workzone, kill the score
-                    if not is_wz and vlm_conf > 0.7:
-                        print(f"[VLM VETO] Qwen says NO: {vlm_text}")
-                        # Force state drop (next frame will handle transition)
-                        self.f_ema = 0.0 
-            
             # Pack Result
             result = {
                 "frame": frame,
@@ -781,8 +751,7 @@ class FrameProcessor(threading.Thread):
                 "clip_on": clip_on,
                 "fps_proc": 0.0,
                 "is_night": is_night,
-                "scene": self.current_scene,
-                "vlm_info": self.vlm_result # Pass to UI
+                "scene": self.current_scene
             }
             
             # Blocking put with timeout to allow exit
@@ -849,7 +818,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
             
             fps_real = frames_rendered / (time.time() - start_t + 1e-6)
             hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real, 
-                         last_result.get("is_night", False), last_result.get("scene", None), last_result.get("vlm_info", None))
+                         last_result.get("is_night", False), last_result.get("scene", None))
             
             writer.write(hud)
             

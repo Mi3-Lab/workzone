@@ -15,7 +15,7 @@ ROOT_DIR = Path(__file__).parent.parent
 CONFIG_PATH = ROOT_DIR / "configs/jetson_config.yaml"
 DEFAULT_CONFIG_PATH = ROOT_DIR / "configs/jetson_config_defaults.yaml"
 WEIGHTS_DIR = ROOT_DIR / "weights"
-SCRIPT_PATH = ROOT_DIR / "scripts/jetson_app.py"
+SCRIPT_PATH = ROOT_DIR / "scripts/jetson_app_sota.py"
 
 # Detect VENV Python
 VENV_PYTHON = ROOT_DIR / "venv/bin/python"
@@ -490,10 +490,10 @@ class JetsonLauncher(tk.Tk):
         
         # Default fallbacks if scene missing in config
         defaults = {
-            "highway": {"bias": 0.0, "channelization": 1.5, "workers": 0.4, "vehicles": 0.5, "ttc_signs": 1.3, "message_board": 0.8, "approach_th": 0.25, "enter_th": 0.50, "exit_th": 0.30},
+            "highway": {"bias": 0.0, "channelization": 1.5, "workers": 0.4, "vehicles": 0.5, "ttc_signs": 1.3, "message_board": 0.8, "approach_th": 0.20, "enter_th": 0.50, "exit_th": 0.30},
             "urban": {"bias": -0.15, "channelization": 0.4, "workers": 1.2, "vehicles": 0.6, "ttc_signs": 0.9, "message_board": 1.0, "approach_th": 0.30, "enter_th": 0.60, "exit_th": 0.40},
             "suburban": {"bias": -0.35, "channelization": 0.9, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.7, "message_board": 0.6, "approach_th": 0.25, "enter_th": 0.50, "exit_th": 0.30},
-            "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6, "approach_th": 0.25, "enter_th": 0.50, "exit_th": 0.30}
+            "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6, "approach_th": 0.20, "enter_th": 0.50, "exit_th": 0.30}
         }
         
         data = presets.get(scene, defaults.get(scene, defaults["suburban"]))
@@ -507,7 +507,7 @@ class JetsonLauncher(tk.Tk):
         self.s_w_msg.set(data.get('message_board', 0.6))
         
         # Thresholds
-        self.s_th_approach.set(data.get('approach_th', 0.25))
+        self.s_th_approach.set(data.get('approach_th', 0.20))
         self.s_th_enter.set(data.get('enter_th', 0.50))
         self.s_th_exit.set(data.get('exit_th', 0.30))
 
