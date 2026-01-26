@@ -47,7 +47,3 @@ fusion:
   per_cue_th: 0.05
 scene_context:
   enabled: false
-vlm:
-  enabled: true
-  model: qwen2.5vl:7b
-  interval: 45
