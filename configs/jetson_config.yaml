@@ -10,6 +10,7 @@ video:
   stride: 2
   real_time: true
   save_output: false
+  flip: true
 hardware:
   device: 0
   half: true

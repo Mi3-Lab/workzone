@@ -98,6 +98,7 @@ class JetsonLauncher(tk.Tk):
         self.half_var.set(self.config_data.get('hardware', {}).get('half', True))
         self.clip_var.set(self.config_data.get('fusion', {}).get('use_clip', True))
         self.save_video_var.set(self.config_data.get('video', {}).get('save_output', False))
+        self.flip_var.set(self.config_data.get('video', {}).get('flip', False))
         
         # Logic
         f = self.config_data.get('fusion', {})
@@ -172,6 +173,7 @@ class JetsonLauncher(tk.Tk):
         self.config_data['video']['stride'] = int(self.stride_scale.get())
         self.config_data['video']['real_time'] = bool(self.real_time_var.get())
         self.config_data['video']['save_output'] = bool(self.save_video_var.get())
+        self.config_data['video']['flip'] = bool(self.flip_var.get())
         self.config_data['hardware']['half'] = bool(self.half_var.get())
         self.config_data['fusion']['use_clip'] = bool(self.clip_var.get())
 
@@ -260,6 +262,9 @@ class JetsonLauncher(tk.Tk):
         self.combo_cam = ttk.Combobox(self.f_cam_input, textvariable=self.camera_idx_var, 
                                       values=["0", "1", "2", "3", "4", "5", "6"], width=5)
         self.combo_cam.pack(side=tk.LEFT, padx=5)
+        
+        self.flip_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('flip', False))
+        ttk.Checkbutton(self.f_cam_input, text="Flip 180°", variable=self.flip_var).pack(side=tk.LEFT, padx=5)
         
         ttk.Button(self.f_cam_input, text="Preview", command=self.preview_camera).pack(side=tk.LEFT, padx=5)
         ttk.Label(self.f_cam_input, text="(Select or Type)").pack(side=tk.LEFT, padx=5)
@@ -644,6 +649,7 @@ class JetsonLauncher(tk.Tk):
         if input_val: cmd.extend(["--input", input_val])
         if self.show_var.get(): cmd.append("--show")
         if self.save_video_var.get(): cmd.append("--save")
+        if self.flip_var.get(): cmd.append("--flip")
             
         print(f"[DEBUG] Launching command: {' '.join(cmd)}")
         self.status_var.set(f"Running: {' '.join(cmd)}")

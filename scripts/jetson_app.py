@@ -495,7 +495,7 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     clip_interval = 3 
     
 class FrameProcessor(threading.Thread):
-    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None):
+    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None, flip_frame=False):
         super().__init__(daemon=True)
         self.source = source
         self.config = config
@@ -504,6 +504,7 @@ class FrameProcessor(threading.Thread):
         self.result_queue = result_queue
         self.running = True
         self.cap = None
+        self.flip_frame = flip_frame
         
         # Logic State
         self.state = "OUT"
@@ -609,6 +610,9 @@ class FrameProcessor(threading.Thread):
             if not ret:
                 self.running = False
                 break
+            
+            if self.flip_frame:
+                frame = cv2.flip(frame, -1) # Flip 180 degrees
             
             # FPS Calculation (Inference Side)
             fps_count += 1
@@ -808,7 +812,7 @@ class FrameProcessor(threading.Thread):
         self.cap.release()
         self.running = False
 
-def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None):
+def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None, flip_frame=False):
     # Setup Output
     is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
     source_name = f"camera_{source}" if is_camera else Path(source).name
@@ -822,7 +826,7 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
     
     # Thread communication
     result_queue = queue.Queue(maxsize=3) # Small buffer
-    processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path)
+    processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path, flip_frame=flip_frame)
     processor.start()
     
     # Wait for first frame
@@ -901,6 +905,7 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
+    parser.add_argument("--flip", action="store_true", help="Flip camera 180 degrees")
     args = parser.parse_args()
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
     m_p, _ = ensure_model(config)
@@ -934,7 +939,7 @@ def main():
     results = []
     for src in sources:
         console.print(f"🚀 Processing {src}..."); 
-        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config)
+        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config, flip_frame=args.flip)
         if res: results.append(res)
     
     table = Table(title="📊 Results")
