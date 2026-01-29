@@ -129,81 +129,30 @@ workzone-yolo-v12/
 # ---------------------------------
 # Model weights (distributed models kept)
 # ---------------------------------
+# General Ignores
 weights/*.pt
-!weights/yolo12s_hardneg_1280.pt
-!weights/yolo12s_fusion_baseline.pt
-!weights/yolo11s_finetune_1080px.pt
+weights/*.engine
+weights/*.onnx
+weights/*.safetensors
+
+# EXCEPTIONS (Tracked Weights)
+!weights/yolo*.pt
+!weights/best*.pt
+!weights/speedlimit.pt
 !weights/scene_context_classifier.pt
 !weights/.gitkeep
 
-# ---------------------------------
-# Training outputs and artifacts
-# ---------------------------------
-runs/
-runs_workzone/
-models/
-workzone_yolo/
-lightning_logs/
-workzone_phase1_1_yolo11_1080_wandb/
-
-# ---------------------------------
-# Logs and cache
-# ---------------------------------
-*.log
-logs/
-wandb/
-.cache/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# ---------------------------------
-# Environment files
-# ---------------------------------
-.env
-.env.local
-.env.*.local
-
-# ---------------------------------
-# OS specific
-# ---------------------------------
-.DS_Store
-Thumbs.db
-*.swp
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-.tmp/
-*.tmp
-
-# ---------------------------------
-# OS and editor files
-# ---------------------------------
-.DS_Store
-Thumbs.db
-
-.vscode/
-.idea/
-*.whl
-
-# ---------------------------------
-# Jetson App Specific
-# ---------------------------------
-# Ignore compiled torch wheels and other large binary distributions
-*.whl
-torch-*.whl
-
-# Model weights and large artifacts
+# Ignore CLIP cache and large models
 weights/clip/
-weights/**/blobs/
-weights/**/*.safetensors
-weights/*.onnx
-weights/*.engine
-weights/*.safetensors
-weights/*.pt
-
-# libcuda/cuSPARSE archived libs
+weights/Qwen*/
+weights/VILA*/
+weights/qwen*/
+weights/vila*/
+weights/modules/
+weights/xet/
+# External Repositories (Ignored)
+TensorRT-LLM/
+jetson-containers/
+llama.cpp/
 libcusparse_lt-linux-aarch64-0.6.2.3-archive/
-libcusparse_lt-linux-aarch64-0.6.2.3-archive.tar.xz
+temp_wheels/

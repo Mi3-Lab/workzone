@@ -94,8 +94,10 @@ class JetsonLauncher(tk.Tk):
         self.conf_scale.set(self.config_data.get('model', {}).get('conf', 0.25))
         self.iou_scale.set(self.config_data.get('model', {}).get('iou', 0.7))
         self.stride_scale.set(self.config_data.get('video', {}).get('stride', 1))
+        self.real_time_var.set(self.config_data.get('video', {}).get('real_time', True))
         self.half_var.set(self.config_data.get('hardware', {}).get('half', True))
         self.clip_var.set(self.config_data.get('fusion', {}).get('use_clip', True))
+        self.save_video_var.set(self.config_data.get('video', {}).get('save_output', False))
         
         # Logic
         f = self.config_data.get('fusion', {})
@@ -168,6 +170,8 @@ class JetsonLauncher(tk.Tk):
         self.config_data['model']['iou'] = float(self.iou_scale.get())
         self.config_data['model']['imgsz'] = int(self.imgsz_var.get())
         self.config_data['video']['stride'] = int(self.stride_scale.get())
+        self.config_data['video']['real_time'] = bool(self.real_time_var.get())
+        self.config_data['video']['save_output'] = bool(self.save_video_var.get())
         self.config_data['hardware']['half'] = bool(self.half_var.get())
         self.config_data['fusion']['use_clip'] = bool(self.clip_var.get())
 
@@ -289,7 +293,7 @@ class JetsonLauncher(tk.Tk):
         self.stride_scale = self.create_slider(lf_par, "Stride (Speed)", 1, 10, 1, self.config_data.get('video', {}).get('stride', 1))
 
         # Hardware
-        lf_hw = ttk.LabelFrame(parent, text="Hardware")
+        lf_hw = ttk.LabelFrame(parent, text="Hardware & Performance")
         lf_hw.pack(fill=tk.X, padx=10, pady=5)
         self.half_var = tk.BooleanVar(value=self.config_data.get('hardware', {}).get('half', True))
         ttk.Checkbutton(lf_hw, text="FP16 (TensorRT)", variable=self.half_var).pack(side=tk.LEFT, padx=10)
@@ -299,6 +303,13 @@ class JetsonLauncher(tk.Tk):
         
         self.show_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(lf_hw, text="Show Window", variable=self.show_var).pack(side=tk.LEFT, padx=10)
+
+        self.save_video_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('save_output', False))
+        ttk.Checkbutton(lf_hw, text="Save Output Video", variable=self.save_video_var).pack(side=tk.LEFT, padx=10)
+
+        # Real-Time Toggle
+        self.real_time_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('real_time', True))
+        ttk.Checkbutton(lf_hw, text="Real-Time Speed", variable=self.real_time_var, command=self.auto_save).pack(side=tk.LEFT, padx=10)
 
         # Scene Context
         lf_sc = ttk.LabelFrame(parent, text="Automation")
@@ -632,7 +643,9 @@ class JetsonLauncher(tk.Tk):
             
         if input_val: cmd.extend(["--input", input_val])
         if self.show_var.get(): cmd.append("--show")
+        if self.save_video_var.get(): cmd.append("--save")
             
+        print(f"[DEBUG] Launching command: {' '.join(cmd)}")
         self.status_var.set(f"Running: {' '.join(cmd)}")
         self.update()
         

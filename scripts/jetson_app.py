@@ -563,24 +563,61 @@ class FrameProcessor(threading.Thread):
         else:
             self.cap = cv2.VideoCapture(str(self.source))
             
+        # --- Frame Pacing Setup ---
+        source_fps = self.cap.get(cv2.CAP_PROP_FPS)
+        if source_fps <= 0 or source_fps > 120: source_fps = 30.0
+        if is_camera: source_fps = min(source_fps, 30.0) # Cap camera
+        
+        frame_interval = 1.0 / source_fps
+        print(f"[FrameProcessor] Pacing enabled: Target {source_fps:.1f} FPS (Interval: {frame_interval*1000:.1f}ms)")
+        
+        # Absolute Timing Reference (Drift-Free)
+        playback_start_time = time.time()
+        # --------------------------
+            
         f_idx = 0
         f_c = self.config['fusion']
+        # ... (config loading kept same) ...
         use_per_cue = f_c.get('use_per_cue', True)
         per_cue_th = f_c.get('per_cue_th', 0.05)
         PER_CUE_INTERVAL = 3
-        SCENE_INTERVAL = 15 # Check scene every ~0.5s for responsiveness
+        SCENE_INTERVAL = 15 
         clip_interval = 3
         stride = self.config['video'].get('stride', 1)
         
         last_config_mtime = os.path.getmtime(self.config_path) if self.config_path else 0
+        
+        # FPS Calculation Variables
+        fps_t0 = time.time()
+        fps_count = 0
+        current_fps = 0.0
 
         while self.running and self.cap.isOpened():
+            loop_start = time.time()
+            
+            # Sync Logic: Wait for the correct moment to process THIS frame (Optional)
+            is_real_time = self.config.get('video', {}).get('real_time', True)
+            
+            if not is_camera and is_real_time: # Only strict pacing if enabled and not live camera
+                target_time = playback_start_time + (f_idx * frame_interval)
+                current_time = time.time()
+                wait_time = target_time - current_time
+                if wait_time > 0:
+                    time.sleep(wait_time)
+            
             ret, frame = self.cap.read()
             if not ret:
                 self.running = False
                 break
             
-            # Hot-Reload Config (Check every 5 frames for responsiveness)
+            # FPS Calculation (Inference Side)
+            fps_count += 1
+            if time.time() - fps_t0 > 0.5: # Update every 0.5s
+                current_fps = fps_count / (time.time() - fps_t0)
+                fps_count = 0
+                fps_t0 = time.time()
+            
+            # Hot-Reload Config (Check every 5 frames)
             if self.config_path and f_idx % 5 == 0:
                 try:
                     mtime = os.path.getmtime(self.config_path)
@@ -588,6 +625,8 @@ class FrameProcessor(threading.Thread):
                         with open(self.config_path, 'r') as f: config = yaml.safe_load(f)
                         self.config = config
                         f_c = config['fusion']
+                        # Explicitly update keys used in loop
+                        stride = self.config['video'].get('stride', 1)
                         use_per_cue = f_c.get('use_per_cue', True)
                         per_cue_th = f_c.get('per_cue_th', 0.05)
                         
@@ -749,7 +788,8 @@ class FrameProcessor(threading.Thread):
                 "state": self.state,
                 "score": self.f_ema,
                 "clip_on": clip_on,
-                "fps_proc": 0.0,
+                "fps_proc": current_fps, # True Inference FPS
+                "source_fps": source_fps,
                 "is_night": is_night,
                 "scene": self.current_scene
             }
@@ -768,13 +808,17 @@ class FrameProcessor(threading.Thread):
         self.cap.release()
         self.running = False
 
-def process_video(source, model, clip_bundle, config, show, config_path=None):
+def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None):
     # Setup Output
     is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
     source_name = f"camera_{source}" if is_camera else Path(source).name
     timestamp = int(time.time())
-    out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    writer = None
+    out_path = None
+    if save_video:
+        out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
     
     # Thread communication
     result_queue = queue.Queue(maxsize=3) # Small buffer
@@ -785,63 +829,78 @@ def process_video(source, model, clip_bundle, config, show, config_path=None):
     try:
         first_res = result_queue.get(timeout=10.0)
         h, w = first_res["frame"].shape[:2]
-        fps_in = 30 # Default/Target
+        fps_in = first_res.get("source_fps", 30.0)
     except:
         console.print("[red]Failed to start video stream.[/red]")
         return None
 
-    writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
+    if save_video and out_path:
+        writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
     
     # Main UI Loop
     t_last_render = time.time()
     frames_rendered = 0
     start_t = time.time()
+    stride = config['video'].get('stride', 1)
     
     last_result = first_res
+    fps_smooth = 30.0 # Initial guess
     
     try:
         while processor.running or not result_queue.empty():
-            # Try get new frame (Non-blocking or short timeout)
             try:
-                # If we are ahead of schedule, we can wait a bit
-                res = result_queue.get(timeout=0.005)
+                # Wait efficiently for new frame
+                res = result_queue.get(timeout=0.01)
+                
+                # --- NEW FRAME LOGIC ---
                 last_result = res
+                
+                # Render Logic
+                frame = last_result["frame"].copy()
+                for box, label, color in last_result["plot_boxes"]:
+                    p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+                    cv2.rectangle(frame, p1, p2, color, 2)
+                    cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
+                
+                # Use Inference FPS from Producer
+                fps_display = last_result.get("fps_proc", 0.0)
+                
+                hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_display, 
+                             last_result.get("is_night", False), last_result.get("scene", None))
+                
+                if writer:
+                    for _ in range(stride):
+                        writer.write(hud)
+                
+                if show:
+                    cv2.imshow("Jetson WorkZone", cv2.resize(hud, (1280, 720)) if w > 1280 else hud)
+                    if cv2.waitKey(1) == ord('q'):
+                        processor.running = False
+                        break
+                
+                frames_rendered += 1
+                
             except queue.Empty:
-                pass # Reuse last result (Zero-Order Hold for smooth UI)
-            
-            # Render Logic
-            frame = last_result["frame"].copy()
-            for box, label, color in last_result["plot_boxes"]:
-                p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
-                cv2.rectangle(frame, p1, p2, color, 2)
-                cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
-            
-            fps_real = frames_rendered / (time.time() - start_t + 1e-6)
-            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_real, 
-                         last_result.get("is_night", False), last_result.get("scene", None))
-            
-            writer.write(hud)
-            
-            if show:
-                cv2.imshow("Jetson WorkZone", cv2.resize(hud, (1280, 720)) if w > 1280 else hud)
-                if cv2.waitKey(1) == ord('q'):
-                    processor.running = False
-                    break
-            
-            frames_rendered += 1
+                # No new frame? Just keep window responsive, don't burn CPU re-rendering
+                if show:
+                    if cv2.waitKey(1) == ord('q'):
+                        processor.running = False
+                        break
+                continue
             
     except KeyboardInterrupt:
         processor.running = False
     finally:
         processor.join()
-        writer.release()
+        if writer:
+            writer.release()
         cv2.destroyAllWindows()
         
-    return {"video": source_name, "frames": frames_rendered, "avg_fps": frames_rendered / (time.time() - start_t), "output": out_path.name}
+    return {"video": source_name, "frames": frames_rendered, "avg_fps": frames_rendered / (time.time() - start_t), "output": out_path.name if out_path else "Not Saved"}
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
+    parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     args = parser.parse_args()
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
     m_p, _ = ensure_model(config)
@@ -875,7 +934,7 @@ def main():
     results = []
     for src in sources:
         console.print(f"🚀 Processing {src}..."); 
-        res = process_video(src, model, cb, config, args.show, config_path=args.config)
+        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config)
         if res: results.append(res)
     
     table = Table(title="📊 Results")
