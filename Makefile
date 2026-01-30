@@ -14,6 +14,7 @@ help:
 	@echo "  make app-basic-detection  Run the Basic Detection Streamlit app"
 	@echo "  make app-advanced-scoring Run the Advanced Scoring Streamlit app"
 	@echo "  make workzone         Run the Jetson Orin Launcher (GUI)"
+	@echo "  make live             Run the Jetson app in CLI mode (default: live camera)"
 	@echo "  make workzone2        Run the SOTA Experimental Launcher (VLM Copilot)"
 	@echo "  make test              Run all tests"
 	@echo "  make test-coverage     Run tests with coverage report"
@@ -55,6 +56,10 @@ streamlit: app
 workzone:
 	@echo "🚀 Launching WorkZone Controller (Jetson Orin)..."
 	@python3 scripts/jetson_launcher.py
+
+live:
+	@echo "💻 Launching WorkZone Jetson App in CLI mode (default: live camera)..."
+	@python3 scripts/jetson_cli_app.py
 
 workzone2:
 	@echo "🧪 Launching SOTA Experimental Controller (VLM Copilot)..."

@@ -651,7 +651,7 @@ class JetsonLauncher(tk.Tk):
         if self.save_video_var.get(): cmd.append("--save")
         if self.flip_var.get(): cmd.append("--flip")
             
-        print(f"[DEBUG] Launching command: {' '.join(cmd)}")
+
         self.status_var.set(f"Running: {' '.join(cmd)}")
         self.update()
         

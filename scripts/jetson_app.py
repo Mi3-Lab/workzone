@@ -820,7 +820,7 @@ class FrameProcessor(threading.Thread):
         self.cap.release()
         self.running = False
 
-def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None, flip_frame=False):
+def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None, flip_frame=False, cli_output=False):
     # Setup Output
     is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
     source_name = f"camera_{source}" if is_camera else Path(source).name
@@ -876,6 +876,9 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
                 
                 # Use Inference FPS from Producer
                 fps_display = last_result.get("fps_proc", 0.0)
+
+                if cli_output:
+                    print(f"STATE: {last_result['state']:<12} | SCORE: {last_result['score']:.2f} | FPS: {fps_display:.1f} | SCENE: {last_result.get('scene', 'N/A'):<10}", flush=True)
                 
                 hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_display, 
                              last_result.get("is_night", False), last_result.get("scene", None))
@@ -931,6 +934,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     parser.add_argument("--flip", action="store_true", help="Flip camera 180 degrees")
+    parser.add_argument("--cli-output", action="store_true", help="Output real-time processing info to CLI")
     args = parser.parse_args()
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
     m_p, _ = ensure_model(config)
@@ -968,7 +972,7 @@ def main():
     results = []
     for src in sources:
         console.print(f"🚀 Processing {src}..."); 
-        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config, flip_frame=args.flip)
+        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config, flip_frame=args.flip, cli_output=args.cli_output)
         if res: results.append(res)
     
     table = Table(title="📊 Results")
