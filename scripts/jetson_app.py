@@ -9,6 +9,8 @@ from pathlib import Path
 from collections import Counter, deque
 import threading
 import queue
+import signal
+
 
 # 1. ENV SETUP
 def setup_environment():
@@ -559,8 +561,14 @@ class FrameProcessor(threading.Thread):
         if is_camera:
             try:
                 self.cap = cv2.VideoCapture(int(self.source))
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                self.cap.set(cv2.CAP_PROP_FPS, 30)
             except:
                 self.cap = cv2.VideoCapture(self.source)
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                self.cap.set(cv2.CAP_PROP_FPS, 30)
         else:
             self.cap = cv2.VideoCapture(str(self.source))
             
@@ -903,6 +911,23 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
     return {"video": source_name, "frames": frames_rendered, "avg_fps": frames_rendered / (time.time() - start_t), "output": out_path.name if out_path else "Not Saved"}
 
 def main():
+    # Graceful shutdown handler
+    def shutdown_handler(signum, frame):
+        print("\n[INFO] Shutdown signal received. Cleaning up...")
+        # Find the processor instance to signal it to stop
+        # This is a bit of a hack, assumes 'processor' is in the local scope of process_video
+        # A more robust solution would involve a shared state object.
+        # For now, we rely on the process exiting to clean up daemon threads.
+        # The most important part is breaking the main loop.
+        # A better way is to find the running thread and set its flag.
+        # Let's find the FrameProcessor thread and set its running flag to False
+        for th in threading.enumerate():
+            if isinstance(th, FrameProcessor):
+                th.running = False
+    
+    signal.signal(signal.SIGTERM, shutdown_handler)
+    signal.signal(signal.SIGINT, shutdown_handler) # Also handle SIGINT for consistency
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     parser.add_argument("--flip", action="store_true", help="Flip camera 180 degrees")
@@ -911,6 +936,10 @@ def main():
     m_p, _ = ensure_model(config)
     model = YOLO(m_p, task='detect')
     cb = None
+    # Add a small delay to allow GPU memory to settle after YOLO model load.
+    # This prevents a potential race condition causing a false out-of-memory error.
+    time.sleep(0.1)
+    
     if config['fusion']['use_clip']:
         m_c, _, prep = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
         cb = {"model": m_c.to("cuda").eval(), "preprocess": prep, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}
