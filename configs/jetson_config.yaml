@@ -2,7 +2,7 @@ model:
   path: weights/yolo12s_hardneg_1280.pt
   conf: 0.25
   iou: 0.7
-  imgsz: 960
+  imgsz: 736
 video:
   input: data/demo
   output_dir: results/jetson
@@ -13,7 +13,7 @@ video:
   flip: false
 hardware:
   device: 0
-  half: true
+  half: false
   workspace: 4
 fusion:
   ema_alpha: 0.1

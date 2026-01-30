@@ -935,8 +935,15 @@ def main():
     parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     parser.add_argument("--flip", action="store_true", help="Flip camera 180 degrees")
     parser.add_argument("--cli-output", action="store_true", help="Output real-time processing info to CLI")
+    parser.add_argument("--disable-clip", action="store_true", help="Explicitly disable CLIP fusion, overriding config.")
     args = parser.parse_args()
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
+
+    # Override CLIP setting if --disable-clip is used
+    if args.disable_clip:
+        print("[INFO] CLIP fusion explicitly disabled via command line.")
+        config['fusion']['use_clip'] = False
+
     m_p, _ = ensure_model(config)
     model = YOLO(m_p, task='detect')
     cb = None
@@ -944,6 +951,7 @@ def main():
     # This prevents a potential race condition causing a false out-of-memory error.
     time.sleep(0.1)
     
+    # Load CLIP only if enabled in config (possibly overridden by --disable-clip)
     if config['fusion']['use_clip']:
         m_c, _, prep = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
         cb = {"model": m_c.to("cuda").eval(), "preprocess": prep, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}

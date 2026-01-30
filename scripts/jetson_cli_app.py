@@ -42,9 +42,9 @@ def main():
         help="Save the output video from the Jetson app."
     )
     parser.add_argument(
-        "--flip", 
-        action="store_true", 
-        help="Flip the camera input 180 degrees."
+        "--no-flip",
+        action="store_true",
+        help="Do not flip the camera input. By default, the camera input is flipped 180 degrees."
     )
     
     args = parser.parse_args()
@@ -62,8 +62,14 @@ def main():
         cmd.append("--show")
     if args.save:
         cmd.append("--save")
-    if args.flip:
+    
+    # By default, flip the camera, unless --no-flip is specified
+    if not args.no_flip:
         cmd.append("--flip")
+    
+    # By default, disable CLIP, unless --clip is specified
+    if not args.clip:
+        cmd.append("--disable-clip")
 
     print(f"🚀 Launching Jetson App in CLI mode (Input: {args.input}, Config: {args.config})...")
     print(f"   To stop, press Ctrl+C.")
