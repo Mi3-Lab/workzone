@@ -320,7 +320,7 @@ class JetsonLauncher(tk.Tk):
         # Sanitize index
         clean_idx = ''.join(filter(str.isdigit, str(idx))) if str(idx).isdigit() else idx
         
-        preview_script = ROOT_DIR / "scripts/preview_camera.py"
+        preview_script = ROOT_DIR / "tools/preview_camera.py"
         cmd = [str(VENV_PYTHON), str(preview_script), str(clean_idx)]
         
         try:

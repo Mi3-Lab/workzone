@@ -8,7 +8,7 @@ This document provides a professional overview of the WorkZone repository organi
 workzone/
 ├── src/workzone/           # Production source code
 ├── tests/                  # Test suites
-├── scripts/                # Automation scripts
+├── scripts/                # Application entry points
 ├── notebooks/              # Jupyter notebooks for analysis
 ├── docs/                   # Documentation
 ├── configs/                # Configuration files
@@ -75,20 +75,30 @@ tests/
 
 ## 📜 Scripts (`scripts/`)
 
-**Purpose**: Automation and batch processing tools.
+**Purpose**: Application entry points for running the main applications.
 
 ```
 scripts/
-├── download_models.sh                  # Download pre-trained weights
-├── process_video_fusion.py             # Batch video processing
-├── evaluate_phase1_4.py                # Scene context evaluation
-├── train_scene_context.py              # Scene classifier training
-├── mine_hard_negatives.py              # Hard-negative mining
-├── review_hard_negatives.py            # Human-in-the-loop review
-├── HARDNEG_QUICKSTART.sh               # Hard-negative pipeline guide
-├── PHASE1_4_QUICKSTART.sh              # Scene context guide
-└── phase1_1/                           # Phase 1.1 scripts
-    └── test_phase1_1_integrated.py
+├── jetson_app.py                   # Main Jetson application
+├── jetson_cli_app.py               # CLI application for Jetson
+├── jetson_launcher.py              # GUI launcher for Jetson
+├── jetson_launcher_sota.py         # Experimental GUI launcher
+└── launch_streamlit.sh             # Script to launch the Streamlit app
+```
+
+## 🛠️ Tools (`tools/`)
+
+**Purpose**: Automation, utility, and analysis scripts.
+
+```
+tools/
+├── download_models.sh              # Download pre-trained weights
+├── process_video_fusion.py         # Batch video processing
+├── optimize_for_jetson.py          # Optimize models for Jetson
+├── mine_hard_negatives.py          # Hard-negative mining
+├── review_hard_negatives.py        # Human-in-the-loop review
+└── analysis/                       # Analysis scripts
+    └── ...
 ```
 
 ## 📊 Notebooks (`notebooks/`)
@@ -216,7 +226,7 @@ python tests/exploratory/test_classifier_improved.py
 
 ```bash
 # CLI batch processing
-python scripts/process_video_fusion.py video.mp4 --output-dir outputs/
+python tools/process_video_fusion.py video.mp4 --output-dir outputs/
 
 # Web interface
 streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
@@ -227,8 +237,8 @@ streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
 ### Jetson Orin Preparation
 
 ```bash
-# Export to ONNX
-python scripts/export_onnx.py weights/bestv12.pt
+# Optimize the models for Jetson
+python tools/optimize_for_jetson.py
 
 # Convert to TensorRT
 trtexec --onnx=model.onnx --saveEngine=model.trt --fp16

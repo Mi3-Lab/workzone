@@ -6,7 +6,7 @@ This script mirrors the functionality of the Streamlit app but is optimized
 for headless execution on Jetson Orin using TensorRT.
 
 Usage:
-    python scripts/run_jetson_inference.py --config configs/jetson_config.yaml
+    python tools/run_jetson_inference.py --config configs/jetson_config.yaml
 """
 
 import argparse
@@ -34,10 +34,8 @@ import yaml
 import cv2
 from ultralytics import YOLO
 
-# Add scripts dir to path to import optimization utils
-sys.path.append(str(Path(__file__).parent))
 try:
-    from optimize_for_jetson import export_yolo_tensorrt
+    from workzone.utils.optimize_for_jetson import export_yolo_tensorrt
 except ImportError:
     print("Warning: Could not import optimize_for_jetson. Auto-export might fail.")
 

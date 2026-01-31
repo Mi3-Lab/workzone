@@ -304,7 +304,8 @@ class JetsonLauncher(tk.Tk):
         ttk.Checkbutton(lf_hw, text="FP16 (TensorRT)", variable=self.half_var).pack(side=tk.LEFT, padx=10)
         
         self.clip_var = tk.BooleanVar(value=self.config_data.get('fusion', {}).get('use_clip', True))
-        ttk.Checkbutton(lf_hw, text="Enable CLIP", variable=self.clip_var).pack(side=tk.LEFT, padx=10)
+        self.clip_checkbox = ttk.Checkbutton(lf_hw, text="Enable CLIP", variable=self.clip_var, command=self.toggle_per_cue)
+        self.clip_checkbox.pack(side=tk.LEFT, padx=10)
         
         self.show_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(lf_hw, text="Show Window", variable=self.show_var).pack(side=tk.LEFT, padx=10)
@@ -336,7 +337,7 @@ class JetsonLauncher(tk.Tk):
         # Sanitize index
         clean_idx = ''.join(filter(str.isdigit, str(idx))) if str(idx).isdigit() else idx
         
-        preview_script = ROOT_DIR / "scripts/preview_camera.py"
+        preview_script = ROOT_DIR / "tools/preview_camera.py"
         cmd = [str(VENV_PYTHON), str(preview_script), str(clean_idx)]
         
         try:
@@ -344,6 +345,13 @@ class JetsonLauncher(tk.Tk):
             self.status_var.set(f"Preview launched for Camera {clean_idx}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to launch preview: {e}")
+
+    def toggle_per_cue(self):
+        if self.clip_var.get():
+            self.per_cue_checkbox.config(state=tk.NORMAL)
+        else:
+            self.per_cue_checkbox.config(state=tk.DISABLED)
+            self.per_cue_var.set(False)
 
     # ---------------- TAB 2: WEIGHTS & LOGIC ----------------
     def setup_logic_tab(self):
@@ -429,9 +437,12 @@ class JetsonLauncher(tk.Tk):
         lf_pc.pack(fill=tk.X, padx=10, pady=5)
         
         self.per_cue_var = tk.BooleanVar(value=f.get('use_per_cue', True))
-        ttk.Checkbutton(lf_pc, text="Enable Per-Cue Filtering", variable=self.per_cue_var).pack(anchor=tk.W, padx=5)
+        self.per_cue_checkbox = ttk.Checkbutton(lf_pc, text="Enable Per-Cue Filtering", variable=self.per_cue_var)
+        self.per_cue_checkbox.pack(anchor=tk.W, padx=5)
         
         self.per_cue_th_scale = self.create_slider(lf_pc, "CLIP Verification Th", -0.2, 0.5, 0.01, f.get('per_cue_th', 0.05))
+
+        self.toggle_per_cue()
 
     # ---------------- TAB 5: SCENE CONTEXT ----------------
     def setup_scene_tab(self):

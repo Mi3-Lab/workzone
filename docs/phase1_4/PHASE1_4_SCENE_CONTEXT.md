@@ -79,7 +79,7 @@ python -c "from workzone.models.scene_context import create_training_dataset; \
   create_training_dataset('data/01_raw/annotations/instances_train_gps_split.json')"
 
 # Train model
-python scripts/train_scene_context.py \
+python tools/train_scene_context.py \
   --dataset-dir data/04_derivatives/scene_context_dataset \
   --output weights/scene_context_classifier.pt \
   --epochs 10 \
@@ -98,7 +98,7 @@ Expected results:
 
 ```bash
 # Enable Phase 1.4 in video processing
-python scripts/process_video_fusion.py video.mp4 \
+python tools/process_video_fusion.py video.mp4 \
   --enable-phase1-4 \
   --scene-context-weights weights/scene_context_classifier.pt \
   --enable-phase1-1 \

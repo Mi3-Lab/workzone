@@ -6,11 +6,11 @@ Train the attention-weighted temporal model on CSV timelines
 from process_video_fusion.py outputs.
 
 Usage:
-    python scripts/train_temporal_attention.py \
-        --train-dir outputs/phase1_4_demo \
-        --val-dir outputs/phase1_4_eval \
-        --output-dir runs/phase2_1 \
-        --epochs 50 \
+    python tools/train_temporal_attention.py \\
+        --train-dir outputs/phase1_4_demo \\
+        --val-dir outputs/phase1_4_eval \\
+        --output-dir runs/phase2_1 \\
+        --epochs 50 \\
         --batch-size 32
 """
 

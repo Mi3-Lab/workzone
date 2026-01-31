@@ -11,7 +11,7 @@ Pipeline:
 This is a staging miner: it does NOT auto-label; humans must vet before adding to training.
 
 Usage (single GPU node):
-python scripts/batch_mine_hard_negatives.py \
+python tools/batch_mine_hard_negatives.py \
   --roots data/demo data/01_raw/Construction_Data \
   --output-dir outputs/hardneg_mining \
   --device cuda \
@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 try:
-    from scripts.process_video_fusion import process_video, PHASE1_1_AVAILABLE
+    from tools.process_video_fusion import process_video, PHASE1_1_AVAILABLE
 except Exception as e:  # pragma: no cover
     print(f"❌ Cannot import process_video_fusion: {e}")
     sys.exit(1)

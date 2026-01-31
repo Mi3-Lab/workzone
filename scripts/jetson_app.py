@@ -89,7 +89,7 @@ from rich import box
 
 # Add scripts to path for local imports
 sys.path.append(str(Path(__file__).parent))
-from scene_context import SceneContextPredictor
+from workzone.detection.scene_context import SceneContextPredictor
 
 # 2. CONSTANTS & CLASSES
 CHANNELIZATION = {"Cone", "Drum", "Barricade", "Barrier", "Vertical Panel", "Tubular Marker", "Fence"}
@@ -532,7 +532,7 @@ def ensure_model(config):
     - If hardware.half is FALSE: Returns the path to the .pt file directly.
     """
     sys.path.append(str(Path(__file__).parent))
-    from optimize_for_jetson import export_yolo_tensorrt
+    from workzone.utils.optimize_for_jetson import export_yolo_tensorrt
     
     path_in = Path(config['model']['path'])
 
@@ -857,7 +857,7 @@ class FrameProcessor(threading.Thread):
                         crop = frame_ai[y1:y2, x1:x2] # Use Enhanced Crop for CLIP
                         candidates.append({'box': box, 'name': name, 'conf': conf, 'cat': cat, 'crop': crop})
 
-            should_verify = (use_per_cue and self.per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
+            should_verify = (f_c.get('use_clip', False) and use_per_cue and self.per_cue_verifier and (f_idx % PER_CUE_INTERVAL == 0))
             
             # Reset counts for this frame (instantaneous)
             # In a threaded model, we might want to smooth counts, but for now we reset

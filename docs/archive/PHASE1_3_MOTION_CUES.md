@@ -203,16 +203,6 @@ for frame in video:
 
 ## Testing Strategy
 
-### 1. Benchmark on Baseline Dataset
-
-```bash
-python scripts/evaluate_phase1_3.py \
-  --video data/demo/boston_workzone_short.mp4 \
-  --enable-phase1-3 \
-  --motion-config configs/motion_cue_config.yaml
-```
-
-Expected: 10-20% reduction in false positives from motion filtering alone.
 
 ### 2. False Positive Analysis
 

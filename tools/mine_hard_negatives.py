@@ -10,19 +10,19 @@ Features:
 Usage examples:
 
 # Manually pick frames 120,240 from a run
-python scripts/mine_hard_negatives.py \
-  --video results/boston_workzone_short_annotated_fusion.mp4 \
-  --csv results/boston_workzone_short_timeline_fusion.csv \
-  --category orange_trucks \
+python tools/mine_hard_negatives.py \\
+  --video results/boston_workzone_short_annotated_fusion.mp4 \\
+  --csv results/boston_workzone_short_timeline_fusion.csv \\
+  --category orange_trucks \\
   --frames 120,240
 
 # Auto-pick top 40 high-score frames (fused_score_ema >= 0.65) where Phase 1.1 passed
-python scripts/mine_hard_negatives.py \
-  --video results/boston_workzone_short_annotated_fusion.mp4 \
-  --csv results/boston_workzone_short_timeline_fusion.csv \
-  --category random_cones \
-  --auto-high-score 0.65 \
-  --require-p1 \
+python tools/mine_hard_negatives.py \\
+  --video results/boston_workzone_short_annotated_fusion.mp4 \\
+  --csv results/boston_workzone_short_timeline_fusion.csv \\
+  --category random_cones \\
+  --auto-high-score 0.65 \\
+  --require-p1 \\
   --max-frames 40
 
 Notes:

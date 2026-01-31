@@ -8,7 +8,7 @@ with text descriptions and object annotations.
 ✓ This is the CORRECT approach - using real annotated data!
 
 Usage:
-    python scripts/train_phase2_1_on_trajectories.py \
+    python tools/train_phase2_1_on_trajectories.py \
         --trajectories-dir data/01_raw/trajectories/sparse \
         --images-dir data/01_raw/trajectories/sparse/images \
         --output-dir runs/phase2_1_trajectories \
@@ -17,7 +17,7 @@ Usage:
         --device cuda
         
     # Or for testing on CPU:
-    python scripts/train_phase2_1_on_trajectories.py \
+python tools/train_phase2_1_on_trajectories.py \
         --trajectories-dir data/01_raw/trajectories/sparse \
         --images-dir data/01_raw/trajectories/sparse/images \
         --output-dir runs/phase2_1_test \

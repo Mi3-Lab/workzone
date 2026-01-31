@@ -14,12 +14,12 @@ All Phase 1.4 components have been implemented, tested, and are ready for produc
    - <1ms inference on GPU
    - ~13 MB model size
 
-2. **Training Pipeline** (`scripts/train_scene_context.py`)
+2. **Training Pipeline** (`tools/train_scene_context.py`)
    - Transfer learning from ImageNet
    - Automatic dataset creation from COCO annotations
    - ~10-15 min training on A100
 
-3. **Pipeline Integration** (modified `scripts/process_video_fusion.py`)
+3. **Pipeline Integration** (modified `tools/process_video_fusion.py`)
    - CLI flags for Phase 1.4 control
    - Dynamic threshold application
    - Context-aware state machine thresholds
@@ -33,35 +33,23 @@ All Phase 1.4 components have been implemented, tested, and are ready for produc
 - `IMPLEMENTATION_COMPLETE.md` - Detailed checklist
 
 ### Demo & Testing
-- `scripts/PHASE1_4_QUICKSTART.sh` - One-command setup
 - `notebooks/07_phase1_4_scene_context.ipynb` - Interactive notebook
 
 ---
 
 ## 🚀 Getting Started
 
-### Fastest Way (Recommended)
-```bash
-bash scripts/PHASE1_4_QUICKSTART.sh
-```
-
-This single command will:
-1. Create training dataset from existing COCO annotations
-2. Train the classifier (10 epochs, ~15 min on A100)
-3. Run on Boston demo video
-4. Show results and analysis
-
-### Or Run Individual Steps
+### Run Individual Steps
 ```bash
 # 1. Create dataset (one-time)
 python -c "from workzone.models.scene_context import create_training_dataset; \
   create_training_dataset('data/01_raw/annotations/instances_train_gps_split.json')"
 
 # 2. Train model
-python scripts/train_scene_context.py --epochs 10
+python tools/train_scene_context.py --epochs 10
 
 # 3. Run with Phase 1.4
-python scripts/process_video_fusion.py video.mp4 \
+python tools/process_video_fusion.py video.mp4 \
   --enable-phase1-4 \
   --enable-phase1-1 --no-motion
 ```
@@ -204,12 +192,12 @@ Phase 1.4 is **production-ready** and can be deployed immediately:
 
 1. **Train on full dataset**
    ```bash
-   python scripts/train_scene_context.py --epochs 20
+   python tools/train_scene_context.py --epochs 20
    ```
 
 2. **Evaluate on competition videos**
    ```bash
-   python scripts/process_video_fusion.py comp_video.mp4 \
+   python tools/process_video_fusion.py comp_video.mp4 \
      --enable-phase1-4 --enable-phase1-1 --no-motion
    ```
 

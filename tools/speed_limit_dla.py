@@ -7,7 +7,7 @@ Speed Limit Detection (Optimized for Jetson Orin)
 - Persistent Banner (Green, "25 mph")
 
 Run:
-  python3 scripts/speed_limit_dla.py --input data/videos/... --show
+  python3 tools/speed_limit_dla.py --input data/videos/... --show
 """
 
 import cv2

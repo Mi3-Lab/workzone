@@ -43,7 +43,7 @@ Specialized script running on the **DLA (Deep Learning Accelerator)** for speed 
 
 ```bash
 # Run DLA Speed Limit Tracker
-venv/bin/python3 scripts/speed_limit_dla.py --input data/demo/boston.mp4 --show
+venv/bin/python3 tools/speed_limit_dla.py --input data/demo/boston.mp4 --show
 ```
 
 ## 🏗️ Technical Architecture

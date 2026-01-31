@@ -47,7 +47,7 @@ wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolo12s.pt
 
 ```bash
 # Process single video with default settings
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/03_demo/videos/boston_workzone_short.mp4 \
   --output-dir outputs/demo \
   --enable-phase1-1
@@ -89,10 +89,10 @@ streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py --server.po
 
 ```bash
 # Basic usage
-python scripts/process_video_fusion.py VIDEO_PATH
+python tools/process_video_fusion.py VIDEO_PATH
 
 # Full options
-python scripts/process_video_fusion.py VIDEO_PATH \
+python tools/process_video_fusion.py VIDEO_PATH \
   --output-dir outputs/results \
   --weights weights/yolo12s_hardneg_1280.pt \
   --device cuda \
@@ -115,19 +115,19 @@ python scripts/process_video_fusion.py VIDEO_PATH \
 
 ```bash
 # Mine hard negatives from videos
-python scripts/mine_hard_negatives.py \
+python tools/mine_hard_negatives.py \
   --video-dir data/videos_compressed \
   --output-dir outputs/hardneg_mining_new \
   --weights weights/yolo12s_fusion_baseline.pt \
   --gpu-id 0
 
 # Review candidates interactively
-python scripts/review_hard_negatives.py interactive \
+python -m src.workzone.utils.review_hard_negatives interactive \
   --candidates outputs/hardneg_mining_new/candidates_master.csv \
   --images-dir outputs/hardneg_mining_new/images
 
 # Export approved hard negatives
-python scripts/review_hard_negatives.py manifest \
+python -m src.workzone.utils.review_hard_negatives manifest \
   --candidates outputs/hardneg_mining_new/candidates_master.csv
 ```
 

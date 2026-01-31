@@ -476,7 +476,7 @@ For headless/scripted workflows, use the command-line interface.
 ### Basic Usage
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   <input_video> \
   --output-dir <output_folder> \
   [options]
@@ -513,7 +513,7 @@ python scripts/process_video_fusion.py \
 #### 1. Basic Run (Core Features)
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/demo/video.mp4 \
   --output-dir outputs/basic
 ```
@@ -521,7 +521,7 @@ python scripts/process_video_fusion.py \
 #### 2. With CLIP Tuning
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/demo/video.mp4 \
   --output-dir outputs/clip_tuned \
   --clip-weight 0.40 \
@@ -531,7 +531,7 @@ python scripts/process_video_fusion.py \
 #### 3. Scene Context + OCR
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/demo/video.mp4 \
   --output-dir outputs/phase1_4 \
   --enable-phase1-4 \
@@ -541,7 +541,7 @@ python scripts/process_video_fusion.py \
 #### 4. Full Pipeline with All Features
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/demo/video.mp4 \
   --output-dir outputs/phase2_1 \
   --enable-phase1-1 \
@@ -554,7 +554,7 @@ python scripts/process_video_fusion.py \
 #### 5. High-Throughput Batch (No Video Output)
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/dataset/*.mp4 \
   --output-dir outputs/batch \
   --stride 5 \
@@ -646,7 +646,7 @@ python -c "import easyocr; reader = easyocr.Reader(['en']); print('OK')"
 **Solutions**:
 ```bash
 # Download models
-bash scripts/download_models.sh
+bash tools/download_models.sh
 
 # Or manually download from Hugging Face/Google Drive
 # Place in weights/ folder

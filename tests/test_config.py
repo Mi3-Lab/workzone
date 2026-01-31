@@ -1,7 +1,7 @@
 """Tests for configuration module."""
 
 import pytest
-from src.workzone.config import ProjectConfig, YOLOConfig, get_config, reset_config
+from workzone.config import ProjectConfig, YOLOConfig, get_config, reset_config
 
 
 class TestYOLOConfig:

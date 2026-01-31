@@ -1,19 +1,11 @@
 # OCR CLI Usage Guide
 
-## Quick Start
 
-Test OCR integration in CLI with the provided test script:
-
-```bash
-bash scripts/TEST_OCR_CLI.sh
-```
-
-## Manual Usage
 
 ### Basic Command with OCR
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   /path/to/video.mp4 \
   --output-dir outputs/test_ocr \
   --enable-ocr \
@@ -23,7 +15,7 @@ python scripts/process_video_fusion.py \
 ### Full Example with All Features
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/videos_compressed/boston_2bdb5a72602342a5991b402beb8b7ab4_000001_23370_snippet.mp4 \
   --output-dir outputs/phase1_4_complete \
   --enable-ocr \
@@ -123,7 +115,7 @@ When `--enable-ocr` is used:
 ### Test on Boston Dataset Video
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/videos_compressed/boston_2bdb5a72602342a5991b402beb8b7ab4_000001_23370_snippet.mp4 \
   --output-dir outputs/boston_ocr_test \
   --enable-ocr \
@@ -133,7 +125,7 @@ python scripts/process_video_fusion.py \
 ### Fast Processing (No Video Output)
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/videos_compressed/video.mp4 \
   --output-dir outputs/fast_test \
   --enable-ocr \
@@ -145,7 +137,7 @@ python scripts/process_video_fusion.py \
 ### Full Pipeline (All Features)
 
 ```bash
-python scripts/process_video_fusion.py \
+python tools/process_video_fusion.py \
   data/videos_compressed/video.mp4 \
   --output-dir outputs/full_pipeline \
   --enable-ocr \

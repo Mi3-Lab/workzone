@@ -17,7 +17,7 @@ This repository contains the high-performance inference system for Work Zone Det
 1. **Environment Setup** (Assumes JetPack 6+):
    ```bash
    # Run the setup script to create venv and install dependencies
-   ./scripts/setup.sh
+   ./tools/setup.sh
    ```
 
 2. **Download Models:**

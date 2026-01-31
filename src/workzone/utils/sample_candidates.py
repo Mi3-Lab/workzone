@@ -103,11 +103,11 @@ def main():
     
     print("\n=== Recommendation ===\n")
     print("To review candidates interactively:")
-    print("  python scripts/review_hard_negatives.py --mode interactive --sample-size 100")
+    print("  python -m workzone.utils.review_hard_negatives --mode interactive --sample-size 100")
     print("\nTo bulk export specific categories by score range:")
-    print("  python scripts/review_hard_negatives.py --mode export --score-range 0.49 0.55 --category orange_trucks")
+    print("  python -m workzone.utils.review_hard_negatives --mode export --score-range 0.49 0.55 --category orange_trucks")
     print("\nTo open sample JPEGs in image viewer:")
-    print("  python scripts/sample_candidates.py --browser --n 20")
+    print("  python -m workzone.utils.sample_candidates --browser --n 20")
 
 if __name__ == '__main__':
     main()
