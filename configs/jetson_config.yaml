@@ -7,13 +7,13 @@ video:
   input: data/demo
   output_dir: results/jetson
   max_frames: 0
-  stride: 1
+  stride: 2
   real_time: true
-  save_output: true
+  save_output: false
   flip: false
 hardware:
   device: 0
-  half: true
+  half: false
   workspace: 4
 fusion:
   ema_alpha: 0.1
@@ -49,4 +49,4 @@ fusion:
   use_per_cue: true
   per_cue_th: 0.05
 scene_context:
-  enabled: true
+  enabled: false
