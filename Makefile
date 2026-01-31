@@ -57,9 +57,19 @@ workzone:
 	@echo "🚀 Launching WorkZone Controller (Jetson Orin)..."
 	@python3 scripts/jetson_launcher.py
 
+# Live CLI mode with configurable options
+# Usage:
+#   make live                  (runs with default camera 4, no saving)
+#   make live SAVE=true        (runs with default camera 4, with saving)
+#   make live INPUT=0          (runs with camera 0, no saving)
+#   make live INPUT=0 SAVE=true (runs with camera 0, with saving)
+#   make live CLIP=true        (runs with default camera, enables CLIP)
 live:
-	@echo "💻 Launching WorkZone Jetson App in CLI mode (default: live camera)..."
-	@python3 scripts/jetson_cli_app.py
+	@echo "💻 Launching WorkZone Jetson App in CLI mode..."
+	$(eval SAVE_ARG := $(if $(filter true,$(SAVE)),--save))
+	$(eval CLIP_ARG := $(if $(filter true,$(CLIP)),--clip))
+	$(eval INPUT_ARG := $(if $(INPUT),--input $(INPUT)))
+	@python3 scripts/jetson_cli_app.py $(INPUT_ARG) $(SAVE_ARG) $(CLIP_ARG)
 
 workzone2:
 	@echo "🧪 Launching SOTA Experimental Controller (VLM Copilot)..."

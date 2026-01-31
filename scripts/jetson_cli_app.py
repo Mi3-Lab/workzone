@@ -46,6 +46,11 @@ def main():
         action="store_true",
         help="Do not flip the camera input. By default, the camera input is flipped 180 degrees."
     )
+    parser.add_argument(
+        "--clip",
+        action="store_true",
+        help="Enable CLIP fusion. By default, CLIP is disabled in CLI mode."
+    )
     
     args = parser.parse_args()
 
@@ -67,7 +72,7 @@ def main():
     if not args.no_flip:
         cmd.append("--flip")
     
-    # By default, disable CLIP, unless --clip is specified
+    # Handle CLIP: if --clip is NOT specified, then --disable-clip is passed to jetson_app.py
     if not args.clip:
         cmd.append("--disable-clip")
 

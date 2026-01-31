@@ -84,7 +84,8 @@ def export_yolo_tensorrt(
         
         # Step 2: Use trtexec for DLA if requested
         if dla_core is not None:
-            engine_path = Path(onnx_path).with_suffix('.engine')
+            engine_name = f"{model_path.stem}_{imgsz}.engine"
+            engine_path = Path(onnx_path).parent / engine_name
             print(f"🚀 Using trtexec to build for DLA Core {dla_core}...")
             import subprocess
             
@@ -110,7 +111,7 @@ def export_yolo_tensorrt(
             export_path = str(engine_path)
         else:
             # Standard GPU Export
-            export_path = model.export(
+            original_export_path_str = model.export(
                 format='engine',
                 device=0,
                 half=half,
@@ -119,6 +120,12 @@ def export_yolo_tensorrt(
                 workspace=workspace,
                 verbose=True,
             )
+            
+            # Rename to include imgsz
+            original_engine_path = Path(original_export_path_str)
+            engine_name = f"{model_path.stem}_{imgsz}.engine"
+            export_path = str(original_engine_path.parent / engine_name)
+            original_engine_path.rename(export_path)
         
         engine_path = Path(export_path)
         engine_size = engine_path.stat().st_size / 1e6

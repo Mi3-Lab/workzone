@@ -433,22 +433,53 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     return padded
 
 def ensure_model(config):
+    """
+    Ensures the correct model file is available.
+    - If hardware.half is TRUE: Finds or builds a size-specific TensorRT engine.
+    - If hardware.half is FALSE: Returns the path to the .pt file directly.
+    """
     sys.path.append(str(Path(__file__).parent))
     from optimize_for_jetson import export_yolo_tensorrt
+    
     path_in = Path(config['model']['path'])
-    if path_in.suffix == '.engine' and path_in.exists(): return str(path_in), True
-    if path_in.suffix == '.engine' and not path_in.exists():
-        console.print(f"[yellow]⚠️  Engine {path_in.name} not found. Looking for source .pt...[/yellow]")
-        path_in = path_in.with_suffix('.pt')
-        if not path_in.exists():
-            console.print(f"[red]❌ Error: Source model {path_in} not found either![/red]")
+
+    # If TensorRT is disabled, just use the .pt file.
+    if not config['hardware'].get('half', False):
+        pt_path = path_in.with_suffix('.pt')
+        if not pt_path.exists():
+            console.print(f"[red]❌ Error: PyTorch model not found at {pt_path}[/red]")
             sys.exit(1)
-    eng = path_in.with_suffix('.engine')
-    if eng.exists(): return str(eng), True
-    console.print(f"🚀 Exporting {path_in} to RT Cores...")
-    if export_yolo_tensorrt(str(path_in), half=config['hardware']['half'], imgsz=config['model']['imgsz']):
-        return str(eng), True
-    return str(path_in), False
+        console.print(f"✅ Using PyTorch model (TensorRT disabled): {pt_path.name}")
+        return str(pt_path), False # Return False for is_engine
+
+    # --- TensorRT Logic ---
+    imgsz = config['model']['imgsz']
+
+    # Construct the expected engine filename, e.g., "yolo12s_hardneg_1280_736.engine"
+    engine_name = f"{path_in.stem}_{imgsz}.engine"
+    engine_path = path_in.parent / engine_name
+
+    # If the correctly-sized engine exists, use it.
+    if engine_path.exists():
+        console.print(f"✅ Found pre-built TensorRT engine for size {imgsz}: {engine_path.name}")
+        return str(engine_path), True
+
+    # If we are here, the specific engine is missing. We need to build it from a .pt file.
+    pt_path = path_in.with_suffix('.pt')
+
+    if not pt_path.exists():
+        console.print(f"[red]❌ Error: Source model {pt_path} not found to build required engine {engine_path}![/red]")
+        sys.exit(1)
+
+    console.print(f"🚀 Engine for size {imgsz} not found. Exporting {pt_path.name} to {engine_name}...")
+    
+    # The export function will now save it with the correct name
+    if export_yolo_tensorrt(str(pt_path), half=config['hardware']['half'], imgsz=imgsz):
+        return str(engine_path), True
+    
+    # Fallback to pt if export fails
+    console.print(f"[yellow]⚠️ Could not export to TensorRT. Falling back to PyTorch model ({pt_path.name}). Performance will be lower.[/yellow]")
+    return str(pt_path), False
 
 def process_video(source, model, clip_bundle, config, show, config_path=None):
     # Determine if source is a camera (int or /dev/video)
@@ -645,9 +676,10 @@ class FrameProcessor(threading.Thread):
                         # Update Scene Config
                         self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
                         self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
+                        self.model.overrides['imgsz'] = config['model']['imgsz']
                         
                         last_config_mtime = mtime
-                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Scene: {self.scene_enabled}")
+                        print(f"\n[HOT-RELOAD] ⚡ Config updated! Scene: {self.scene_enabled}, ImgSz: {self.model.overrides.get('imgsz')}")
                 except Exception: pass
             
             stride = self.config['video'].get('stride', 1)
@@ -706,7 +738,7 @@ class FrameProcessor(threading.Thread):
                 active_weights["channelization"] = active_weights.get("channelization", 0.9) * 0.9 # Trust cones slightly less (noise)
 
             # YOLO (Use Enhanced Frame)
-            res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], 
+            res = self.model.predict(frame_ai, conf=self.config['model']['conf'],
                                    device=self.config['hardware']['device'], verbose=False)[0]
             
             # --- Per-Cue Verification ---
@@ -837,71 +869,83 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
     processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path, flip_frame=flip_frame)
     processor.start()
     
-    # Wait for first frame
+    # Wait for first frame to get dimensions and TARGET FPS
     try:
-        first_res = result_queue.get(timeout=10.0)
+        first_res = result_queue.get(timeout=20.0) # Longer timeout for cold model start
         h, w = first_res["frame"].shape[:2]
-        fps_in = first_res.get("source_fps", 30.0)
-    except:
-        console.print("[red]Failed to start video stream.[/red]")
+        source_fps = first_res.get("source_fps", 30.0)
+    except queue.Empty:
+        console.print("[red]❌ Failed to start video stream from source. No frames received.[/red]")
+        processor.running = False
+        processor.join()
         return None
 
+    # Initialize Writer with the TARGET (source) FPS for smooth playback
     if save_video and out_path:
-        writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
+        console.print(f"[INFO] Saving output video to: {out_path}")
+        console.print(f"[INFO] Initializing video writer with target FPS: {source_fps:.1f}")
+        writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), source_fps, (w, h + 80))
     
     # Main UI Loop
-    t_last_render = time.time()
     frames_rendered = 0
     start_t = time.time()
-    stride = config['video'].get('stride', 1)
     
+    # Use the first frame we already fetched
     last_result = first_res
-    fps_smooth = 30.0 # Initial guess
     
     try:
         while processor.running or not result_queue.empty():
-            try:
-                # Wait efficiently for new frame
-                res = result_queue.get(timeout=0.01)
-                
-                # --- NEW FRAME LOGIC ---
-                last_result = res
-                
-                # Render Logic
-                frame = last_result["frame"].copy()
-                for box, label, color in last_result["plot_boxes"]:
-                    p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
-                    cv2.rectangle(frame, p1, p2, color, 2)
-                    cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
-                
-                # Use Inference FPS from Producer
-                fps_display = last_result.get("fps_proc", 0.0)
+            # If we've already processed the first frame, get the next one
+            if not frames_rendered == 0:
+                try:
+                    res = result_queue.get(timeout=1.0)
+                    last_result = res
+                except queue.Empty:
+                    # No new frame? Just keep window responsive or exit if done
+                    if show and cv2.waitKey(1) == ord('q'):
+                        processor.running = False
+                        break
+                    if not processor.running and result_queue.empty():
+                        break
+                    continue
+            
+            # --- Render Logic ---
+            frame = last_result["frame"].copy()
+            for box, label, color in last_result["plot_boxes"]:
+                p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+                cv2.rectangle(frame, p1, p2, color, 2)
+                cv2.putText(frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
+            
+            fps_display = last_result.get("fps_proc", 0.0)
 
-                if cli_output:
-                    print(f"STATE: {last_result['state']:<12} | SCORE: {last_result['score']:.2f} | FPS: {fps_display:.1f} | SCENE: {last_result.get('scene', 'N/A'):<10}", flush=True)
+            if cli_output:
+                print(f"STATE: {last_result['state']:<12} | SCORE: {last_result['score']:.2f} | FPS: {fps_display:.1f} | SCENE: {last_result.get('scene', 'N/A'):<10}", flush=True)
+            
+            hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_display, 
+                         last_result.get("is_night", False), last_result.get("scene", None))
+            
+            if writer:
+                # Frame duplication to match source FPS
+                fps_proc = last_result.get("fps_proc", 0.0)
+                if fps_proc > 1 and source_fps > 1:
+                    write_multiplier = max(1, round(source_fps / fps_proc))
+                else:
+                    write_multiplier = 1
                 
-                hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_display, 
-                             last_result.get("is_night", False), last_result.get("scene", None))
-                
-                if writer:
-                    for _ in range(stride):
-                        writer.write(hud)
-                
-                if show:
-                    cv2.imshow("Jetson WorkZone", cv2.resize(hud, (1280, 720)) if w > 1280 else hud)
-                    if cv2.waitKey(1) == ord('q'):
-                        processor.running = False
-                        break
-                
-                frames_rendered += 1
-                
-            except queue.Empty:
-                # No new frame? Just keep window responsive, don't burn CPU re-rendering
-                if show:
-                    if cv2.waitKey(1) == ord('q'):
-                        processor.running = False
-                        break
-                continue
+                for _ in range(write_multiplier):
+                    writer.write(hud)
+            
+            if show:
+                h_hud, w_hud = hud.shape[:2]
+                disp_w = 1280
+                disp_h = int(h_hud * (disp_w / w_hud)) if w_hud > 0 else 0
+                display_frame = cv2.resize(hud, (disp_w, disp_h))
+                cv2.imshow("Jetson WorkZone", display_frame)
+                if cv2.waitKey(1) == ord('q'):
+                    processor.running = False
+                    break
+            
+            frames_rendered += 1
             
     except KeyboardInterrupt:
         processor.running = False
@@ -911,7 +955,10 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
             writer.release()
         cv2.destroyAllWindows()
         
-    return {"video": source_name, "frames": frames_rendered, "avg_fps": frames_rendered / (time.time() - start_t), "output": out_path.name if out_path else "Not Saved"}
+    # Calculate average FPS based on frames rendered by this consumer loop
+    end_t = time.time()
+    avg_fps = frames_rendered / (end_t - start_t) if (end_t - start_t) > 0 else 0.0
+    return {"video": source_name, "frames": frames_rendered, "avg_fps": avg_fps, "output": out_path.name if out_path else "Not Saved"}
 
 def main():
     # Graceful shutdown handler
@@ -946,6 +993,9 @@ def main():
 
     m_p, _ = ensure_model(config)
     model = YOLO(m_p, task='detect')
+    # Use 'overrides' to pass arguments to the predictor during initialization
+    model.overrides['imgsz'] = config['model']['imgsz']
+    
     cb = None
     # Add a small delay to allow GPU memory to settle after YOLO model load.
     # This prevents a potential race condition causing a false out-of-memory error.

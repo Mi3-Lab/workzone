@@ -2,18 +2,18 @@ model:
   path: weights/yolo12s_hardneg_1280.pt
   conf: 0.25
   iou: 0.7
-  imgsz: 736
+  imgsz: 960
 video:
   input: data/demo
   output_dir: results/jetson
   max_frames: 0
-  stride: 2
+  stride: 1
   real_time: true
   save_output: false
   flip: false
 hardware:
   device: 0
-  half: false
+  half: true
   workspace: 4
 fusion:
   ema_alpha: 0.1
