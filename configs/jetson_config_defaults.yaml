@@ -19,7 +19,7 @@ fusion:
   approach_th: 0.25
   min_inside_frames: 6
   min_out_frames: 20
-  use_clip: true
+  use_clip: false
   clip_pos_text: driving through a road construction work zone with orange barrels,
     traffic cones, concrete barriers, lane closure signs, and construction workers
   clip_neg_text: driving on a clear normal road or highway with regular traffic, no

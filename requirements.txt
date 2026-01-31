@@ -68,7 +68,8 @@ myst-parser>=2.0.0
 # Additional Utilities
 # ============================================
 python-dotenv>=1.0.0     # Environment management
-jsonschema>=4.17.0       # Config validationftfy==6.3.1
+jsonschema>=4.17.0       # Config validation
+pygame>=2.0.0            # Audio playbackftfy==6.3.1
 regex==2025.11.3
 rich==14.2.0
 tqdm==4.67.1

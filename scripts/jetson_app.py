@@ -10,7 +10,55 @@ from collections import Counter, deque
 import threading
 import queue
 import signal
+import pygame.mixer # Import pygame.mixer for playing MP3 files
 
+# Set ROOT_DIR for easy access to project structure
+ROOT_DIR = Path(__file__).parent.parent
+
+# ADASVoice class for playing audio alerts
+class ADASVoice:
+    def __init__(self):
+        try:
+            pygame.mixer.init()
+            self.sounds = {
+                "APPROACHING": pygame.mixer.Sound(str(ROOT_DIR / "sounds/approaching.mp3")),
+                "INSIDE": pygame.mixer.Sound(str(ROOT_DIR / "sounds/inside.mp3")),
+                "EXITING": pygame.mixer.Sound(str(ROOT_DIR / "sounds/exiting.mp3")),
+                "OUT": None # No sound for OUT state, or add one if desired
+            }
+            self.last_state = "OUT"
+            self._lock = threading.Lock()
+            print("[ADASVoice] Pygame mixer initialized and sounds loaded.")
+        except Exception as e:
+            print(f"[ADASVoice] Error initializing pygame mixer or loading sounds: {e}")
+            self.sounds = {} # Disable sounds if error occurs
+
+    def _play_sound_thread(self, sound_object):
+        with self._lock:
+            try:
+                # Stop any currently playing sounds to prevent overlap
+                pygame.mixer.stop()
+                
+                # Get a free channel or allocate a new one
+                channel = pygame.mixer.find_channel(True) 
+                if channel:
+                    channel.play(sound_object)
+                else:
+                    print("[ADASVoice] No free mixer channel to play sound.")
+            except Exception as e:
+                print(f"[ADASVoice] Error playing sound: {e}")
+
+    def update(self, current_state):
+        if current_state != self.last_state:
+            sound_to_play = self.sounds.get(current_state)
+            
+            if sound_to_play:
+                # Run in a separate thread to avoid blocking the main video processing loop
+                thread = threading.Thread(target=self._play_sound_thread, args=(sound_to_play,))
+                thread.daemon = True # Allow program to exit even if thread is running
+                thread.start()
+            
+            self.last_state = current_state
 
 # 1. ENV SETUP
 def setup_environment():
@@ -585,6 +633,8 @@ class FrameProcessor(threading.Thread):
         else:
             self.clip_bundle = None
             self.pos_emb, self.neg_emb = None, None
+        
+        self.adas_voice = ADASVoice() # Initialize ADASVoice
 
     def run(self):
         # Open Capture
@@ -824,6 +874,7 @@ class FrameProcessor(threading.Thread):
 
             self.f_ema = ema(self.f_ema, clamp01(fused), alpha)
             self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
+            self.adas_voice.update(self.state) # Update ADASVoice with current state
             
             # Pack Result
             result = {

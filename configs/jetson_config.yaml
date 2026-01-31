@@ -7,7 +7,7 @@ video:
   input: data/demo
   output_dir: results/jetson
   max_frames: 0
-  stride: 1
+  stride: 2
   real_time: true
   save_output: false
   flip: false
