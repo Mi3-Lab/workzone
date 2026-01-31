@@ -25,7 +25,7 @@ if not VENV_PYTHON.exists():
 class JetsonLauncher(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Gemini Jetson Launcher 🚀")
+        self.title("WorkZone Jetson Controller 🚀")
         self.geometry("700x900")
         self.configure(bg="#f0f0f0")
         
@@ -228,7 +228,7 @@ class JetsonLauncher(tk.Tk):
     def create_header(self):
         frame = tk.Frame(self, bg="#2c3e50", height=60)
         frame.pack(fill=tk.X)
-        lbl = tk.Label(frame, text="WorkZone Jetson Controller", font=("Arial", 18, "bold"), fg="white", bg="#2c3e50")
+        lbl = tk.Label(frame, text="WorkZone Controller", font=("Arial", 18, "bold"), fg="white", bg="#2c3e50")
         lbl.pack(pady=15)
 
     # ---------------- TAB 1: GENERAL ----------------

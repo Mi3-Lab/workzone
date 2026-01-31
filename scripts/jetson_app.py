@@ -10,6 +10,8 @@ from collections import Counter, deque
 import threading
 import queue
 import signal
+import subprocess # Required for FFmpeg
+import shutil     # Required for FFmpeg (moving files)
 import pygame.mixer # Import pygame.mixer for playing MP3 files
 
 # Set ROOT_DIR for easy access to project structure
@@ -21,9 +23,9 @@ class ADASVoice:
         try:
             pygame.mixer.init()
             self.sounds = {
-                "APPROACHING": pygame.mixer.Sound(str(ROOT_DIR / "sounds/approaching.mp3")),
-                "INSIDE": pygame.mixer.Sound(str(ROOT_DIR / "sounds/inside.mp3")),
-                "EXITING": pygame.mixer.Sound(str(ROOT_DIR / "sounds/exiting.mp3")),
+                "APPROACHING": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/approaching.mp3")),
+                "INSIDE": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/inside.mp3")),
+                "EXITING": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/exiting.mp3")),
                 "OUT": None # No sound for OUT state, or add one if desired
             }
             self.last_state = "OUT"
@@ -444,6 +446,49 @@ def update_state(prev, score, state_dur, out_f, f_conf):
         return "EXITING", state_dur, out_f + 1
 
     return prev, state_dur, out_f
+
+# --- FFmpeg Audio Merge Helper ---
+def run_ffmpeg_merge(input_video_path, input_audio_path, output_path):
+    """
+    Merges a video file (without audio) with an audio file using FFmpeg.
+    Requires FFmpeg to be installed and accessible in the system PATH.
+    """
+    if not Path(input_audio_path).exists():
+        console.print(f"[yellow]⚠️ Original input video not found at {input_audio_path}. Skipping audio merge.[/yellow]")
+        return
+        
+    console.print(f"[INFO] Merging audio from {Path(input_audio_path).name} into {Path(input_video_path).name}...")
+    temp_output_path = output_path.with_suffix(".temp.mp4") # Use a temp name first
+    
+    command = [
+        "ffmpeg",
+        "-i", str(input_video_path),          # Input video (processed, no audio)
+        "-i", str(input_audio_path),          # Input audio (from original video)
+        "-c:v", "copy",                       # Copy video stream without re-encoding
+        "-c:a", "aac",                        # Encode audio as AAC (common format)
+        "-map", "0:v:0",                      # Map video stream from first input
+        "-map", "1:a:0?",                      # Map audio stream from second input (optional)
+        "-loglevel", "error",                 # Suppress FFmpeg verbose output
+        "-y",                                 # Overwrite output file if it exists
+        str(temp_output_path)
+    ]
+    
+    try:
+        subprocess.run(command, check=True)
+        # On success, replace the original no-audio file with the merged file
+        shutil.move(temp_output_path, output_path)
+        console.print(f"[green]✅ Audio merge successful! Final video saved to {output_path.name}[/green]")
+    except FileNotFoundError:
+        console.print("[red]❌ Error: FFmpeg not found! Please ensure FFmpeg is installed and in your system PATH.[/red]")
+        console.print(f"[red]   Video saved without audio to {input_video_path.name}[/red]")
+    except subprocess.CalledProcessError as e:
+        console.print(f"[red]❌ FFmpeg merge failed: {e}[/red]")
+        console.print(f"[red]   Video saved without audio to {input_video_path.name}[/red]")
+    except Exception as e:
+        console.print(f"[red]❌ An unexpected error occurred during FFmpeg merge: {e}[/red]")
+        console.print(f"[red]   Video saved without audio to {input_video_path.name}[/red]")
+        
+# --- End FFmpeg Helper ---
 
 def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     h, w = frame.shape[:2]
@@ -909,33 +954,45 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
     source_name = f"camera_{source}" if is_camera else Path(source).name
     timestamp = int(time.time())
     
+    # Store the original input path as a Path object
+    original_input_path = Path(source) if not is_camera else None
+
+    # This is the final desired path for the video with audio (if merged)
+    final_output_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
+    final_output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # The writer will initially write to a temp file that will be merged later
+    temp_no_audio_video_path = final_output_path.with_name(final_output_path.stem + "_noaudio" + final_output_path.suffix)
+    
     writer = None
-    out_path = None
+    # Initialize Writer only if save_video is True (and will actually write)
     if save_video:
-        out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
+        # We need source_fps and w, h from the cap before initializing writer
+        # This part of the code was moved from further down to here to enable writer initialization
+        # Open Capture - this part is already in FrameProcessor, so we need to get these values differently
+        cap_temp = cv2.VideoCapture(str(source)) # Temporarily open cap to get info
+        w, h, source_fps = int(cap_temp.get(3)), int(cap_temp.get(4)), cap_temp.get(5) or 30
+        cap_temp.release() # Release temporary cap
+        
+        console.print(f"[INFO] Saving processed video (no audio) to: {temp_no_audio_video_path.name}")
+        writer = ThreadedVideoWriter(str(temp_no_audio_video_path), cv2.VideoWriter_fourcc(*'mp4v'), source_fps, (w, h + 80))
     
     # Thread communication
     result_queue = queue.Queue(maxsize=3) # Small buffer
     processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path, flip_frame=flip_frame)
     processor.start()
     
-    # Wait for first frame to get dimensions and TARGET FPS
+    # Wait for first frame to get dimensions and TARGET FPS (This is now primarily for display, writer already initialized)
     try:
         first_res = result_queue.get(timeout=20.0) # Longer timeout for cold model start
-        h, w = first_res["frame"].shape[:2]
-        source_fps = first_res.get("source_fps", 30.0)
+        # w, h, source_fps are already determined if save_video is true
+        # Otherwise, they will be derived from first_res['frame'].shape[:2] if needed later for display
     except queue.Empty:
         console.print("[red]❌ Failed to start video stream from source. No frames received.[/red]")
         processor.running = False
         processor.join()
+        if writer: writer.release()
         return None
-
-    # Initialize Writer with the TARGET (source) FPS for smooth playback
-    if save_video and out_path:
-        console.print(f"[INFO] Saving output video to: {out_path}")
-        console.print(f"[INFO] Initializing video writer with target FPS: {source_fps:.1f}")
-        writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), source_fps, (w, h + 80))
     
     # Main UI Loop
     frames_rendered = 0
@@ -977,9 +1034,9 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
             
             if writer:
                 # Frame duplication to match source FPS
-                fps_proc = last_result.get("fps_proc", 0.0)
-                if fps_proc > 1 and source_fps > 1:
-                    write_multiplier = max(1, round(source_fps / fps_proc))
+                # Use source_fps from original video for accurate writer fps
+                if source_fps > 1 and last_result.get("fps_proc", 0.0) > 1:
+                    write_multiplier = max(1, round(source_fps / last_result["fps_proc"]))
                 else:
                     write_multiplier = 1
                 
@@ -1006,10 +1063,28 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
             writer.release()
         cv2.destroyAllWindows()
         
+        result_output_path = "Not Saved"
+        if save_video:
+            if original_input_path and original_input_path.is_file() and temp_no_audio_video_path.exists():
+                # If we saved video, and input was a file (not camera), and temp video exists, do audio merge
+                run_ffmpeg_merge(temp_no_audio_video_path, original_input_path, final_output_path)
+                # Clean up the temporary no-audio video file
+                if temp_no_audio_video_path.exists():
+                    try:
+                        os.remove(temp_no_audio_video_path)
+                        console.print(f"[INFO] Cleaned up temporary file: {temp_no_audio_video_path.name}")
+                    except Exception as e:
+                        console.print(f"[yellow]⚠️ Could not remove temporary file {temp_no_audio_video_path.name}: {e}[/yellow]")
+                result_output_path = final_output_path.name
+            else:
+                # If no merge happened (e.g., camera input or original file not found),
+                # the temporary file is the final output.
+                result_output_path = temp_no_audio_video_path.name if temp_no_audio_video_path.exists() else "Not Saved"
+
     # Calculate average FPS based on frames rendered by this consumer loop
     end_t = time.time()
     avg_fps = frames_rendered / (end_t - start_t) if (end_t - start_t) > 0 else 0.0
-    return {"video": source_name, "frames": frames_rendered, "avg_fps": avg_fps, "output": out_path.name if out_path else "Not Saved"}
+    return {"video": source_name, "frames": frames_rendered, "avg_fps": avg_fps, "output": result_output_path}
 
 def main():
     # Graceful shutdown handler

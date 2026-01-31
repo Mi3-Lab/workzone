@@ -108,6 +108,8 @@ test_*.py
 data/*
 !data/demo/
 !data/demo/**
+!data/sounds/
+!data/sounds/**
 calib/*
 
 # Ignore outputs
