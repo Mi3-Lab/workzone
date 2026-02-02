@@ -109,7 +109,8 @@ SCENE_PRESETS = {
         "message_board": 0.8,
         "approach_th": 0.25,
         "enter_th": 0.50,
-        "exit_th": 0.30
+        "exit_th": 0.30,
+        "min_out_frames": 60   # Extended persistence (2s) for Highway gaps
     },
     "urban": {
         "bias": -0.15,        # Skeptical: City is full of distractions
@@ -817,7 +818,7 @@ class FrameProcessor(threading.Thread):
                 
                 # Dynamic Thresholds based on Scene
                 effective_f_c = f_c.copy()
-                for th_key in ['enter_th', 'exit_th', 'approach_th']:
+                for th_key in ['enter_th', 'exit_th', 'approach_th', 'min_out_frames', 'min_inside_frames']:
                     if th_key in active_weights:
                         effective_f_c[th_key] = active_weights.pop(th_key) # Extract and override
             else:
