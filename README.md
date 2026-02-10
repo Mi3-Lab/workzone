@@ -39,7 +39,53 @@ Built for ESV (Enhanced Safety of Vehicles) competition. Features multi-modal ve
 
 ---
 
-## 📦 Installation
+## � Examples
+
+Here are annotated video examples demonstrating the WorkZone Detection System in action. These videos show real-time detection, multi-modal fusion, and state machine transitions in various scenarios.
+
+### Boston Highway Work Zone
+
+*This example showcases the system detecting construction cones, workers, and signage on a busy Boston highway. The video demonstrates:*
+- ✅ Accurate cone detection with 84.6% false positive reduction
+- ✅ CLIP semantic verification distinguishing active vs inactive equipment
+- ✅ Scene context classification (Highway mode)
+- ✅ Smooth state transitions: OUT → APPROACHING → INSIDE → EXITING
+- ✅ OCR text extraction from message boards
+
+### Urban Construction Site Detection
+
+*Urban environment example with complex background clutter. Key features demonstrated:*
+- ✅ Per-cue verification rejecting false positives (cones on parked trucks)
+- ✅ Motion plausibility tracking for dynamic objects
+- ✅ Adaptive thresholds based on scene context
+- ✅ Night mode enhancement (if applicable)
+- ✅ Temporal persistence across frame sequences
+
+### Extended Work Zone Monitoring
+
+*Longer sequence showing sustained detection performance. Highlights include:*
+- ✅ Consistent detection over extended periods
+- ✅ State machine robustness against temporary occlusions
+- ✅ Multi-modal fusion combining YOLO, CLIP, and OCR
+- ✅ Real-time performance at 30 FPS on Jetson Orin
+- ✅ CSV timeline export for analysis
+
+**Note:** Videos are annotated with bounding boxes, confidence scores, and state indicators. Green boxes indicate verified detections, red boxes show rejected false positives, and yellow boxes represent raw detections during processing.
+
+To generate similar outputs, run:
+```bash
+python scripts/process_video_fusion.py \
+  data/demo/boston_workzone_short.mp4 \
+  --output-dir outputs/examples \
+  --enable-phase1-1 \
+  --enable-phase1-4 \
+  --enable-phase2-1 \
+  --enable-ocr
+```
+
+---
+
+## �📦 Installation
 
 ### Prerequisites
 
