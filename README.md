@@ -11,6 +11,16 @@ Built for ESV (Enhanced Safety of Vehicles) competition. Features multi-modal ve
 
 ---
 
+## 🎬 Demo
+
+<p align="center">
+  <img src="docs/media/boston_workzone_short_calibrated_annotated.gif?raw=1&v=2" width="32%" />
+  <img src="docs/media/boston_042e1caf93114d3286c11ba14ddaa759_000001_02790_snippet_calibrated_annotated.gif?raw=1&v=2" width="32%" />
+  <img src="docs/media/boston_2bdb5a72602342a5991b402beb8b7ab4_000001_23370_snippet_calibrated_annotated.gif?raw=1&v=2" width="32%" />
+</p>
+
+---
+
 ## ⚡ Key Features
 
 | Feature | Description |
@@ -164,58 +174,6 @@ python scripts/process_video_fusion.py \
 
 - **"ModuleNotFoundError: No module named 'workzone'"**
   ```bash
-  # Install the package
-  pip install -e .
-  ```
-
-- **CUDA/PyTorch issues**
-  ```bash
-  # For CPU-only installation
-  pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-  ```
-
-- **Permission issues**
-  ```bash
-  # Make scripts executable
-  chmod +x scripts/setup.sh scripts/launch_streamlit.sh scripts/verify_installation.sh
-  ```
-
-- **Model loading issues**
-  ```bash
-  # Check model files
-  ls -la weights/
-  ```
-
----
-
-## 🚀 Quick Start
-
-### Run the App (Professional Way)
-
-```bash
-# Quick launch
-make app
-# or
-make streamlit
-```
-
-The app will be available at `http://localhost:8502`
-
-### Option 1: Interactive Calibration App (Recommended)
-
-The **Streamlit calibration UI** provides interactive parameter tuning:
-
-**Alternative manual launch**:
-```bash
-source venv/bin/activate
-streamlit run src/workzone/apps/streamlit/app_phase2_1_evaluation.py
-# or
-scripts/launch_streamlit.sh
-```
-
-**Features**:
-- 📹 Real-time video preview with live parameter adjustment
-- 📊 Batch processing with comprehensive explainability dashboards
 - 🎬 Built-in video player with play/pause/seek controls (batch mode)
 - 💾 Export annotated videos (H.264) + detailed CSV timelines
 - 🏛️ Calibrate YOLO weights, CLIP fusion, OCR boost, state machine thresholds
