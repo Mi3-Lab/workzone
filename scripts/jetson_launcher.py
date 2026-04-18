@@ -9,6 +9,9 @@ import glob
 import sys
 import json
 import shutil
+import threading
+import urllib.request
+import io
 
 # Configuration Paths
 ROOT_DIR = Path(__file__).parent.parent
@@ -23,57 +26,67 @@ if not VENV_PYTHON.exists():
     VENV_PYTHON = sys.executable  # Fallback to current python if venv not found
 
 class JetsonLauncher(tk.Tk):
+    # Preview port where jetson_app.py serves annotated MJPEG frames
+    PREVIEW_PORT = 5002
+
     def __init__(self):
         super().__init__()
-        self.title("WorkZone Jetson Controller 🚀")
+        self.title("WorkZone Jetson Controller")
         self.geometry("700x900")
         self.configure(bg="#f0f0f0")
-        
+
         # Style
         style = ttk.Style(self)
         style.theme_use('clam')
-        
+
+        # Preview thread state
+        self._preview_running = False
+        self._preview_thread = None
+        self._preview_img_ref = None  # keep reference to avoid GC
+
         # Load Config (Stateless: always load defaults first)
         if not DEFAULT_CONFIG_PATH.exists():
-            # Fallback if default file missing, copy current to default
             try:
                 shutil.copy(CONFIG_PATH, DEFAULT_CONFIG_PATH)
             except: pass
-            
+
         self.config_data = self.load_config(DEFAULT_CONFIG_PATH)
-        
+
         # UI Elements
         self.create_header()
-        
+
         # Tabs container
         self.tabs = ttk.Notebook(self)
         self.tabs.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
+
         # Tab Frames
         self.tab_general = ttk.Frame(self.tabs)
-        self.tab_logic = ttk.Frame(self.tabs)
-        self.tab_state = ttk.Frame(self.tabs)
-        self.tab_clip = ttk.Frame(self.tabs)
-        self.tab_scene = ttk.Frame(self.tabs)
-        
+        self.tab_logic   = ttk.Frame(self.tabs)
+        self.tab_state   = ttk.Frame(self.tabs)
+        self.tab_clip    = ttk.Frame(self.tabs)
+        self.tab_scene   = ttk.Frame(self.tabs)
+        self.tab_live    = ttk.Frame(self.tabs)
+
         self.tabs.add(self.tab_general, text="General")
-        self.tabs.add(self.tab_logic, text="Weights & Logic")
-        self.tabs.add(self.tab_state, text="State Machine")
-        self.tabs.add(self.tab_clip, text="CLIP & Fusion")
-        self.tabs.add(self.tab_scene, text="Scene Context")
-        
+        self.tabs.add(self.tab_logic,   text="Weights & Logic")
+        self.tabs.add(self.tab_state,   text="State Machine")
+        self.tabs.add(self.tab_clip,    text="CLIP & Fusion")
+        self.tabs.add(self.tab_scene,   text="Scene Context")
+        self.tabs.add(self.tab_live,    text="Live View")
+
         # Populate Tabs
         self.setup_general_tab()
         self.setup_logic_tab()
         self.setup_state_tab()
         self.setup_clip_tab()
         self.setup_scene_tab()
-        
+        self.setup_live_tab()
+
         self.create_action_buttons()
-        
+
         # Status Bar
         self.status_var = tk.StringVar()
-        self.status_var.set(f"Ready | Loaded Defaults")
+        self.status_var.set("Ready | Loaded Defaults")
         self.status_bar = tk.Label(self, textvariable=self.status_var, bd=1, relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -99,6 +112,10 @@ class JetsonLauncher(tk.Tk):
         self.clip_var.set(self.config_data.get('fusion', {}).get('use_clip', True))
         self.save_video_var.set(self.config_data.get('video', {}).get('save_output', False))
         self.flip_var.set(self.config_data.get('video', {}).get('flip', False))
+        self.speed_limit_var.set(self.config_data.get('model', {}).get('speed_limit', False))
+        self.ocr_speed_var.set(self.config_data.get('model', {}).get('ocr_speed_limit', False))
+        self.merge_method_var.set(self.config_data.get('model', {}).get('merge_method', 'orb'))
+        self.speed_limit_model_var.set(self.config_data.get('model', {}).get('speed_limit_path', ''))
         
         # Logic
         f = self.config_data.get('fusion', {})
@@ -176,6 +193,10 @@ class JetsonLauncher(tk.Tk):
         self.config_data['video']['flip'] = bool(self.flip_var.get())
         self.config_data['hardware']['half'] = bool(self.half_var.get())
         self.config_data['fusion']['use_clip'] = bool(self.clip_var.get())
+        self.config_data['model']['speed_limit'] = bool(self.speed_limit_var.get())
+        self.config_data['model']['ocr_speed_limit'] = bool(self.ocr_speed_var.get())
+        self.config_data['model']['merge_method'] = self.merge_method_var.get()
+        self.config_data['model']['speed_limit_path'] = self.speed_limit_model_var.get()
 
         # --- Logic & Weights ---
         self.config_data['fusion']['ema_alpha'] = float(self.ema_scale.get())
@@ -244,6 +265,7 @@ class JetsonLauncher(tk.Tk):
         f_mode.pack(fill=tk.X, padx=5, pady=2)
         ttk.Radiobutton(f_mode, text="File / Folder", variable=self.input_mode, value="file", command=self.toggle_input_mode).pack(side=tk.LEFT, padx=10)
         ttk.Radiobutton(f_mode, text="Live Camera", variable=self.input_mode, value="camera", command=self.toggle_input_mode).pack(side=tk.LEFT, padx=10)
+        ttk.Radiobutton(f_mode, text="Network Stream (IP/RTSP)", variable=self.input_mode, value="stream", command=self.toggle_input_mode).pack(side=tk.LEFT, padx=10)
 
         # File Input Frame
         self.f_file_input = tk.Frame(lf_vid)
@@ -264,10 +286,32 @@ class JetsonLauncher(tk.Tk):
         self.combo_cam.pack(side=tk.LEFT, padx=5)
         
         self.flip_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('flip', False))
-        ttk.Checkbutton(self.f_cam_input, text="Flip 180°", variable=self.flip_var).pack(side=tk.LEFT, padx=5)
+        ttk.Checkbutton(self.f_cam_input, text="Flip 180 deg", variable=self.flip_var).pack(side=tk.LEFT, padx=5)
         
         ttk.Button(self.f_cam_input, text="Preview", command=self.preview_camera).pack(side=tk.LEFT, padx=5)
         ttk.Label(self.f_cam_input, text="(Select or Type)").pack(side=tk.LEFT, padx=5)
+
+        # Stream Input Frame
+        self.f_stream_input = tk.Frame(lf_vid)
+        ttk.Label(self.f_stream_input, text="Stream URL:").pack(side=tk.LEFT, padx=5)
+        self.stream_url_var = tk.StringVar(value="rtsp://")
+        ttk.Entry(self.f_stream_input, textvariable=self.stream_url_var).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        ttk.Button(self.f_stream_input, text="Preview", command=self.preview_camera).pack(side=tk.LEFT, padx=5)
+        ttk.Label(self.f_stream_input, text="(e.g., http://IP:5000/video_feed)").pack(side=tk.LEFT, padx=5)
+
+        # CARLA via Moonlight sub-frame (pure ttk to avoid tk/ttk theme crash)
+        lf_carla = ttk.LabelFrame(lf_vid, text="CARLA (Sunshine/Moonlight)")
+        lf_carla.pack(fill=tk.X, padx=5, pady=(0, 5))
+        ttk.Label(lf_carla, text="Host IP:").pack(side=tk.LEFT, padx=(5, 2))
+        self.carla_host_var = tk.StringVar(value="10.35.43.175")
+        ttk.Entry(lf_carla, textvariable=self.carla_host_var, width=15).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(lf_carla, text="App:").pack(side=tk.LEFT, padx=(0, 2))
+        self.carla_app_var = tk.StringVar(value="Desktop")
+        ttk.Entry(lf_carla, textvariable=self.carla_app_var, width=12).pack(side=tk.LEFT, padx=(0, 5))
+        self.btn_carla = ttk.Button(lf_carla, text="Launch CARLA Stream", command=self.toggle_carla_capture)
+        self.btn_carla.pack(side=tk.LEFT, padx=5)
+        self.lbl_carla_status = ttk.Label(lf_carla, text="Stopped", foreground="gray")
+        self.lbl_carla_status.pack(side=tk.LEFT, padx=5)
 
         # Initialize visibility
         self.toggle_input_mode()
@@ -307,6 +351,16 @@ class JetsonLauncher(tk.Tk):
         self.clip_checkbox = ttk.Checkbutton(lf_hw, text="Enable CLIP", variable=self.clip_var, command=self.toggle_per_cue)
         self.clip_checkbox.pack(side=tk.LEFT, padx=10)
         
+        self.speed_limit_var = tk.BooleanVar(value=self.config_data.get('model', {}).get('speed_limit', False))
+        ttk.Checkbutton(lf_hw, text="Sign Speed Limit (YOLO)", variable=self.speed_limit_var).pack(side=tk.LEFT, padx=10)
+        
+        self.ocr_speed_var = tk.BooleanVar(value=self.config_data.get('model', {}).get('ocr_speed_limit', False))
+        ttk.Checkbutton(lf_hw, text="Enable TTC Speed Limit (OCR)", variable=self.ocr_speed_var).pack(side=tk.LEFT, padx=10)
+
+        self.merge_method_var = tk.StringVar(value=self.config_data.get('model', {}).get('merge_method', 'orb'))
+        ttk.Label(lf_hw, text="Merge:").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Combobox(lf_hw, textvariable=self.merge_method_var, values=["orb", "phase", "ecc", "farneback", "none"], width=7).pack(side=tk.LEFT, padx=5)
+
         self.show_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(lf_hw, text="Show Window", variable=self.show_var).pack(side=tk.LEFT, padx=10)
 
@@ -327,22 +381,39 @@ class JetsonLauncher(tk.Tk):
         mode = self.input_mode.get()
         if mode == "file":
             self.f_cam_input.pack_forget()
+            self.f_stream_input.pack_forget()
             self.f_file_input.pack(fill=tk.X, padx=5, pady=5)
-        else:
+        elif mode == "camera":
             self.f_file_input.pack_forget()
+            self.f_stream_input.pack_forget()
             self.f_cam_input.pack(fill=tk.X, padx=5, pady=5)
+        else: # stream
+            self.f_file_input.pack_forget()
+            self.f_cam_input.pack_forget()
+            self.f_stream_input.pack(fill=tk.X, padx=5, pady=5)
 
     def preview_camera(self):
-        idx = self.camera_idx_var.get()
-        # Sanitize index
-        clean_idx = ''.join(filter(str.isdigit, str(idx))) if str(idx).isdigit() else idx
+        mode = self.input_mode.get()
+        if mode == "camera":
+            idx = self.camera_idx_var.get()
+            # Sanitize index
+            clean_idx = ''.join(filter(str.isdigit, str(idx))) if str(idx).isdigit() else idx
+            source = str(clean_idx)
+        elif mode == "stream":
+            source = self.stream_url_var.get()
+        else:
+            source = self.video_path_var.get()
         
+        if not source:
+            messagebox.showwarning("Warning", "No source selected for preview")
+            return
+
         preview_script = ROOT_DIR / "tools/preview_camera.py"
-        cmd = [str(VENV_PYTHON), str(preview_script), str(clean_idx)]
+        cmd = [str(VENV_PYTHON), str(preview_script), source]
         
         try:
             subprocess.Popen(cmd)
-            self.status_var.set(f"Preview launched for Camera {clean_idx}")
+            self.status_var.set(f"Preview launched for {source}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to launch preview: {e}")
 
@@ -373,6 +444,20 @@ class JetsonLauncher(tk.Tk):
         self.w_veh = self.create_slider(lf_w, "Vehicles", 0.0, 2.0, 0.05, yw.get('vehicles', 0.5))
         self.w_ttc = self.create_slider(lf_w, "TTC Signs", 0.0, 2.0, 0.05, yw.get('ttc_signs', 0.7))
         self.w_msg = self.create_slider(lf_w, "Message Boards", 0.0, 2.0, 0.05, yw.get('message_board', 0.6))
+
+        # Speed Limit
+        lf_sl = ttk.LabelFrame(parent, text="Speed Limit Model")
+        lf_sl.pack(fill=tk.X, padx=10, pady=5)
+        f_sl = tk.Frame(lf_sl)
+        f_sl.pack(fill=tk.X, padx=5, pady=5)
+
+        ttk.Label(f_sl, text="Weights:").pack(side=tk.LEFT)
+        speed_limit_models = self.scan_models()
+        current_speed_limit_model = self.config_data.get('model', {}).get('speed_limit_path', '')
+        if current_speed_limit_model not in speed_limit_models and current_speed_limit_model:
+            speed_limit_models.append(current_speed_limit_model)
+        self.speed_limit_model_var = tk.StringVar(value=current_speed_limit_model)
+        ttk.Combobox(f_sl, textvariable=self.speed_limit_model_var, values=speed_limit_models, width=30).pack(side=tk.LEFT, padx=5, fill=tk.X, expand=True)
 
     # ---------------- TAB 3: STATE MACHINE ----------------
     def setup_state_tab(self):
@@ -585,25 +670,141 @@ class JetsonLauncher(tk.Tk):
                 with open(CONFIG_PATH, 'w') as f:
                     yaml.dump(self.config_data, f, sort_keys=False)
                 # Flash status briefly
-                self.status_var.set("Config updated (Hot-Reload) ⚡")
+                self.status_var.set("Config updated (Hot-Reload) !")
                 self.after(1000, lambda: self.status_var.set("Running Inference..."))
             except: pass
+
+    # ---------------- TAB 6: LIVE VIEW ----------------
+    def setup_live_tab(self):
+        parent = self.tab_live
+        parent.configure()
+        lbl = ttk.Label(parent, text="Live detection feed appears here when inference is running.",
+                        font=("Arial", 9), foreground="gray")
+        lbl.pack(pady=(6, 2))
+        self.video_panel = tk.Label(
+            parent,
+            bg="#111111",
+            text="No feed yet - click  RUN INFERENCE  to start",
+            fg="#555555",
+            font=("Arial", 11),
+        )
+        self.video_panel.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+    # -- Live preview panel (reads annotated MJPEG from jetson_app.py) ------------
+    def start_preview(self):
+        """Starts background thread that pulls frames from port 5002 and updates video_panel."""
+        self._preview_running = True
+        self._preview_thread = threading.Thread(target=self._preview_loop, daemon=True)
+        self._preview_thread.start()
+
+    def stop_preview(self):
+        self._preview_running = False
+
+    def _preview_loop(self):
+        url = f"http://localhost:{self.PREVIEW_PORT}/stream"
+        buf = b""
+        JPEG_START, JPEG_END = b"\xff\xd8", b"\xff\xd9"
+
+        # Wait for preview server to be ready
+        for _ in range(60):
+            try:
+                urllib.request.urlopen(url, timeout=1)
+                break
+            except Exception:
+                import time; import time as _t; _t.sleep(0.5)
+
+        try:
+            resp = urllib.request.urlopen(url, timeout=10)
+        except Exception:
+            return
+
+        while self._preview_running:
+            try:
+                chunk = resp.read(8192)
+                if not chunk:
+                    break
+                buf += chunk
+                while True:
+                    s = buf.find(JPEG_START)
+                    if s == -1: break
+                    e = buf.find(JPEG_END, s + 2)
+                    if e == -1: break
+                    jpg_bytes = buf[s:e + 2]
+                    buf = buf[e + 2:]
+                    try:
+                        from PIL import Image, ImageTk
+                        img = Image.open(io.BytesIO(jpg_bytes))
+                        panel_w = self.video_panel.winfo_width() or 900
+                        panel_h = self.video_panel.winfo_height() or 560
+                        img.thumbnail((panel_w, panel_h), Image.LANCZOS)
+                        photo = ImageTk.PhotoImage(img)
+                        self._preview_img_ref = photo
+                        self.video_panel.config(image=photo, text="")
+                    except Exception:
+                        pass
+            except Exception:
+                break
+
+        self.video_panel.config(image="", text="Feed stopped", fg="#555577")
+
+    # -- CARLA Moonlight Capture --------------------------------------------------
+    def toggle_carla_capture(self):
+        if hasattr(self, '_carla_proc') and self._carla_proc and self._carla_proc.poll() is None:
+            self.stop_carla_capture()
+        else:
+            self.start_carla_capture()
+
+    def start_carla_capture(self):
+        host = self.carla_host_var.get().strip()
+        app  = self.carla_app_var.get().strip()
+        if not host:
+            messagebox.showwarning("CARLA Stream", "Enter the Sunshine host IP.")
+            return
+
+        capture_script = ROOT_DIR / "scripts/moonlight_capture.py"
+        cmd = [
+            str(VENV_PYTHON), str(capture_script),
+            "--host", host,
+            "--app",  app,
+            "--port", "5001",
+        ]
+        try:
+            self._carla_proc = subprocess.Popen(cmd, cwd=str(ROOT_DIR))
+            self.stream_url_var.set("http://localhost:5001/stream")
+            self.input_mode.set("stream")
+            self.toggle_input_mode()
+            self.btn_carla.config(text="[STOP] CARLA Stream")
+            self.lbl_carla_status.config(text="Starting... (5s)", foreground="orange")
+            self.after(5000, lambda: self.lbl_carla_status.config(text="Streaming", foreground="green"))
+            self.status_var.set(f"CARLA stream: {host} -> http://localhost:5001/stream")
+        except Exception as e:
+            messagebox.showerror("CARLA Stream Error", str(e))
+
+    def stop_carla_capture(self):
+        if hasattr(self, '_carla_proc') and self._carla_proc:
+            self._carla_proc.terminate()
+            try: self._carla_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired: self._carla_proc.kill()
+            self._carla_proc = None
+        self.btn_carla.config(text="Launch CARLA Stream")
+        self.lbl_carla_status.config(text="Stopped", foreground="gray")
+        self.status_var.set("CARLA stream stopped.")
 
     def create_action_buttons(self):
         f = tk.Frame(self, pady=10)
         f.pack(fill=tk.X, side=tk.BOTTOM)
-        
+
         self.process = None
         
         # Import/Export Buttons
-        btn_import = ttk.Button(f, text="📂 Import Preset", command=self.import_preset)
+        btn_import = ttk.Button(f, text="Import Preset", command=self.import_preset)
         btn_import.pack(side=tk.LEFT, padx=10)
         
-        btn_export = ttk.Button(f, text="💾 Export Preset", command=self.export_preset)
+        btn_export = ttk.Button(f, text="Export Preset", command=self.export_preset)
         btn_export.pack(side=tk.LEFT, padx=10)
         
         # Run Button
-        self.btn_run = tk.Button(f, text="🚀 RUN INFERENCE", bg="#27ae60", fg="white", font=("Arial", 12, "bold"), 
+        self.btn_run = tk.Button(f, text="RUN INFERENCE", bg="#27ae60", fg="white", font=("Arial", 12, "bold"), 
                             command=self.toggle_inference, height=2)
         self.btn_run.pack(side=tk.RIGHT, padx=20, fill=tk.X, expand=True)
         
@@ -613,6 +814,8 @@ class JetsonLauncher(tk.Tk):
     def on_closing(self):
         if self.process is not None:
             self.stop_inference()
+        self.stop_preview()
+        self.stop_carla_capture()
         self.destroy()
 
     def browse_video_file(self):
@@ -652,23 +855,30 @@ class JetsonLauncher(tk.Tk):
         cmd.extend(["--config", str(CONFIG_PATH)])
         
         # Select input based on mode
-        if self.input_mode.get() == "camera":
+        mode = self.input_mode.get()
+        if mode == "camera":
             input_val = self.camera_idx_var.get()
+        elif mode == "stream":
+            input_val = self.stream_url_var.get()
         else:
             input_val = self.video_path_var.get()
             
         if input_val: cmd.extend(["--input", input_val])
-        if self.show_var.get(): cmd.append("--show")
+        # Always stream annotated frames to the embedded Live View panel
+        cmd.extend(["--preview-port", str(self.PREVIEW_PORT)])
+        # Never open a separate cv2 window - the Live View tab replaces it
         if self.save_video_var.get(): cmd.append("--save")
         if self.flip_var.get(): cmd.append("--flip")
-            
 
-        self.status_var.set(f"Running: {' '.join(cmd)}")
+        self.status_var.set(f"Running inference...")
         self.update()
-        
+
         try:
             self.process = subprocess.Popen(cmd, cwd=str(ROOT_DIR))
-            self.btn_run.config(text="🛑 STOP INFERENCE", bg="#c0392b")
+            self.btn_run.config(text="STOP STOP INFERENCE", bg="#c0392b")
+            # Switch to the Live View tab automatically
+            self.tabs.select(self.tab_live)
+            self.start_preview()
             self.monitor_process()
         except Exception as e:
             messagebox.showerror("Execution Error", str(e))
@@ -683,7 +893,9 @@ class JetsonLauncher(tk.Tk):
             except subprocess.TimeoutExpired:
                 self.process.kill()
             self.process = None
-            self.btn_run.config(text="🚀 RUN INFERENCE", bg="#27ae60")
+            self.btn_run.config(text=" RUN INFERENCE", bg="#27ae60")
+            self.stop_preview()
+            self.stop_carla_capture()
             self.status_var.set("Stopped")
 
     def monitor_process(self):
@@ -693,7 +905,7 @@ class JetsonLauncher(tk.Tk):
                 self.after(500, self.monitor_process)
             else:
                 self.process = None
-                self.btn_run.config(text="🚀 RUN INFERENCE", bg="#27ae60")
+                self.btn_run.config(text=" RUN INFERENCE", bg="#27ae60")
                 self.status_var.set(f"Finished with exit code {ret}")
 
 if __name__ == "__main__":

@@ -11,7 +11,17 @@ def main():
     # Handle numeric index or string path
     source = int(args.index) if args.index.isdigit() else args.index
     
-    cap = cv2.VideoCapture(source)
+    if isinstance(source, str) and source.startswith("http"):
+        # Specific GStreamer pipeline for MJPEG-over-HTTP on Jetson
+        gst_pipeline = (
+            f"souphttpsrc location={source} do-timestamp=true ! "
+            "multipartdemux ! jpegdec ! "
+            "videoconvert ! video/x-raw, format=BGR ! appsink drop=1"
+        )
+        print(f"Using GStreamer MJPEG pipeline: {gst_pipeline}")
+        cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+    else:
+        cap = cv2.VideoCapture(source)
     if not cap.isOpened():
         print(f"Error: Could not open camera source {source}")
         sys.exit(1)

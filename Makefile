@@ -48,13 +48,13 @@ app-advanced-scoring:
 	streamlit run src/workzone/apps/streamlit/app_advanced_scoring.py
 
 app:
-	@echo "🚀 Launching WorkZone Streamlit App..."
+	@echo "Launching WorkZone Streamlit App..."
 	@bash scripts/launch_streamlit.sh
 
 streamlit: app
 
 workzone:
-	@echo "🚀 Launching WorkZone Controller (Jetson Orin)..."
+	@echo "Launching WorkZone Controller (Jetson Orin)..."
 	@python3 scripts/jetson_launcher.py
 
 # Live CLI mode with configurable options
@@ -65,14 +65,14 @@ workzone:
 #   make live INPUT=0 SAVE=true (runs with camera 0, with saving)
 #   make live CLIP=true        (runs with default camera, enables CLIP)
 live:
-	@echo "💻 Launching WorkZone Jetson App in CLI mode..."
+	@echo "Launching WorkZone Jetson App in CLI mode..."
 	$(eval SAVE_ARG := $(if $(filter true,$(SAVE)),--save))
 	$(eval CLIP_ARG := $(if $(filter true,$(CLIP)),--clip))
 	$(eval INPUT_ARG := $(if $(INPUT),--input $(INPUT)))
 	@python3 scripts/jetson_cli_app.py $(INPUT_ARG) $(SAVE_ARG) $(CLIP_ARG)
 
 workzone2:
-	@echo "🧪 Launching SOTA Experimental Controller (VLM Copilot)..."
+	@echo "Launching SOTA Experimental Controller (VLM Copilot)..."
 	@python3 scripts/jetson_launcher_sota.py
 
 test:

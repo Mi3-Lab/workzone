@@ -1,8 +1,12 @@
 model:
   path: weights/yolo12s_hardneg_1280.pt
-  conf: 0.43
+  conf: 0.25
   iou: 0.7
   imgsz: 960
+  speed_limit: false
+  ocr_speed_limit: false
+  merge_method: orb
+  speed_limit_path: ''
 video:
   input: data/demo
   output_dir: results/jetson
@@ -49,4 +53,4 @@ fusion:
   use_per_cue: false
   per_cue_th: 0.05
 scene_context:
-  enabled: true
+  enabled: false

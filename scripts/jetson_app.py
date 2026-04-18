@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import re
 import sys
 import time
 import argparse
@@ -7,12 +8,50 @@ import math
 import yaml
 from pathlib import Path
 from collections import Counter, deque
+from typing import Dict, List, Optional, Tuple
 import threading
 import queue
 import signal
 import subprocess # Required for FFmpeg
 import shutil     # Required for FFmpeg (moving files)
 import pygame.mixer # Import pygame.mixer for playing MP3 files
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+# ── Annotated-frame MJPEG preview server ──────────────────────────────────────
+_prev_lock   = threading.Lock()
+_prev_frame: bytes = b""
+_prev_active = False
+
+class _PrevHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path in ("/stream", "/", "/video_feed"):
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=--frame")
+            self.end_headers()
+            try:
+                while _prev_active:
+                    with _prev_lock:
+                        f = _prev_frame
+                    if f:
+                        self.wfile.write(
+                            b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + f + b"\r\n"
+                        )
+                    time.sleep(1 / 30)
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+        else:
+            self.send_response(404)
+            self.end_headers()
+    def log_message(self, *a):
+        pass
+
+def _start_preview_server(port: int):
+    global _prev_active
+    _prev_active = True
+    srv = HTTPServer(("0.0.0.0", port), _PrevHandler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    print(f"[Preview] Annotated stream → http://localhost:{port}/stream")
+    return srv
 
 # Set ROOT_DIR for easy access to project structure
 ROOT_DIR = Path(__file__).parent.parent
@@ -26,24 +65,31 @@ class ADASVoice:
                 "APPROACHING": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/approaching.mp3")),
                 "INSIDE": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/inside.mp3")),
                 "EXITING": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/exiting.mp3")),
-                "OUT": None # No sound for OUT state, or add one if desired
+                "OUT": None, # No sound for OUT state, or add one if desired
+                "25": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/speed_limit_25.mp3")),
+                "55": pygame.mixer.Sound(str(ROOT_DIR / "data/sounds/speed_limit_25.mp3"))
             }
             self.last_state = "OUT"
+            self.last_played_speed = None
             self._lock = threading.Lock()
             print("[ADASVoice] Pygame mixer initialized and sounds loaded.")
         except Exception as e:
             print(f"[ADASVoice] Error initializing pygame mixer or loading sounds: {e}")
             self.sounds = {} # Disable sounds if error occurs
 
-    def _play_sound_thread(self, sound_object):
+    def _play_sound_thread(self, sound_object, stop_current=True):
         with self._lock:
             try:
-                # Stop any currently playing sounds to prevent overlap
-                pygame.mixer.stop()
+                # Stop any currently playing sounds if requested (for state changes)
+                if stop_current:
+                    pygame.mixer.stop()
                 
                 # Get a free channel or allocate a new one
                 channel = pygame.mixer.find_channel(True) 
                 if channel:
+                    if not stop_current and pygame.mixer.get_busy():
+                        # If we shouldn't stop current and mixer is busy, don't interrupt
+                        return
                     channel.play(sound_object)
                 else:
                     print("[ADASVoice] No free mixer channel to play sound.")
@@ -55,12 +101,31 @@ class ADASVoice:
             sound_to_play = self.sounds.get(current_state)
             
             if sound_to_play:
-                # Run in a separate thread to avoid blocking the main video processing loop
-                thread = threading.Thread(target=self._play_sound_thread, args=(sound_to_play,))
-                thread.daemon = True # Allow program to exit even if thread is running
+                # State changes should stop current sounds to be immediate
+                thread = threading.Thread(target=self._play_sound_thread, args=(sound_to_play, True))
+                thread.daemon = True 
                 thread.start()
             
             self.last_state = current_state
+
+    def play_speed_limit_sound(self, speed_limit, interrupt=False):
+        speed_limit = str(speed_limit) if speed_limit else None
+        if speed_limit:
+            sound_to_play = self.sounds.get(speed_limit)
+
+            # lazy-load if missing
+            if sound_to_play is None:
+                p = ROOT_DIR / f"data/sounds/speed_limit_{speed_limit}.mp3"
+                if p.exists():
+                    self.sounds[speed_limit] = pygame.mixer.Sound(str(p))
+                    sound_to_play = self.sounds[speed_limit]
+
+            if sound_to_play:
+                # Speed limit sounds should not stop current sounds by default
+                thread = threading.Thread(target=self._play_sound_thread, args=(sound_to_play, interrupt), daemon=True)
+                thread.start()
+
+            self.last_played_speed = speed_limit
 
 # 1. ENV SETUP
 def setup_environment():
@@ -91,6 +156,181 @@ from rich import box
 sys.path.append(str(Path(__file__).parent))
 from workzone.detection.scene_context import SceneContextPredictor
 
+# OCR imports (optional)
+try:
+    from workzone.ocr.text_detector import SignTextDetector
+    from workzone.ocr.text_classifier import TextClassifier
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
+
+# ============================================================================
+# OCR & MERGING HELPERS (from process_video_fusion.py)
+# ============================================================================
+
+def preprocess_for_ocr(crop_bgr: np.ndarray, scale: float = 2.0) -> np.ndarray:
+    if crop_bgr is None or crop_bgr.size == 0: return crop_bgr
+    h, w = crop_bgr.shape[:2]
+    crop_up = cv2.resize(crop_bgr, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_CUBIC)
+    gray = cv2.cvtColor(crop_up, cv2.COLOR_BGR2GRAY)
+    gray = cv2.bilateralFilter(gray, 7, 50, 50)
+    gray = cv2.equalizeHist(gray)
+    return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+
+def _normalize_mph_tokens(t: str) -> str:
+    if not t: return ""
+    t = re.sub(r"\b[6G]PH\b", "MPH", t)
+    t = re.sub(r"\bMH\b", "MPH", t)
+    t = re.sub(r"\bM\s+H\b", "MPH", t)
+    t = re.sub(r"(?<=\d)\s*[I1]H\b", " MPH", t)
+    return t
+
+def _normalize_ocr_for_digits(s: str) -> str:
+    if not s: return ""
+    t = s.upper()
+    t = t.replace("O", "0").replace("I", "1").replace("L", "1")
+    t = re.sub(r"(?<=\d)S(?=\d)|(?<=\d)S\b|\bS(?=\d)", "5", t)
+    t = t.replace("/", " ").replace("-", " ").replace("_", " ")
+    t = re.sub(r"\s+", " ", t).strip()
+    return _normalize_mph_tokens(t)
+
+def parse_speed_limit_from_text(ocr_text: str, mph_min: int = 5, mph_max: int = 90) -> Tuple[Optional[int], float]:
+    t = _normalize_ocr_for_digits(ocr_text)
+    if not t: return None, 0.0
+    has_speed_kw = ("SPEED" in t) or ("LIMIT" in t)
+    has_unit_kw = ("MPH" in t) or ("KPH" in t) or ("KMH" in t) or ("KM/H" in t)
+    def valid_speed(val: int) -> bool: return (mph_min <= val <= mph_max) and (val % 5 == 0)
+    patterns = [(r"(?:SPEED\s*LIMIT\s*)(\d{1,3})", 0.85), (r"(?:LIMIT\s*)(\d{1,3})", 0.75), (r"(?:REDUCE\s*SPEED\s*)(\d{1,3})", 0.75), (r"(\d{1,3})\s*(?:MPH|KPH|KMH|KM/H)\b", 0.65)]
+    candidates = []
+    for pat, base in patterns:
+        for m in re.finditer(pat, t):
+            try: val = int(m.group(1))
+            except: continue
+            if valid_speed(val): candidates.append((val, base))
+        if candidates: break
+    if not candidates and (has_speed_kw or has_unit_kw):
+        for m in re.finditer(r"\b(\d{1,3})\b", t):
+            try: val = int(m.group(1))
+            except: continue
+            if valid_speed(val):
+                candidates.append((val, 0.35))
+                break
+    if not candidates: return None, 0.0
+    common = {25, 30, 35, 40, 45, 50, 55, 60, 65, 70}
+    candidates.sort(key=lambda x: (x[1], x[0] in common), reverse=True)
+    speed, score = candidates[0]
+    if has_speed_kw: score = min(1.0, score + 0.10)
+    if has_unit_kw: score = min(1.0, score + 0.05)
+    if not has_speed_kw and not has_unit_kw: score = max(0.0, score - 0.10)
+    return int(speed), float(score)
+
+def reconstruct_speed_from_history(ocr_hist: deque, mph_min: int = 5, mph_max: int = 90, min_total_weight: float = 1.2, dominance_ratio: float = 0.55) -> Tuple[Optional[int], float]:
+    if not ocr_hist: return None, 0.0
+    score_map: Dict[int, float] = {}
+    total_w = 0.0
+    for txt, w in ocr_hist:
+        t = _normalize_ocr_for_digits(txt)
+        if not (("MPH" in t) or ("SPEED" in t) or ("LIMIT" in t)): continue
+        sp, parse_conf = parse_speed_limit_from_text(t, mph_min=mph_min, mph_max=mph_max)
+        if sp is not None:
+            wt = w * max(0.15, float(parse_conf))
+            score_map[sp] = score_map.get(sp, 0.0) + wt
+            total_w += wt
+            continue
+        mph_pos = t.find("MPH")
+        window = t[max(0, mph_pos - 12): mph_pos + 3] if mph_pos >= 0 else t
+        nums = re.findall(r"\b(\d{1,3})\b", window)
+        for ns in nums:
+            try: val = int(ns)
+            except: continue
+            if mph_min <= val <= mph_max:
+                wt = w * 0.25
+                score_map[val] = score_map.get(val, 0.0) + wt
+                total_w += wt
+                break
+    if not score_map: return None, 0.0
+    best_sp, best_w = max(score_map.items(), key=lambda kv: kv[1])
+    if total_w < min_total_weight: return None, 0.0
+    conf = float(best_w / max(1e-6, total_w))
+    if conf < dominance_ratio: return None, conf
+    return int(best_sp), conf
+
+def _warp_to_reference_phase(src_bgr: np.ndarray, ref_bgr: np.ndarray) -> np.ndarray:
+    if src_bgr is None or ref_bgr is None or src_bgr.size == 0 or ref_bgr.size == 0: return src_bgr
+    ref_h, ref_w = ref_bgr.shape[:2]
+    src_bgr_rs = cv2.resize(src_bgr, (ref_w, ref_h)) if src_bgr.shape[:2] != (ref_h, ref_w) else src_bgr
+    src_gray_f = np.float32(cv2.cvtColor(src_bgr_rs, cv2.COLOR_BGR2GRAY))
+    ref_gray_f = np.float32(cv2.cvtColor(ref_bgr, cv2.COLOR_BGR2GRAY))
+    (dx, dy), _ = cv2.phaseCorrelate(src_gray_f, ref_gray_f)
+    M = np.float32([[1, 0, dx], [0, 1, dy]])
+    return cv2.warpAffine(src_bgr_rs, M, (ref_w, ref_h), borderMode=cv2.BORDER_REPLICATE)
+
+def _warp_to_reference_orb(src_bgr: np.ndarray, ref_bgr: np.ndarray) -> np.ndarray:
+    if src_bgr is None or ref_bgr is None or src_bgr.size == 0 or ref_bgr.size == 0: return src_bgr
+    ref_h, ref_w = ref_bgr.shape[:2]
+    src_bgr_rs = cv2.resize(src_bgr, (ref_w, ref_h)) if src_bgr.shape[:2] != (ref_h, ref_w) else src_bgr
+    src_gray = cv2.cvtColor(src_bgr_rs, cv2.COLOR_BGR2GRAY)
+    ref_gray = cv2.cvtColor(ref_bgr, cv2.COLOR_BGR2GRAY)
+    orb = cv2.ORB_create(1000)
+    kp1, des1 = orb.detectAndCompute(src_gray, None)
+    kp2, des2 = orb.detectAndCompute(ref_gray, None)
+    if des1 is None or des2 is None or len(des1) < 4 or len(des2) < 4: return src_bgr_rs
+    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+    try: matches = bf.match(des1, des2)
+    except: return src_bgr_rs
+    matches = sorted(matches, key=lambda x: x.distance)[:100]
+    if len(matches) < 4: return src_bgr_rs
+    src_pts = np.float32([kp1[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+    ref_pts = np.float32([kp2[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+    M, _ = cv2.findHomography(src_pts, ref_pts, cv2.RANSAC, 5.0)
+    if M is None: return src_bgr_rs
+    return cv2.warpPerspective(src_bgr_rs, M, (ref_w, ref_h), borderMode=cv2.BORDER_REPLICATE)
+
+def _warp_to_reference_ecc(src_bgr: np.ndarray, ref_bgr: np.ndarray) -> np.ndarray:
+    if src_bgr is None or ref_bgr is None or src_bgr.size == 0 or ref_bgr.size == 0: return src_bgr
+    ref_h, ref_w = ref_bgr.shape[:2]
+    src_bgr_rs = cv2.resize(src_bgr, (ref_w, ref_h)) if src_bgr.shape[:2] != (ref_h, ref_w) else src_bgr
+    src_gray = cv2.cvtColor(src_bgr_rs, cv2.COLOR_BGR2GRAY)
+    ref_gray = cv2.cvtColor(ref_bgr, cv2.COLOR_BGR2GRAY)
+    warp_matrix = np.eye(3, 3, dtype=np.float32)
+    criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 50, 1e-8)
+    try:
+        (_, warp_matrix) = cv2.findTransformECC(ref_gray, src_gray, warp_matrix, cv2.MOTION_HOMOGRAPHY, criteria, None, 1)
+        return cv2.warpPerspective(src_bgr_rs, warp_matrix, (ref_w, ref_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+    except: return src_bgr_rs
+
+def _warp_to_reference_farneback(src_bgr: np.ndarray, ref_bgr: np.ndarray) -> np.ndarray:
+    if src_bgr is None or ref_bgr is None or src_bgr.size == 0 or ref_bgr.size == 0: return src_bgr
+    ref_h, ref_w = ref_bgr.shape[:2]
+    src_bgr_rs = cv2.resize(src_bgr, (ref_w, ref_h), interpolation=cv2.INTER_LINEAR)
+    src_gray = cv2.GaussianBlur(cv2.cvtColor(src_bgr_rs, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+    ref_gray = cv2.GaussianBlur(cv2.cvtColor(ref_bgr, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+    flow = cv2.calcOpticalFlowFarneback(src_gray, ref_gray, None, 0.5, 3, 35, 5, 7, 1.5, 0)
+    yy, xx = np.mgrid[0:ref_h, 0:ref_w].astype(np.float32)
+    return cv2.remap(src_bgr_rs, xx + flow[..., 0], yy + flow[..., 1], interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+
+def merge_crops_aligned(crops_bgr: List[np.ndarray], method: str = "orb", ref_index: Optional[int] = None) -> Optional[np.ndarray]:
+    if not crops_bgr: return None
+    if len(crops_bgr) == 1: return crops_bgr[0]
+    if ref_index is None: ref_index = len(crops_bgr) // 2
+    ref = crops_bgr[ref_index]
+    if ref is None or ref.size == 0: return None
+    ref_h, ref_w = ref.shape[:2]
+    aligned = []
+    for i, c in enumerate(crops_bgr):
+        if c is None or c.size == 0: continue
+        if i == ref_index: aligned.append(cv2.resize(c, (ref_w, ref_h)))
+        else:
+            if method == "farneback": aligned.append(_warp_to_reference_farneback(c, ref))
+            elif method == "orb": aligned.append(_warp_to_reference_orb(c, ref))
+            elif method == "ecc": aligned.append(_warp_to_reference_ecc(c, ref))
+            elif method == "phase": aligned.append(_warp_to_reference_phase(c, ref))
+            else: aligned.append(cv2.resize(c, (ref_w, ref_h)))
+    if not aligned: return None
+    stack = np.stack(aligned, axis=0).astype(np.float32)
+    return np.clip(np.median(stack, axis=0), 0, 255).astype(np.uint8)
+
+
 # 2. CONSTANTS & CLASSES
 CHANNELIZATION = {"Cone", "Drum", "Barricade", "Barrier", "Vertical Panel", "Tubular Marker", "Fence"}
 WORKERS = {"Worker", "Police Officer"}
@@ -109,8 +349,7 @@ SCENE_PRESETS = {
         "message_board": 0.8,
         "approach_th": 0.25,
         "enter_th": 0.50,
-        "exit_th": 0.30,
-        "min_out_frames": 60   # Extended persistence (2s) for Highway gaps
+        "exit_th": 0.30
     },
     "urban": {
         "bias": -0.15,        # Skeptical: City is full of distractions
@@ -330,6 +569,12 @@ def get_cue_category(name):
     if name in MESSAGE_BOARD: return "message_board"
     return None
 
+def normalize_speed_limit_label(label: str):
+    if not label:
+        return None
+    m = re.search(r"(\d{2,3})", str(label))   # grabs 25, 55, 65, 100, etc
+    return m.group(1) if m else None
+
 def enhance_night_frame(frame):
     """
     Boost contrast and brightness for night scenes to help YOLO/CLIP.
@@ -491,7 +736,7 @@ def run_ffmpeg_merge(input_video_path, input_audio_path, output_path):
         
 # --- End FFmpeg Helper ---
 
-def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
+def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None, speed_limit=None, ocr_speed=None):
     h, w = frame.shape[:2]
     pad_h = 80
     padded = np.full((h + pad_h, w, 3), 0, dtype=np.uint8)
@@ -504,7 +749,15 @@ def draw_hud(frame, state, score, clip_active, fps, is_night=False, scene=None):
     cv2.rectangle(padded, (0, 0), (w, pad_h), color, -1)
     text_left = f"{lbl} | Score: {score:.2f}"
     cv2.putText(padded, text_left, (20, 50), 1, 1.8, (255, 255, 255), 2, cv2.LINE_AA)
-    info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
+    
+    speed_txt = ""
+    if speed_limit: speed_txt += f"SIGN: {speed_limit} "
+    if ocr_speed: speed_txt += f"BOARD: {ocr_speed} "
+    
+    if speed_txt:
+        info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'} | SPEED: {speed_txt}"
+    else:
+        info_txt = f"FPS: {fps:.0f} | CLIP: {'ON' if clip_active else 'OFF'}"
     
     (tw, _), _ = cv2.getTextSize(info_txt, 1, 1.3, 2)
     cv2.putText(padded, info_txt, (w - tw - 20, 50), 1, 1.3, (255, 255, 255), 2, cv2.LINE_AA)
@@ -575,59 +828,22 @@ def ensure_model(config):
     console.print(f"[yellow]⚠️ Could not export to TensorRT. Falling back to PyTorch model ({pt_path.name}). Performance will be lower.[/yellow]")
     return str(pt_path), False
 
-def process_video(source, model, clip_bundle, config, show, config_path=None):
-    # Determine if source is a camera (int or /dev/video)
-    is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
-    
-    if is_camera:
-        # Camera setup
-        try:
-            cam_idx = int(source)
-            cap = cv2.VideoCapture(cam_idx)
-        except ValueError:
-            cap = cv2.VideoCapture(source)
-        source_name = f"camera_{source}"
-    else:
-        # File setup
-        source_path = Path(source)
-        cap = cv2.VideoCapture(str(source_path))
-        source_name = source_path.name
-
-    w, h, fps_in, total = int(cap.get(3)), int(cap.get(4)), cap.get(5) or 30, int(cap.get(7))
-    stride = config['video'].get('stride', 1)
-    
-    # Timestamped output to avoid overwrites and handle camera streams unique names
-    timestamp = int(time.time())
-    out_path = Path(config['video']['output_dir']) / f"fused_{source_name}_{timestamp}.mp4"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), fps_in, (w, h + 80))
-    f_c = config['fusion']
-    last_config_mtime = os.path.getmtime(config_path) if config_path else 0
-    pos_emb, neg_emb = None, None
-    per_cue_verifier = None
-    
-    if clip_bundle:
-        toks = clip_bundle["tokenizer"]([f_c['clip_pos_text'], f_c['clip_neg_text']]).to("cuda")
-        with torch.no_grad():
-            txt = clip_bundle["model"].encode_text(toks)
-            txt = txt / (txt.norm(dim=-1, keepdim=True) + 1e-8)
-            pos_emb, neg_emb = txt[0], txt[1]
-        
-        # Initialize Per-Cue Verifier
-        per_cue_verifier = PerCueVerifier(clip_bundle, "cuda")
-
     state, y_ema, f_ema, in_f, out_f, f_idx, start_t = "OUT", None, None, 0, 999, 0, time.time()
     last_clip_score = 0.0
     clip_interval = 3 
-    
+
 class FrameProcessor(threading.Thread):
-    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None, flip_frame=False):
+    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None, flip_frame=False, speed_limit_model_path=None):
         super().__init__(daemon=True)
         self.source = source
         self.config = config
         self.config_path = config_path
         self.model = model
+        self.speed_limit_model = None
+        if speed_limit_model_path:
+            self.speed_limit_model = YOLO(speed_limit_model_path, task='detect')
+            print(f"[INFO] Speed limit model loaded from {speed_limit_model_path}")
+
         self.result_queue = result_queue
         self.running = True
         self.cap = None
@@ -641,7 +857,20 @@ class FrameProcessor(threading.Thread):
         self.out_f = 0
         self.last_clip_score = 0.0
         self.counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
+        self.speed_limit_buffer = deque(maxlen=15)
+        self.stable_speed_limit = None
+        self.speed_limit_played_this_session = False
         
+        # OCR Speed Limit
+        self.ocr_enabled = config.get('model', {}).get('ocr_speed_limit', False)
+        self.merge_method = config.get('model', {}).get('merge_method', 'orb')
+        self.ocr_hist = deque(maxlen=40)
+        self.crop_window = deque(maxlen=5) # Hardcoded merge_n=5 for simplicity or make configurable
+        self.ocr_detector = None
+        self.ocr_classifier = None
+        self.stable_ocr_speed = None
+        self.stable_ocr_conf = 0.0
+
         # Components
         self.per_cue_verifier = None
         
@@ -685,6 +914,8 @@ class FrameProcessor(threading.Thread):
     def run(self):
         # Open Capture
         is_camera = str(self.source).isdigit() or (isinstance(self.source, str) and self.source.startswith("/dev/video"))
+        is_stream = isinstance(self.source, str) and (self.source.startswith("rtsp://") or self.source.startswith("rtmp://") or self.source.startswith("http://") or self.source.startswith("https://"))
+
         if is_camera:
             try:
                 self.cap = cv2.VideoCapture(int(self.source))
@@ -696,13 +927,59 @@ class FrameProcessor(threading.Thread):
                 self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                 self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
                 self.cap.set(cv2.CAP_PROP_FPS, 30)
+        elif is_stream:
+            print(f"[FrameProcessor] Detected network stream: {self.source}")
+
+            # For HTTP MJPEG streams (e.g. moonlight_capture.py), the server may
+            # take several seconds to start. Poll until it's up before opening.
+            if self.source.startswith("http"):
+                import urllib.request
+                import urllib.error
+                wait_limit = 30  # seconds
+                waited = 0
+                print(f"[FrameProcessor] Waiting for MJPEG server to be ready (up to {wait_limit}s)...")
+                while waited < wait_limit:
+                    try:
+                        urllib.request.urlopen(self.source, timeout=2)
+                        print(f"[FrameProcessor] Server is up after {waited}s.")
+                        break
+                    except Exception:
+                        time.sleep(1)
+                        waited += 1
+                else:
+                    print("[FrameProcessor] ERROR: MJPEG server never became available.")
+                    self.running = False
+                    return
+
+            if self.source.startswith("rtsp://"):
+                # Optimized GStreamer for RTSP (H264/H265)
+                gst_pipeline = (
+                    f"rtspsrc location={self.source} latency=0 ! "
+                    "rtph264depay ! h264parse ! nvv4l2decoder ! "
+                    "nvvidconv ! video/x-raw, format=BGRx ! "
+                    "videoconvert ! video/x-raw, format=BGR ! appsink drop=1"
+                )
+            elif self.source.startswith("http"):
+                # GStreamer for MJPEG over HTTP
+                gst_pipeline = (
+                    f"souphttpsrc location={self.source} do-timestamp=true ! "
+                    "multipartdemux ! jpegdec ! "
+                    "videoconvert ! video/x-raw, format=BGR ! appsink drop=1"
+                )
+
+            print(f"[FrameProcessor] Using GStreamer pipeline: {gst_pipeline}")
+            self.cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
+
+            if not self.cap.isOpened():
+                print("[FrameProcessor] GStreamer pipeline failed, falling back to direct OpenCV...")
+                self.cap = cv2.VideoCapture(self.source)
         else:
             self.cap = cv2.VideoCapture(str(self.source))
             
         # --- Frame Pacing Setup ---
         source_fps = self.cap.get(cv2.CAP_PROP_FPS)
         if source_fps <= 0 or source_fps > 120: source_fps = 30.0
-        if is_camera: source_fps = min(source_fps, 30.0) # Cap camera
+        if is_camera or is_stream: source_fps = min(source_fps, 30.0) # Cap real-time sources
         
         frame_interval = 1.0 / source_fps
         print(f"[FrameProcessor] Pacing enabled: Target {source_fps:.1f} FPS (Interval: {frame_interval*1000:.1f}ms)")
@@ -786,6 +1063,16 @@ class FrameProcessor(threading.Thread):
             # Night Mode Boost
             frame_ai, is_night = enhance_night_frame(frame)
             
+            # Lazy Load OCR (if enabled)
+            if self.ocr_enabled and OCR_AVAILABLE and self.ocr_detector is None:
+                try:
+                    print("[INFO] Loading OCR modules dynamically...")
+                    self.ocr_detector = SignTextDetector()
+                    self.ocr_classifier = TextClassifier()
+                except Exception as e:
+                    print(f"[ERROR] Failed to load OCR modules: {e}")
+                    self.ocr_enabled = False
+
             # Lazy Load Scene Predictor (if enabled via hot-reload)
             if self.scene_enabled and self.scene_predictor is None:
                 try:
@@ -818,7 +1105,7 @@ class FrameProcessor(threading.Thread):
                 
                 # Dynamic Thresholds based on Scene
                 effective_f_c = f_c.copy()
-                for th_key in ['enter_th', 'exit_th', 'approach_th', 'min_out_frames', 'min_inside_frames']:
+                for th_key in ['enter_th', 'exit_th', 'approach_th']:
                     if th_key in active_weights:
                         effective_f_c[th_key] = active_weights.pop(th_key) # Extract and override
             else:
@@ -840,6 +1127,79 @@ class FrameProcessor(threading.Thread):
             # --- Per-Cue Verification ---
             plot_boxes = []
             candidates = []
+            
+            # Speed Limit Detection (YOLO)
+            if self.speed_limit_model and self.state in ["APPROACHING", "INSIDE"]:
+                sl_res = self.speed_limit_model.predict(frame_ai, conf=0.45, device=self.config['hardware']['device'], verbose=False)[0]
+                if sl_res.boxes:
+                    for box in sl_res.boxes:
+                        name = self.speed_limit_model.names[int(box.cls)]
+                        self.speed_limit_buffer.append(name)
+                
+                if len(self.speed_limit_buffer) >= 15:
+                    common = Counter(self.speed_limit_buffer).most_common(1)[0]
+                    ratio = common[1] / 15.0
+                    if ratio >= 0.80:
+                        new_speed = normalize_speed_limit_label(common[0])
+                        if new_speed != self.stable_speed_limit:
+                            self.stable_speed_limit = new_speed
+                            if self.stable_speed_limit:
+                                self.adas_voice.play_speed_limit_sound(self.stable_speed_limit)
+                                self.speed_limit_played_this_session = True
+
+                if self.stable_speed_limit and sl_res.boxes:
+                    for box in sl_res.boxes:
+                        raw = self.speed_limit_model.names[int(box.cls)]
+                        norm = normalize_speed_limit_label(raw)
+                        if norm == self.stable_speed_limit:
+                            plot_boxes.append((box.xyxy.cpu().numpy()[0], f"SPEED: {norm}", (255, 0, 0)))
+            elif self.state == "OUT":
+                self.speed_limit_played_this_session = False
+                self.speed_limit_buffer.clear()
+                self.stable_speed_limit = None
+
+            # OCR Speed Limit (Message Boards)
+            if self.ocr_enabled and self.ocr_detector and self.state != "OUT":
+                # Find best message board crop
+                best_crop = None
+                best_conf = -1.0
+                if res.boxes:
+                    for i, box in enumerate(res.boxes.xyxy.cpu().numpy()):
+                        name = self.model.names[int(res.boxes.cls[i])]
+                        is_mb = ("message board" in name.lower()) or (int(res.boxes.cls[i]) == 14)
+                        if is_mb or is_ttc_sign(name):
+                            conf = float(res.boxes.conf[i])
+                            if conf > best_conf:
+                                best_conf = conf
+                                x1, y1, x2, y2 = map(int, box)
+                                pad = 20
+                                best_crop = frame_ai[max(0, y1-pad):min(frame_ai.shape[0], y2+pad), max(0, x1-pad):min(frame_ai.shape[1], x2+pad)]
+                
+                if best_crop is not None:
+                    self.crop_window.append(best_crop)
+                    ocr_input = best_crop
+                    if len(self.crop_window) == self.crop_window.maxlen and self.merge_method != "none":
+                        merged = merge_crops_aligned(list(self.crop_window), method=self.merge_method)
+                        if merged is not None: ocr_input = merged
+                    
+                    # Run OCR
+                    ocr_crop = preprocess_for_ocr(ocr_input)
+                    ocr_text, ocr_conf = self.ocr_detector.extract_text(ocr_crop)
+                    if ocr_conf >= 0.35:
+                        self.ocr_hist.append((ocr_text, float(ocr_conf)))
+                        # Reconstruct stable speed
+                        recon_speed, recon_conf = reconstruct_speed_from_history(self.ocr_hist)
+                        if recon_speed:
+                            if recon_speed != self.stable_ocr_speed:
+                                self.stable_ocr_speed = recon_speed
+                                self.adas_voice.play_speed_limit_sound(recon_speed)
+                            self.stable_ocr_conf = recon_conf
+            elif self.state == "OUT":
+                self.ocr_hist.clear()
+                self.crop_window.clear()
+                self.stable_ocr_speed = None
+                self.stable_ocr_conf = 0.0
+
             
             if res.boxes:
                 boxes = res.boxes.xyxy.cpu().numpy()
@@ -921,7 +1281,7 @@ class FrameProcessor(threading.Thread):
             self.f_ema = ema(self.f_ema, clamp01(fused), alpha)
             self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
             self.adas_voice.update(self.state) # Update ADASVoice with current state
-            
+
             # Pack Result
             result = {
                 "frame": frame,
@@ -932,9 +1292,12 @@ class FrameProcessor(threading.Thread):
                 "fps_proc": current_fps, # True Inference FPS
                 "source_fps": source_fps,
                 "is_night": is_night,
-                "scene": self.current_scene
+                "scene": self.current_scene,
+                "speed_limit": self.stable_speed_limit,
+                "ocr_speed": self.stable_ocr_speed,
+                "ocr_conf": self.stable_ocr_conf
             }
-            
+        
             # Blocking put with timeout to allow exit
             try:
                 self.result_queue.put(result, timeout=1.0)
@@ -949,10 +1312,16 @@ class FrameProcessor(threading.Thread):
         self.cap.release()
         self.running = False
 
-def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None, flip_frame=False, cli_output=False):
+def process_video(source, model, clip_bundle, config, show, save_video=False, config_path=None, flip_frame=False, cli_output=False, speed_limit_model_path=None, preview_port=0):
     # Setup Output
     is_camera = str(source).isdigit() or (isinstance(source, str) and source.startswith("/dev/video"))
-    source_name = f"camera_{source}" if is_camera else Path(source).name
+    is_stream_url = isinstance(source, str) and (source.startswith("http://") or source.startswith("https://") or source.startswith("rtsp://") or source.startswith("rtmp://"))
+    if is_camera:
+        source_name = f"camera_{source}"
+    elif is_stream_url:
+        source_name = "network_stream"
+    else:
+        source_name = Path(source).name
     timestamp = int(time.time())
     
     # Store the original input path as a Path object
@@ -966,28 +1335,22 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
     temp_no_audio_video_path = final_output_path.with_name(final_output_path.stem + "_noaudio" + final_output_path.suffix)
     
     writer = None
-    # Initialize Writer only if save_video is True (and will actually write)
-    if save_video:
-        # We need source_fps and w, h from the cap before initializing writer
-        # This part of the code was moved from further down to here to enable writer initialization
-        # Open Capture - this part is already in FrameProcessor, so we need to get these values differently
-        cap_temp = cv2.VideoCapture(str(source)) # Temporarily open cap to get info
-        w, h, source_fps = int(cap_temp.get(3)), int(cap_temp.get(4)), cap_temp.get(5) or 30
-        cap_temp.release() # Release temporary cap
-        
-        console.print(f"[INFO] Saving processed video (no audio) to: {temp_no_audio_video_path.name}")
-        writer = ThreadedVideoWriter(str(temp_no_audio_video_path), cv2.VideoWriter_fourcc(*'mp4v'), source_fps, (w, h + 80))
+    source_fps = 30.0 # Default
     
     # Thread communication
     result_queue = queue.Queue(maxsize=3) # Small buffer
-    processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path, flip_frame=flip_frame)
+    processor = FrameProcessor(source, config, model, clip_bundle, result_queue, config_path=config_path, flip_frame=flip_frame, speed_limit_model_path=speed_limit_model_path)
     processor.start()
     
-    # Wait for first frame to get dimensions and TARGET FPS (This is now primarily for display, writer already initialized)
+    # Wait for first frame to get dimensions and TARGET FPS
     try:
         first_res = result_queue.get(timeout=20.0) # Longer timeout for cold model start
-        # w, h, source_fps are already determined if save_video is true
-        # Otherwise, they will be derived from first_res['frame'].shape[:2] if needed later for display
+        source_fps = first_res.get("source_fps", 30.0)
+        
+        if save_video:
+            h_f, w_f = first_res["frame"].shape[:2]
+            console.print(f"[INFO] Initializing video writer: {w_f}x{h_f+80} @ {source_fps} FPS")
+            writer = ThreadedVideoWriter(str(temp_no_audio_video_path), cv2.VideoWriter_fourcc(*'mp4v'), source_fps, (w_f, h_f + 80))
     except queue.Empty:
         console.print("[red]❌ Failed to start video stream from source. No frames received.[/red]")
         processor.running = False
@@ -1031,7 +1394,8 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
                 print(f"STATE: {last_result['state']:<12} | SCORE: {last_result['score']:.2f} | FPS: {fps_display:.1f} | SCENE: {last_result.get('scene', 'N/A'):<10}", flush=True)
             
             hud = draw_hud(frame, last_result["state"], last_result["score"], last_result["clip_on"], fps_display, 
-                         last_result.get("is_night", False), last_result.get("scene", None))
+                         last_result.get("is_night", False), last_result.get("scene", None), 
+                         last_result.get("speed_limit", None), last_result.get("ocr_speed", None))
             
             if writer:
                 # Frame duplication to match source FPS
@@ -1044,15 +1408,22 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
                 for _ in range(write_multiplier):
                     writer.write(hud)
             
-            if show:
+            if show or preview_port:
                 h_hud, w_hud = hud.shape[:2]
                 disp_w = 1280
                 disp_h = int(h_hud * (disp_w / w_hud)) if w_hud > 0 else 0
                 display_frame = cv2.resize(hud, (disp_w, disp_h))
-                cv2.imshow("Jetson WorkZone", display_frame)
-                if cv2.waitKey(1) == ord('q'):
-                    processor.running = False
-                    break
+                if show:
+                    cv2.imshow("Jetson WorkZone", display_frame)
+                    if cv2.waitKey(1) == ord('q'):
+                        processor.running = False
+                        break
+                if preview_port:
+                    ok, jpg = cv2.imencode(".jpg", display_frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                    if ok:
+                        with _prev_lock:
+                            global _prev_frame
+                            _prev_frame = jpg.tobytes()
             
             frames_rendered += 1
             
@@ -1077,10 +1448,19 @@ def process_video(source, model, clip_bundle, config, show, save_video=False, co
                     except Exception as e:
                         console.print(f"[yellow]⚠️ Could not remove temporary file {temp_no_audio_video_path.name}: {e}[/yellow]")
                 result_output_path = final_output_path.name
+            elif temp_no_audio_video_path.exists():
+                # For camera or if original file is missing, rename temp to final
+                try:
+                    if final_output_path.exists():
+                        os.remove(final_output_path)
+                    shutil.move(temp_no_audio_video_path, final_output_path)
+                    result_output_path = final_output_path.name
+                    console.print(f"[green]✅ Video saved to {final_output_path.name}[/green]")
+                except Exception as e:
+                    console.print(f"[yellow]⚠️ Could not rename video file: {e}[/yellow]")
+                    result_output_path = temp_no_audio_video_path.name
             else:
-                # If no merge happened (e.g., camera input or original file not found),
-                # the temporary file is the final output.
-                result_output_path = temp_no_audio_video_path.name if temp_no_audio_video_path.exists() else "Not Saved"
+                result_output_path = "Not Saved"
 
     # Calculate average FPS based on frames rendered by this consumer loop
     end_t = time.time()
@@ -1106,10 +1486,14 @@ def main():
     signal.signal(signal.SIGINT, shutdown_handler) # Also handle SIGINT for consistency
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", type=str); parser.add_argument("--show", action="store_true"); parser.add_argument("--save", action="store_true", help="Save output video"); parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
+    parser.add_argument("--input", type=str)
+    parser.add_argument("--show", action="store_true")
+    parser.add_argument("--save", action="store_true", help="Save output video")
+    parser.add_argument("--config", type=str, default="configs/jetson_config.yaml")
     parser.add_argument("--flip", action="store_true", help="Flip camera 180 degrees")
     parser.add_argument("--cli-output", action="store_true", help="Output real-time processing info to CLI")
     parser.add_argument("--disable-clip", action="store_true", help="Explicitly disable CLIP fusion, overriding config.")
+    parser.add_argument("--preview-port", type=int, default=0, help="Serve annotated MJPEG on this port (e.g. 5002)")
     args = parser.parse_args()
     with open(args.config, 'r') as f: config = yaml.safe_load(f)
 
@@ -1132,10 +1516,19 @@ def main():
     if config['fusion']['use_clip']:
         m_c, _, prep = open_clip.create_model_and_transforms("ViT-B-32", pretrained="openai", cache_dir="weights/clip")
         cb = {"model": m_c.to("cuda").eval(), "preprocess": prep, "tokenizer": open_clip.get_tokenizer("ViT-B-32")}
-    
+
+    speed_limit_model_path = None
+    if config['model'].get('speed_limit'):
+        speed_limit_model_path = config['model'].get('speed_limit_path')
+        if not speed_limit_model_path:
+            print("[WARNING] Speed limit detection is enabled but no model path is provided.")
+
     # Determine input sources
     if args.input and (args.input.isdigit() or args.input.startswith("/dev/video")):
         # Single camera source
+        sources = [args.input]
+    elif args.input and (args.input.startswith("http://") or args.input.startswith("https://") or args.input.startswith("rtsp://") or args.input.startswith("rtmp://")):
+        # Network stream URL — pass directly to FrameProcessor
         sources = [args.input]
     elif args.input:
         # File or Directory
@@ -1154,10 +1547,13 @@ def main():
         # Default config directory
         sources = list(Path(config['video']['input']).glob("*.mp4"))
 
+    if args.preview_port:
+        _start_preview_server(args.preview_port)
+
     results = []
     for src in sources:
-        console.print(f"🚀 Processing {src}..."); 
-        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config, flip_frame=args.flip, cli_output=args.cli_output)
+        console.print(f"🚀 Processing {src}...")
+        res = process_video(src, model, cb, config, args.show, save_video=args.save, config_path=args.config, flip_frame=args.flip, cli_output=args.cli_output, speed_limit_model_path=speed_limit_model_path, preview_port=args.preview_port)
         if res: results.append(res)
     
     table = Table(title="📊 Results")
@@ -1165,4 +1561,5 @@ def main():
     for r in results: table.add_row(r["video"], f"{r['avg_fps']:.1f}", r["output"])
     console.print(table)
 
-if __name__ == "__main__": main()
+if __name__ == "__main__":
+    main()
