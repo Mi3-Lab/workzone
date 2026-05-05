@@ -50,7 +50,7 @@ fusion:
     v_th: 50
     center: 0.08
     k: 30.0
-  use_per_cue: false
+  use_per_cue: true
   per_cue_th: 0.05
 scene_context:
   enabled: false

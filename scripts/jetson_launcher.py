@@ -692,26 +692,52 @@ class JetsonLauncher(tk.Tk):
 
     # -- Live preview panel (reads annotated MJPEG from jetson_app.py) ------------
     def start_preview(self):
-        """Starts background thread that pulls frames from port 5002 and updates video_panel."""
+        """Starts background thread that pulls frames from port 5002."""
+        import queue
+        self._frame_queue = queue.Queue(maxsize=2) # Drop old frames to keep it real-time
         self._preview_running = True
         self._preview_thread = threading.Thread(target=self._preview_loop, daemon=True)
         self._preview_thread.start()
+        self.update_preview_ui()
 
     def stop_preview(self):
         self._preview_running = False
+        self._frame_queue = None
+
+    def update_preview_ui(self):
+        """Processes the frame queue in the main thread to update the UI safely."""
+        if not self._preview_running:
+            return
+            
+        try:
+            # Get latest frame without blocking
+            latest_photo = None
+            while self._frame_queue and not self._frame_queue.empty():
+                latest_photo = self._frame_queue.get_nowait()
+            
+            if latest_photo:
+                self._preview_img_ref = latest_photo
+                self.video_panel.config(image=latest_photo, text="")
+        except Exception:
+            pass
+            
+        # Schedule next update (approx 30 FPS target for UI refresh)
+        self.after(33, self.update_preview_ui)
 
     def _preview_loop(self):
+        import time
         url = f"http://localhost:{self.PREVIEW_PORT}/stream"
         buf = b""
         JPEG_START, JPEG_END = b"\xff\xd8", b"\xff\xd9"
 
         # Wait for preview server to be ready
         for _ in range(60):
+            if not self._preview_running: return
             try:
                 urllib.request.urlopen(url, timeout=1)
                 break
             except Exception:
-                import time; import time as _t; _t.sleep(0.5)
+                time.sleep(0.5)
 
         try:
             resp = urllib.request.urlopen(url, timeout=10)
@@ -731,21 +757,31 @@ class JetsonLauncher(tk.Tk):
                     if e == -1: break
                     jpg_bytes = buf[s:e + 2]
                     buf = buf[e + 2:]
+                    
                     try:
                         from PIL import Image, ImageTk
                         img = Image.open(io.BytesIO(jpg_bytes))
                         panel_w = self.video_panel.winfo_width() or 900
                         panel_h = self.video_panel.winfo_height() or 560
-                        img.thumbnail((panel_w, panel_h), Image.LANCZOS)
+                        
+                        # Use BILINEAR (faster on Jetson) instead of LANCZOS
+                        img.thumbnail((panel_w, panel_h), Image.BILINEAR)
                         photo = ImageTk.PhotoImage(img)
-                        self._preview_img_ref = photo
-                        self.video_panel.config(image=photo, text="")
+                        
+                        # Push to queue for UI thread
+                        if self._frame_queue is not None:
+                            if self._frame_queue.full():
+                                try: self._frame_queue.get_nowait()
+                                except: pass
+                            self._frame_queue.put(photo)
+                            
                     except Exception:
                         pass
             except Exception:
                 break
 
-        self.video_panel.config(image="", text="Feed stopped", fg="#555577")
+        if self.video_panel.winfo_exists():
+            self.video_panel.config(image="", text="Feed stopped", fg="#555577")
 
     # -- CARLA Moonlight Capture --------------------------------------------------
     def toggle_carla_capture(self):
