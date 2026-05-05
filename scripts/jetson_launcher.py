@@ -255,9 +255,9 @@ class JetsonLauncher(tk.Tk):
             return False
 
     def create_header(self):
-        frame = tk.Frame(self, bg="#2c3e50", height=60)
-        frame.pack(fill=tk.X)
-        lbl = tk.Label(frame, text="WorkZone Controller", font=("Arial", 18, "bold"), fg="white", bg="#2c3e50")
+        self.header_frame = tk.Frame(self, bg="#2c3e50", height=60)
+        self.header_frame.pack(fill=tk.X)
+        lbl = tk.Label(self.header_frame, text="WorkZone Controller", font=("Arial", 18, "bold"), fg="white", bg="#2c3e50")
         lbl.pack(pady=15)
 
     # ---------------- TAB 1: GENERAL ----------------
@@ -695,9 +695,14 @@ class JetsonLauncher(tk.Tk):
         self.contrast_scale = self.create_slider(lf_cam, "Contrast (Beta)", -100, 100, 5, self.config_data.get('video', {}).get('contrast', 0.0))
         self.saturation_scale = self.create_slider(lf_cam, "Saturation", 0.0, 3.0, 0.1, self.config_data.get('video', {}).get('saturation', 1.0))
 
-        lbl = ttk.Label(parent, text="Live detection feed appears here when inference is running.",
+        lbl = ttk.Label(parent, text="Live detection feed appears here when inference is running. (Double-click to toggle Fullscreen)",
                         font=("Arial", 9), foreground="gray")
         lbl.pack(pady=(6, 2))
+        
+        # Fullscreen Toggle Button
+        btn_fs = ttk.Button(parent, text="Toggle Fullscreen", command=self.toggle_fullscreen)
+        btn_fs.pack(pady=5)
+        
         self.video_panel = tk.Label(
             parent,
             bg="#111111",
@@ -706,6 +711,43 @@ class JetsonLauncher(tk.Tk):
             font=("Arial", 11),
         )
         self.video_panel.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        self.video_panel.bind("<Double-1>", self.toggle_fullscreen)
+        
+        self._is_fullscreen = False
+
+    def toggle_fullscreen(self, event=None):
+        self._is_fullscreen = not self._is_fullscreen
+        
+        if self._is_fullscreen:
+            # Hide other elements
+            self.header_frame.pack_forget()
+            self.tabs.pack_forget()
+            self.action_frame.pack_forget()
+            self.status_bar.pack_forget()
+            
+            # Unpack video panel from tab and pack it to root
+            self.video_panel.pack_forget()
+            self.video_panel.pack(in_=self, fill=tk.BOTH, expand=True)
+            self.attributes("-fullscreen", True)
+            
+            # Bind escape key to exit fullscreen
+            self.bind("<Escape>", self.toggle_fullscreen)
+        else:
+            # Revert fullscreen
+            self.attributes("-fullscreen", False)
+            self.unbind("<Escape>")
+            
+            # Unpack video panel from root
+            self.video_panel.pack_forget()
+            
+            # Restore original layout
+            self.header_frame.pack(fill=tk.X, before=self.tabs if hasattr(self, 'tabs') else None)
+            self.tabs.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            self.action_frame.pack(fill=tk.X, side=tk.BOTTOM)
+            self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+            
+            # Restore video panel to its original tab
+            self.video_panel.pack(in_=self.tab_live, fill=tk.BOTH, expand=True, padx=4, pady=4)
 
     # -- Live preview panel (reads annotated MJPEG from jetson_app.py) ------------
     def start_preview(self):
@@ -844,20 +886,20 @@ class JetsonLauncher(tk.Tk):
         self.status_var.set("CARLA stream stopped.")
 
     def create_action_buttons(self):
-        f = tk.Frame(self, pady=10)
-        f.pack(fill=tk.X, side=tk.BOTTOM)
+        self.action_frame = tk.Frame(self, pady=10)
+        self.action_frame.pack(fill=tk.X, side=tk.BOTTOM)
 
         self.process = None
         
         # Import/Export Buttons
-        btn_import = ttk.Button(f, text="Import Preset", command=self.import_preset)
+        btn_import = ttk.Button(self.action_frame, text="Import Preset", command=self.import_preset)
         btn_import.pack(side=tk.LEFT, padx=10)
         
-        btn_export = ttk.Button(f, text="Export Preset", command=self.export_preset)
+        btn_export = ttk.Button(self.action_frame, text="Export Preset", command=self.export_preset)
         btn_export.pack(side=tk.LEFT, padx=10)
         
         # Run Button
-        self.btn_run = tk.Button(f, text="RUN INFERENCE", bg="#27ae60", fg="white", font=("Arial", 12, "bold"), 
+        self.btn_run = tk.Button(self.action_frame, text="RUN INFERENCE", bg="#27ae60", fg="white", font=("Arial", 12, "bold"), 
                             command=self.toggle_inference, height=2)
         self.btn_run.pack(side=tk.RIGHT, padx=20, fill=tk.X, expand=True)
         
