@@ -704,13 +704,13 @@ class JetsonLauncher(tk.Tk):
         btn_fs.pack(pady=5)
         
         self.video_panel = tk.Label(
-            parent,
+            self,
             bg="#111111",
             text="No feed yet - click  RUN INFERENCE  to start",
             fg="#555555",
             font=("Arial", 11),
         )
-        self.video_panel.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        self.video_panel.pack(in_=parent, fill=tk.BOTH, expand=True, padx=4, pady=4)
         self.video_panel.bind("<Double-1>", self.toggle_fullscreen)
         
         self._is_fullscreen = False
@@ -727,7 +727,7 @@ class JetsonLauncher(tk.Tk):
             
             # Unpack video panel from tab and pack it to root
             self.video_panel.pack_forget()
-            self.video_panel.pack(in_=self, fill=tk.BOTH, expand=True)
+            self.video_panel.pack(fill=tk.BOTH, expand=True)
             self.attributes("-fullscreen", True)
             
             # Bind escape key to exit fullscreen
