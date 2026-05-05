@@ -741,10 +741,10 @@ class JetsonLauncher(tk.Tk):
             self.video_panel.pack_forget()
             
             # Restore original layout
-            self.header_frame.pack(fill=tk.X, before=self.tabs if hasattr(self, 'tabs') else None)
-            self.tabs.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+            self.header_frame.pack(fill=tk.X)
             self.action_frame.pack(fill=tk.X, side=tk.BOTTOM)
             self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+            self.tabs.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
             
             # Restore video panel to its original tab
             self.video_panel.pack(in_=self.tab_live, fill=tk.BOTH, expand=True, padx=4, pady=4)
