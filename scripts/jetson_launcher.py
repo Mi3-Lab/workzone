@@ -379,14 +379,6 @@ class JetsonLauncher(tk.Tk):
         self.real_time_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('real_time', True))
         ttk.Checkbutton(lf_hw, text="Real-Time Speed", variable=self.real_time_var, command=self.auto_save).pack(side=tk.LEFT, padx=10)
 
-        # Camera & Image Controls
-        lf_cam = ttk.LabelFrame(parent, text="Camera & Image Controls (For CARLA TV Tracking)")
-        lf_cam.pack(fill=tk.X, padx=10, pady=5)
-        
-        self.brightness_scale = self.create_slider(lf_cam, "Brightness (Alpha)", 0.1, 3.0, 0.1, self.config_data.get('video', {}).get('brightness', 1.0))
-        self.contrast_scale = self.create_slider(lf_cam, "Contrast (Beta)", -100, 100, 5, self.config_data.get('video', {}).get('contrast', 0.0))
-        self.saturation_scale = self.create_slider(lf_cam, "Saturation", 0.0, 3.0, 0.1, self.config_data.get('video', {}).get('saturation', 1.0))
-
         # Scene Context
         lf_sc = ttk.LabelFrame(parent, text="Automation")
         lf_sc.pack(fill=tk.X, padx=10, pady=5)
@@ -694,6 +686,15 @@ class JetsonLauncher(tk.Tk):
     def setup_live_tab(self):
         parent = self.tab_live
         parent.configure()
+        
+        # Camera & Image Controls
+        lf_cam = ttk.LabelFrame(parent, text="Camera & Image Controls (For CARLA TV Tracking)")
+        lf_cam.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.brightness_scale = self.create_slider(lf_cam, "Brightness (Alpha)", 0.1, 3.0, 0.1, self.config_data.get('video', {}).get('brightness', 1.0))
+        self.contrast_scale = self.create_slider(lf_cam, "Contrast (Beta)", -100, 100, 5, self.config_data.get('video', {}).get('contrast', 0.0))
+        self.saturation_scale = self.create_slider(lf_cam, "Saturation", 0.0, 3.0, 0.1, self.config_data.get('video', {}).get('saturation', 1.0))
+
         lbl = ttk.Label(parent, text="Live detection feed appears here when inference is running.",
                         font=("Arial", 9), foreground="gray")
         lbl.pack(pady=(6, 2))
