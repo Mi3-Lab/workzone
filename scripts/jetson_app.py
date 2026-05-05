@@ -1025,6 +1025,22 @@ class FrameProcessor(threading.Thread):
             
             if self.flip_frame:
                 frame = cv2.flip(frame, -1) # Flip 180 degrees
+                
+            # Camera & Image Adjustments (TV Tracking Support)
+            brightness = self.config.get('video', {}).get('brightness', 1.0)
+            contrast = self.config.get('video', {}).get('contrast', 0.0)
+            saturation = self.config.get('video', {}).get('saturation', 1.0)
+            
+            if brightness != 1.0 or contrast != 0.0:
+                frame = cv2.convertScaleAbs(frame, alpha=brightness, beta=contrast)
+                
+            if saturation != 1.0:
+                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV).astype("float32")
+                (h, s, v) = cv2.split(hsv)
+                s = s * saturation
+                s = np.clip(s, 0, 255)
+                hsv = cv2.merge([h, s, v])
+                frame = cv2.cvtColor(hsv.astype("uint8"), cv2.COLOR_HSV2BGR)
             
             # FPS Calculation (Inference Side)
             fps_count += 1

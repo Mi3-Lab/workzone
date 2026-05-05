@@ -117,6 +117,11 @@ class JetsonLauncher(tk.Tk):
         self.merge_method_var.set(self.config_data.get('model', {}).get('merge_method', 'orb'))
         self.speed_limit_model_var.set(self.config_data.get('model', {}).get('speed_limit_path', ''))
         
+        # Camera & Image Controls
+        self.brightness_scale.set(self.config_data.get('video', {}).get('brightness', 1.0))
+        self.contrast_scale.set(self.config_data.get('video', {}).get('contrast', 0.0))
+        self.saturation_scale.set(self.config_data.get('video', {}).get('saturation', 1.0))
+        
         # Logic
         f = self.config_data.get('fusion', {})
         self.ema_scale.set(f.get('ema_alpha', 0.25))
@@ -191,6 +196,9 @@ class JetsonLauncher(tk.Tk):
         self.config_data['video']['real_time'] = bool(self.real_time_var.get())
         self.config_data['video']['save_output'] = bool(self.save_video_var.get())
         self.config_data['video']['flip'] = bool(self.flip_var.get())
+        self.config_data['video']['brightness'] = float(self.brightness_scale.get())
+        self.config_data['video']['contrast'] = float(self.contrast_scale.get())
+        self.config_data['video']['saturation'] = float(self.saturation_scale.get())
         self.config_data['hardware']['half'] = bool(self.half_var.get())
         self.config_data['fusion']['use_clip'] = bool(self.clip_var.get())
         self.config_data['model']['speed_limit'] = bool(self.speed_limit_var.get())
@@ -370,6 +378,14 @@ class JetsonLauncher(tk.Tk):
         # Real-Time Toggle
         self.real_time_var = tk.BooleanVar(value=self.config_data.get('video', {}).get('real_time', True))
         ttk.Checkbutton(lf_hw, text="Real-Time Speed", variable=self.real_time_var, command=self.auto_save).pack(side=tk.LEFT, padx=10)
+
+        # Camera & Image Controls
+        lf_cam = ttk.LabelFrame(parent, text="Camera & Image Controls (For CARLA TV Tracking)")
+        lf_cam.pack(fill=tk.X, padx=10, pady=5)
+        
+        self.brightness_scale = self.create_slider(lf_cam, "Brightness (Alpha)", 0.1, 3.0, 0.1, self.config_data.get('video', {}).get('brightness', 1.0))
+        self.contrast_scale = self.create_slider(lf_cam, "Contrast (Beta)", -100, 100, 5, self.config_data.get('video', {}).get('contrast', 0.0))
+        self.saturation_scale = self.create_slider(lf_cam, "Saturation", 0.0, 3.0, 0.1, self.config_data.get('video', {}).get('saturation', 1.0))
 
         # Scene Context
         lf_sc = ttk.LabelFrame(parent, text="Automation")
