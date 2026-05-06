@@ -29,16 +29,12 @@ import cv2
 import torch
 import numpy as np
 from ultralytics import YOLO
-import open_clip
-from PIL import Image
 from rich.console import Console
-from rich.table import Table
 
 # Add scripts to path for local imports
 sys.path.append(str(Path(__file__).parent))
 from scene_context import SceneContextPredictor
 from vlm_sota_verifier import VLMSotaVerifier as VLMVerifier
-from fusion_engine import fuse_states
 
 console = Console()
 
@@ -56,32 +52,6 @@ SCENE_PRESETS = {
     "mixed": {"bias": -0.05, "channelization": 0.8, "workers": 0.8, "vehicles": 0.5, "ttc_signs": 0.8, "message_board": 0.6, "approach_th": 0.20, "enter_th": 0.50, "exit_th": 0.30}
 }
 
-CUE_PROMPTS = {
-    "channelization": {
-        "pos": ["traffic cone on road", "orange construction barrel on asphalt", "striped barricade on road", "road barrier", "vertical panel marker"],
-        "neg": ["tree trunk", "street light pole", "mailbox", "pedestrian", "car wheel", "fire hydrant", "electricity pole", "bush"],
-        "inactive": ["traffic cones stacked on a truck bed", "cones stored in a pile", "construction barrels on a trailer", "equipment in storage yard"]
-    },
-    "workers": {
-        "pos": ["construction worker in high-visibility safety vest", "person wearing hard hat and safety gear", "road worker flagging traffic"],
-        "neg": ["pedestrian in casual clothes", "business person in suit", "runner", "cyclist", "mannequin", "statue"]
-    },
-    "vehicles": {
-        "pos": ["yellow construction excavator", "dump truck on road", "pickup truck with flashing amber lights", "road roller", "utility work truck"],
-        "neg": ["sedan car", "family suv", "sports car", "motorcycle", "city bus", "taxi"]
-    },
-    "ttc_signs": {
-        "pos": ["orange diamond construction sign facing camera", "road work ahead sign", "speed limit sign facing camera", "white rectangular regulatory sign"],
-        "neg": ["commercial billboard advertisement", "shop sign", "street name sign", "parking sign", "restaurant sign"],
-        "inactive": ["back of a road sign", "grey metal sign back", "sign facing away", "oblique sign edge"]
-    },
-    "message_board": {
-        "pos": ["electronic arrow board trailer with lights on", "variable message sign displaying text", "digital traffic sign"],
-        "neg": ["parked cargo trailer", "billboard", "back of a truck", "container"],
-        "inactive": ["message board turned off", "black screen message board", "folded arrow board"]
-    }
-}
-
 def clamp01(x): return max(0.0, min(1.0, x))
 def logistic(x): return 1.0 / (1.0 + math.exp(-x))
 def safe_div(n, d): return n / d if d > 0 else 0.0
@@ -93,13 +63,11 @@ def adaptive_alpha(evidence, alpha_min, alpha_max):
     e = clamp01(float(evidence))
     return float(alpha_min + (alpha_max - alpha_min) * e)
 
-def is_ttc_sign(name): return name.startswith("Temporary Traffic Control Sign")
-
 def get_cue_category(name):
     if name in CHANNELIZATION: return "channelization"
     if name in WORKERS: return "workers"
     if name in VEHICLES: return "vehicles"
-    if is_ttc_sign(name): return "ttc_signs"
+    if name.startswith("Temporary Traffic Control Sign"): return "ttc_signs"
     if name in MESSAGE_BOARD: return "message_board"
     return None
 
@@ -118,30 +86,18 @@ def enhance_night_frame(frame):
     return frame, False
 
 def yolo_frame_score(counts, weights):
-    # Standard logic
     score = float(weights.get("bias", -0.35))
     score += float(weights.get("channelization", 0.9)) * safe_div(counts.get("channelization",0), 5.0)
     score += float(weights.get("workers", 0.8)) * safe_div(counts.get("workers",0), 3.0)
     score += float(weights.get("vehicles", 0.5)) * safe_div(counts.get("vehicles",0), 2.0)
     score += float(weights.get("ttc_signs", 0.7)) * safe_div(counts.get("ttc_signs",0), 4.0)
     score += float(weights.get("message_board", 0.6)) * safe_div(counts.get("message_board",0), 1.0)
-    
     total = sum(counts.values())
     return clamp01(score), {"total_objs": total}
 
-def clip_frame_score(clip_bundle, device, frame_bgr, pos_emb, neg_emb):
-    small = cv2.resize(frame_bgr, (224, 224))
-    pil = Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
-    x = clip_bundle["preprocess"](pil).unsqueeze(0).to(device)
-    with torch.no_grad():
-        img = clip_bundle["model"].encode_image(x)
-        img = img / (img.norm(dim=-1, keepdim=True) + 1e-8)
-        return float((img @ pos_emb.unsqueeze(-1)).squeeze().item() - (img @ neg_emb.unsqueeze(-1)).squeeze().item())
-
 def update_state(prev, score, state_dur, out_f, f_conf):
     enter_th = f_conf['enter_th']; exit_th = f_conf['exit_th']; approach_th = f_conf['approach_th']
-    min_inside = f_conf['min_inside_frames']; min_out = f_conf['min_out_frames']
-    
+    min_out = f_conf['min_out_frames']
     if prev == "OUT":
         if score >= approach_th: return "APPROACHING", 0, 0
         return "OUT", 0, out_f + 1
@@ -161,7 +117,49 @@ def update_state(prev, score, state_dur, out_f, f_conf):
         return "EXITING", state_dur, out_f + 1
     return prev, state_dur, out_f
 
-# --- ASYNC VLM COPILOT ---
+
+# --- TRUE SOTA ASYNC DECOUPLED PIPELINE ---
+
+class VideoDecoder(threading.Thread):
+    """
+    Decodificador SOTA. Lê o vídeo sequencialmente e armazena em buffer.
+    Isso impede que gargalos de I/O do disco engasguem o vídeo.
+    """
+    def __init__(self, source):
+        super().__init__(daemon=True)
+        self.source = source
+        self.is_camera = str(source).isdigit() or str(source).startswith("/dev/video")
+        self.cap = cv2.VideoCapture(int(source) if self.is_camera else str(source))
+        
+        if self.is_camera:
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
+            
+        self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+        if self.fps <= 0 or self.fps > 120: self.fps = 30.0
+        
+        # Buffer gigante para vídeo (Smooth), minúsculo para Câmera (Realtime)
+        self.queue = queue.Queue(maxsize=3 if self.is_camera else 256)
+        self.running = True
+        
+    def run(self):
+        while self.running and self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if not ret: break
+            
+            # Comportamento: 
+            # - Câmera: Joga fora frames velhos se a IA/UI estiver lenta.
+            # - Vídeo: Bloqueia (espera) se a fila encher para NÃO PERDER frames.
+            if self.is_camera and self.queue.full():
+                try: self.queue.get_nowait()
+                except: pass
+                
+            self.queue.put(frame)
+            
+        self.running = False
+        self.cap.release()
+
 class VLMCopilot(threading.Thread):
     def __init__(self, config):
         super().__init__(daemon=True)
@@ -172,29 +170,162 @@ class VLMCopilot(threading.Thread):
         self.enabled = config.get('vlm', {}).get('enabled', False)
         
     def run(self):
-        if not self.enabled: 
-            print("[Copilot] VLM Disabled in Config.")
-            return
-        print("[Copilot] Initializing Qwen...")
+        if not self.enabled: return
         try:
-            self.verifier = VLMVerifier(model_name=self.config.get('vlm', {}).get('model', 'qwen2.5vl:7b'), 
-                                      device="cuda") # Or hardware device
-            print("[Copilot] Ready.")
+            self.verifier = VLMVerifier(model_name=self.config.get('vlm', {}).get('model', 'qwen2.5vl:7b'), device="cuda")
         except Exception as e:
-            print(f"[Copilot] Failed to init: {e}")
+            print(f"[Copilot] Failed: {e}")
             return
 
         while True:
             frame = self.input_queue.get()
-            if frame is None: break # Sentinel
-            
+            if frame is None: break
             try:
-                # Run Inference
-                res = self.verifier.analyze_frame(frame) 
+                res = self.verifier.analyze_frame(frame)
                 if not self.output_queue.full():
                     self.output_queue.put(res)
             except Exception as e:
                 print(f"[Copilot] Error: {e}")
+
+class InferenceEngine(threading.Thread):
+    """
+    Consumer SOTA. Não depende da velocidade do vídeo.
+    Pega o frame atual do UI, faz YOLO + Lógica pesada, e devolve o resultado.
+    """
+    def __init__(self, config, model, config_path=None):
+        super().__init__(daemon=True)
+        self.config = config
+        self.model = model
+        self.config_path = config_path
+        self.running = True
+        
+        # Comunicação
+        self.frame_req = queue.Queue(maxsize=1)
+        self.latest_result = None
+        
+        # Lógica Interna
+        self.state = "OUT"
+        self.y_ema = None
+        self.f_ema = None
+        self.in_f = 0
+        self.out_f = 0
+        self.f_idx_internal = 0
+        
+        # Scene
+        self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
+        self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
+        self.scene_predictor = None
+        self.current_scene = "suburban"
+        self.scene_buffer = deque(maxlen=7)
+        
+        # Copilot
+        self.copilot = VLMCopilot(config)
+        self.copilot.start()
+        self.last_vlm_res = None
+        self.vlm_last_update_time = 0
+        self.vlm_frames_since_req = 0
+        
+    def run(self):
+        f_c = self.config['fusion']
+        vlm_interval = self.config.get('vlm', {}).get('interval', 45)
+        
+        fps_t0 = time.time()
+        fps_frames = 0
+        current_fps = 0.0
+
+        while self.running:
+            try:
+                # Espera 1 segundo. Se não vier frame, repete o loop checando self.running
+                frame, external_f_idx = self.frame_req.get(timeout=1.0)
+            except queue.Empty:
+                continue
+                
+            frame_ai, is_night = enhance_night_frame(frame)
+            
+            if self.scene_enabled:
+                if not self.scene_predictor: 
+                    try: self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", "cuda")
+                    except: self.scene_enabled = False
+                
+                if self.scene_predictor and self.f_idx_internal % 15 == 0:
+                    sc, conf = self.scene_predictor.predict(frame)
+                    self.scene_buffer.append(sc)
+                    if len(self.scene_buffer) >= 4:
+                        self.current_scene = Counter(self.scene_buffer).most_common(1)[0][0]
+                active_weights = self.scene_presets.get(self.current_scene, SCENE_PRESETS["suburban"]).copy()
+            else:
+                self.current_scene = "manual"
+                active_weights = self.config['fusion']['weights_yolo'].copy()
+            
+            effective_f_c = f_c 
+            if is_night:
+                active_weights["bias"] += 0.15; active_weights["ttc_signs"] = 1.2
+
+            res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], verbose=False, device="cuda")[0]
+            
+            curr_counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
+            plot_boxes = []
+            
+            if res.boxes:
+                boxes = res.boxes.xyxy.cpu().numpy()
+                cls_ids = res.boxes.cls.int().cpu().tolist()
+                for box, cid in zip(boxes, cls_ids):
+                    name = self.model.names[cid]
+                    cat = get_cue_category(name)
+                    if cat:
+                        curr_counts[cat] += 1
+                        plot_boxes.append((box, name, (0, 255, 0)))
+
+            if not self.copilot.output_queue.empty():
+                self.last_vlm_res = self.copilot.output_queue.get()
+                self.vlm_last_update_time = time.time()
+
+            self.vlm_frames_since_req += 1
+            if self.vlm_frames_since_req > vlm_interval and self.copilot.input_queue.empty():
+                self.copilot.input_queue.put(frame.copy())
+                self.vlm_frames_since_req = 0
+
+            yolo_s, feats = yolo_frame_score(curr_counts, active_weights)
+            evidence = clamp01(0.5 * clamp01(feats.get("total_objs", 0) / 8.0) + 0.5 * clamp01(yolo_s))
+            alpha_val = adaptive_alpha(evidence, f_c.get('ema_alpha', 0.25) * 0.4, f_c.get('ema_alpha', 0.25) * 1.2)
+            self.y_ema = ema(self.y_ema, yolo_s, alpha_val)
+            
+            fused = yolo_s
+            
+            if f_c.get('enable_context_boost', False) and self.y_ema < f_c.get('context_trigger_below', 0.55):
+                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                mask = cv2.inRange(hsv, np.array([f_c.get('orange_h_low', 5), 80, 50]), np.array([f_c.get('orange_h_high', 25), 255, 255]))
+                fused = (1.0 - f_c.get('orange_weight', 0.25)) * fused + f_c.get('orange_weight', 0.25) * clamp01(float(logistic(30.0 * ((np.count_nonzero(mask) / mask.size) - 0.08))))
+
+            final_score = fused
+            if self.last_vlm_res and (time.time() - self.vlm_last_update_time) < 5.0:
+                v_state = self.last_vlm_res.get('state', 'UNKNOWN')
+                target, vlm_influence = fused, 0.0
+                if v_state == "INSIDE": target, vlm_influence = 0.95, 0.3
+                elif v_state == "APPROACHING": target, vlm_influence = 0.60, 0.2
+                elif v_state == "OUT": target, vlm_influence = 0.05, 0.1
+                final_score = (1.0 - vlm_influence) * fused + vlm_influence * target
+
+            self.f_ema = ema(self.f_ema, clamp01(final_score), alpha_val)
+            self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
+            
+            fps_frames += 1
+            if time.time() - fps_t0 >= 1.0:
+                current_fps = fps_frames / (time.time() - fps_t0)
+                fps_frames = 0
+                fps_t0 = time.time()
+
+            self.latest_result = {
+                "plot_boxes": plot_boxes,
+                "state": self.state,
+                "score": self.f_ema,
+                "is_night": is_night,
+                "scene": self.current_scene,
+                "vlm_info": self.last_vlm_res,
+                "inf_fps": current_fps
+            }
+            
+            self.f_idx_internal += 1
 
 # --- WRITERS ---
 class ThreadedVideoWriter:
@@ -219,251 +350,7 @@ class ThreadedVideoWriter:
         self.alive = False
         self.thread.join(); self.writer.release()
 
-# --- MAIN PROCESSOR ---
-class FrameProcessor(threading.Thread):
-    def __init__(self, source, config, model, clip_bundle, result_queue, config_path=None):
-        super().__init__(daemon=True)
-        self.source = source; self.config = config; self.model = model
-        self.result_queue = result_queue; self.config_path = config_path
-        self.clip_bundle = clip_bundle
-        self.running = True
-        
-        # Copilot
-        self.copilot = VLMCopilot(config)
-        self.copilot.start()
-        self.last_vlm_res = None
-        self.vlm_last_update_time = 0
-        self.vlm_frames_since_req = 0
-        
-        # State
-        self.state = "OUT"; self.y_ema = None; self.f_ema = None
-        self.in_f = 0; self.out_f = 0
-        self.counts = {"channelization": 0, "workers": 0, "vehicles": 0, "ttc_signs": 0, "message_board": 0}
-        
-        # Scene
-        self.scene_enabled = config.get('scene_context', {}).get('enabled', False)
-        self.scene_presets = config.get('scene_context', {}).get('presets', SCENE_PRESETS)
-        self.scene_predictor = None
-        self.current_scene = "suburban"
-        self.scene_buffer = deque(maxlen=7)
-        
-        # CLIP Setup
-        if clip_bundle:
-            self.per_cue_verifier = PerCueVerifier(clip_bundle, "cuda")
-            f_c = config['fusion']
-            toks = clip_bundle["tokenizer"]([f_c['clip_pos_text'], f_c['clip_neg_text']]).to("cuda")
-            with torch.no_grad():
-                txt = clip_bundle["model"].encode_text(toks)
-                txt = txt / (txt.norm(dim=-1, keepdim=True) + 1e-8)
-                self.pos_emb, self.neg_emb = txt[0], txt[1]
-        else:
-            self.per_cue_verifier = None; self.pos_emb = None
-
-    def run(self):
-        cap = cv2.VideoCapture(int(self.source) if str(self.source).isdigit() else str(self.source))
-        fps_source = cap.get(cv2.CAP_PROP_FPS)
-        if fps_source <= 0 or fps_source > 1000: fps_source = 30.0
-        frame_dur = 1.0 / fps_source
-        
-        f_idx = 0
-        f_c = self.config['fusion']
-        last_config_mtime = os.path.getmtime(self.config_path) if self.config_path else 0
-        
-        # VLM Settings
-        vlm_interval = self.config.get('vlm', {}).get('interval', 45)
-        
-        # Per-Cue Settings
-        use_per_cue = f_c.get('use_per_cue', True)
-        per_cue_th = f_c.get('per_cue_th', 0.05)
-        
-        while self.running and cap.isOpened():
-            t_start = time.time()
-            
-            ret, frame = cap.read()
-            if not ret: break
-            
-            # 1. Hot Reload (Simplified)
-            if self.config_path and f_idx % 30 == 0:
-                try:
-                    if os.path.getmtime(self.config_path) > last_config_mtime:
-                        with open(self.config_path) as f: self.config = yaml.safe_load(f)
-                        last_config_mtime = os.path.getmtime(self.config_path)
-                        f_c = self.config['fusion']
-                        use_per_cue = f_c.get('use_per_cue', True)
-                        per_cue_th = f_c.get('per_cue_th', 0.05)
-                except: pass
-
-            # 2. Preprocessing
-            frame_ai, is_night = enhance_night_frame(frame)
-            
-            # 3. Scene Context
-            if self.scene_enabled:
-                if not self.scene_predictor: 
-                    try: self.scene_predictor = SceneContextPredictor("weights/scene_context_classifier.pt", "cuda")
-                    except: self.scene_enabled = False
-                
-                if self.scene_predictor and f_idx % 15 == 0:
-                    sc, conf = self.scene_predictor.predict(frame)
-                    self.scene_buffer.append(sc)
-                    if len(self.scene_buffer) >= 4:
-                        self.current_scene = Counter(self.scene_buffer).most_common(1)[0][0]
-                
-                # Automatic Mode: Use Presets
-                active_weights = self.scene_presets.get(self.current_scene, SCENE_PRESETS["suburban"]).copy()
-            else:
-                # Manual Mode: Use Config Weights (Sliders)
-                self.current_scene = "manual"
-                active_weights = self.config['fusion']['weights_yolo'].copy()
-            
-            effective_f_c = f_c # Use scene thresholds if needed
-            
-            if is_night:
-                active_weights["bias"] += 0.15; active_weights["ttc_signs"] = 1.2
-
-            # 4. YOLO
-            res = self.model.predict(frame_ai, conf=self.config['model']['conf'], imgsz=self.config['model']['imgsz'], verbose=False, device="cuda")[0]
-            
-            # 5. Extract Counts & Per-Cue Verification (RESTORED)
-            curr_counts = {k:0 for k in self.counts}
-            plot_boxes = []
-            candidates = []
-            
-            if res.boxes:
-                boxes = res.boxes.xyxy.cpu().numpy()
-                cls_ids = res.boxes.cls.int().cpu().tolist()
-                confs = res.boxes.conf.cpu().tolist()
-                h_img, w_img = frame_ai.shape[:2]
-                
-                for box, cid, conf in zip(boxes, cls_ids, confs):
-                    name = self.model.names[cid]
-                    cat = get_cue_category(name)
-                    if cat:
-                        # Prepare crop for verification
-                        if use_per_cue and self.per_cue_verifier:
-                            x1, y1, x2, y2 = map(int, box)
-                            pad = 10
-                            x1, y1 = max(0, x1-pad), max(0, y1-pad)
-                            x2, y2 = min(w_img, x2+pad), min(h_img, y2+pad)
-                            crop = frame_ai[y1:y2, x1:x2]
-                            candidates.append({'box': box, 'name': name, 'conf': conf, 'cat': cat, 'crop': crop})
-                        else:
-                            # Skip verification
-                            curr_counts[cat] += 1
-                            plot_boxes.append((box, name, (0, 255, 0)))
-
-            # Run Batch Verification if needed
-            if candidates:
-                if f_idx % 3 == 0: # PER_CUE_INTERVAL
-                    # Sort by confidence to verify best candidates first
-                    candidates.sort(key=lambda x: x['conf'], reverse=True)
-                    MAX_BATCH = 4
-                    to_verify = candidates[:MAX_BATCH]
-                    remaining = candidates[MAX_BATCH:]
-                    
-                    scores = self.per_cue_verifier.verify_batch([c['crop'] for c in to_verify], [c['cat'] for c in to_verify])
-                    
-                    for i, c in enumerate(to_verify):
-                        if i < len(scores) and scores[i] > per_cue_th:
-                            curr_counts[c['cat']] += 1
-                            plot_boxes.append((c['box'], f"{c['name']} {scores[i]:.2f}", (0, 255, 0)))
-                        else:
-                            # Rejected (Red)
-                            plot_boxes.append((c['box'], f"{c['name']} REJ", (0, 0, 255)))
-                    
-                    # Accept remaining without verification to avoid lag? Or reject? 
-                    # Original logic accepted remaining as yellow.
-                    for c in remaining:
-                        curr_counts[c['cat']] += 1
-                        plot_boxes.append((c['box'], c['name'], (0, 255, 255)))
-                else:
-                    # Interval skip: Accept all as yellow
-                    for c in candidates:
-                        curr_counts[c['cat']] += 1
-                        plot_boxes.append((c['box'], c['name'], (0, 255, 255)))
-
-            # 6. VLM Copilot Logic (Non-Blocking)
-            if not self.copilot.output_queue.empty():
-                self.last_vlm_res = self.copilot.output_queue.get()
-                self.vlm_last_update_time = time.time()
-
-            self.vlm_frames_since_req += 1
-            if self.vlm_frames_since_req > vlm_interval and self.copilot.input_queue.empty():
-                self.copilot.input_queue.put(frame.copy())
-                self.vlm_frames_since_req = 0
-
-            # 7. LOGIC FUSION (RESTORED ORIGINAL PIPELINE)
-            yolo_s, feats = yolo_frame_score(curr_counts, active_weights)
-            
-            # Adaptive Alpha (Restored)
-            total_objs = feats.get("total_objs", 0.0)
-            evidence = clamp01(0.5 * clamp01(total_objs / 8.0) + 0.5 * clamp01(yolo_s))
-            alpha_val = adaptive_alpha(evidence, f_c.get('ema_alpha', 0.25) * 0.4, f_c.get('ema_alpha', 0.25) * 1.2)
-            self.y_ema = ema(self.y_ema, yolo_s, alpha_val)
-            
-            # Global CLIP (Restored)
-            fused, clip_on = yolo_s, False
-            if self.pos_emb is not None and self.y_ema >= f_c.get('clip_trigger_th', 0.2):
-                if f_idx % 3 == 0:
-                    self.last_clip_score = logistic(clip_frame_score(self.clip_bundle, "cuda", 
-                                                                   frame_ai, self.pos_emb, self.neg_emb) * 3.0)
-                fused = (1.0 - f_c['clip_weight']) * fused + f_c['clip_weight'] * self.last_clip_score
-                clip_on = True
-            
-            # Context Boost (Restored)
-            if f_c.get('enable_context_boost', False) and self.y_ema < f_c.get('context_trigger_below', 0.55):
-                hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-                h_low, h_high = f_c.get('orange_h_low', 5), f_c.get('orange_h_high', 25)
-                mask = cv2.inRange(hsv, np.array([h_low, 80, 50]), np.array([h_high, 255, 255]))
-                ratio = np.count_nonzero(mask) / mask.size
-                ctx = clamp01(float(logistic(30.0 * (ratio - 0.08))))
-                cw = f_c.get('orange_weight', 0.25)
-                fused = (1.0 - cw) * fused + cw * ctx
-
-            # VLM Influence (Applied ONLY if active)
-            final_score = fused
-            if self.last_vlm_res:
-                v_state = self.last_vlm_res.get('state', 'UNKNOWN')
-                age = time.time() - self.vlm_last_update_time
-                if age < 5.0:
-                    vlm_influence = 0.0
-                    target = fused
-                    if v_state == "INSIDE": 
-                        target = 0.95; vlm_influence = 0.3
-                    elif v_state == "APPROACHING":
-                        target = 0.60; vlm_influence = 0.2
-                    elif v_state == "OUT":
-                        target = 0.05; vlm_influence = 0.1
-                    
-                    final_score = (1.0 - vlm_influence) * fused + vlm_influence * target
-
-            # EMA Update
-            self.f_ema = ema(self.f_ema, clamp01(final_score), alpha_val)
-            
-            # State Machine
-            self.state, self.in_f, self.out_f = update_state(self.state, self.f_ema, self.in_f, self.out_f, effective_f_c)
-            
-            # 8. Output
-            out = {
-                "frame": frame, "frame_idx": f_idx, "plot_boxes": plot_boxes,
-                "state": self.state, "score": self.f_ema, "clip_on": clip_on,
-                "is_night": is_night, "scene": self.current_scene,
-                "vlm_info": self.last_vlm_res
-            }
-            
-            try: self.result_queue.put(out, timeout=0.1)
-            except queue.Full: pass
-            
-            f_idx += 1
-            
-            # Rate Limiter
-            proc_time = time.time() - t_start
-            if proc_time < frame_dur:
-                time.sleep(frame_dur - proc_time)
-        
-        cap.release()
-        self.running = False
-
-def draw_hud(frame, state, score, clip_active, fps, is_night, scene, vlm_info):
+def draw_hud(frame, state, score, is_night, scene, vlm_info, vid_fps, inf_fps):
     h, w = frame.shape[:2]
     pad_h = 100
     padded = np.full((h + pad_h, w, 3), 40, dtype=np.uint8)
@@ -473,22 +360,15 @@ def draw_hud(frame, state, score, clip_active, fps, is_night, scene, vlm_info):
     lbl = {"INSIDE": "WORK ZONE", "OUT": "NORMAL ROAD"}.get(state, state)
     color = colors.get(state, (0, 128, 0))
     
-    # Main Status Bar
     cv2.rectangle(padded, (0, 0), (w, pad_h), color, -1)
+    cv2.putText(padded, f"{lbl} | Score: {score:.2f}", (20, 40), 0, 1.2, (255, 255, 255), 2)
     
-    # Left: State & Score
-    text_left = f"{lbl} | Score: {score:.2f}"
-    cv2.putText(padded, text_left, (20, 40), 0, 1.2, (255, 255, 255), 2)
-    
-    # Sub-info
     scene_txt = f"[{scene.upper()}]" if scene != "manual" else "[MANUAL]"
     mode_txt = "NIGHT MODE" if is_night else "DAY MODE"
-    cv2.putText(padded, f"{scene_txt} | {mode_txt} | FPS: {fps:.0f}", (20, 80), 0, 0.7, (255, 255, 255), 1)
+    cv2.putText(padded, f"{scene_txt} | {mode_txt} | UI FPS: {vid_fps:.0f} | Model FPS: {inf_fps:.0f}", (20, 80), 0, 0.7, (255, 255, 255), 1)
     
-    # Right: VLM / Copilot Status
     if vlm_info:
         v_st = vlm_info.get('state', '-')
-        v_lat = vlm_info.get('latency', 0)
         cv2.putText(padded, f"VLM Check: {v_st}", (w-350, 40), 0, 0.8, (255, 255, 255), 2)
         reason = vlm_info.get('reasoning', '')[:40] + "..."
         cv2.putText(padded, reason, (w-350, 70), 0, 0.5, (220, 220, 220), 1)
@@ -497,85 +377,147 @@ def draw_hud(frame, state, score, clip_active, fps, is_night, scene, vlm_info):
 
 def ensure_model(config):
     sys.path.append(str(Path(__file__).parent))
-    from optimize_for_jetson import export_yolo_tensorrt
+    try:
+        from optimize_for_jetson import export_yolo_tensorrt
+    except ImportError:
+        from workzone.utils.optimize_for_jetson import export_yolo_tensorrt
+        
     path_in = Path(config['model']['path'])
-    if path_in.suffix == '.engine' and path_in.exists(): return str(path_in), True
-    if path_in.suffix == '.engine' and not path_in.exists():
-        console.print(f"[yellow]⚠️  Engine {path_in.name} not found. Looking for source .pt...[/yellow]")
-        path_in = path_in.with_suffix('.pt')
-        if not path_in.exists():
-            console.print(f"[red]❌ Error: Source model {path_in} not found either![/red]")
+    
+    if not config['hardware'].get('half', False):
+        pt_path = path_in.with_suffix('.pt')
+        if not pt_path.exists():
+            console.print(f"[red]❌ Error: PyTorch model not found at {pt_path}[/red]")
             sys.exit(1)
-    eng = path_in.with_suffix('.engine')
-    if eng.exists(): return str(eng), True
-    console.print(f"🚀 Exporting {path_in} to RT Cores...")
-    if export_yolo_tensorrt(str(path_in), half=config['hardware']['half'], imgsz=config['model']['imgsz']):
-        return str(eng), True
-    return str(path_in), False
+        console.print(f"✅ Using PyTorch model (TensorRT disabled): {pt_path.name}")
+        return str(pt_path), False
+
+    imgsz = config['model']['imgsz']
+    engine_name = f"{path_in.stem}_{imgsz}.engine"
+    engine_path = path_in.parent / engine_name
+
+    if engine_path.exists():
+        console.print(f"✅ Found pre-built TensorRT engine for size {imgsz}: {engine_path.name}")
+        return str(engine_path), True
+
+    pt_path = path_in.with_suffix('.pt')
+    if not pt_path.exists():
+        console.print(f"[red]❌ Error: Source model {pt_path} not found![/red]")
+        sys.exit(1)
+
+    console.print(f"🚀 Exporting {pt_path.name} to RT Cores ({engine_name})...")
+    if export_yolo_tensorrt(str(pt_path), half=True, imgsz=imgsz):
+        return str(engine_path), True
+    return str(pt_path), False
 
 def run_inference_on_source(source, config, model, args):
-    console.print(f"🚀 Processing {source}...")
+    console.print(f"🚀 Processing {source} [TRUE SOTA ASYNC]...")
     
-    # 1. Setup Queues & Processor
-    q = queue.Queue(maxsize=3)
-    proc = FrameProcessor(source, config, model, None, q, args.config)
-    proc.start()
+    # 1. Start Decoder (Reads File/Camera perfectly)
+    decoder = VideoDecoder(source)
+    decoder.start()
     
-    # 2. Setup Outputs
-    out_path = Path(config['video']['output_dir']) / f"sota_{Path(source).name}"
+    # 2. Start Inference Engine
+    engine = InferenceEngine(config, model, args.config)
+    engine.start()
+    
+    # 3. Setup Outputs
+    out_path = Path(config['video']['output_dir']) / f"sota_trueasync_{Path(source).name}"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Video Writer (Lazy init based on first frame size)
     writer = None
     
-    # CSV Writer
     csv_path = out_path.with_suffix(".csv")
     csv_f = open(csv_path, 'w')
     c_w = csv.writer(csv_f)
-    c_w.writerow(["Frame", "State", "Score"])
+    c_w.writerow(["Frame", "State", "Score", "Inf_FPS"])
     
-    start_t = time.time()
-    frames = 0
+    # Pacing Logic (SOTA)
+    frame_idx = 0
+    vid_fps = decoder.fps
+    interval = 1.0 / vid_fps
+    
+    # Wait for first frame to initialize clock
+    while decoder.queue.empty() and decoder.running:
+        time.sleep(0.01)
+        
+    start_time = time.perf_counter()
+    ui_frames_rendered = 0
     
     try:
-        while proc.running or not q.empty():
+        while decoder.running or not decoder.queue.empty():
             try:
-                res = q.get(timeout=0.1)
-                
-                frame = res['frame']
-                h, w = frame.shape[:2]
-                
-                # Lazy Init Writer
-                if writer is None:
-                    # Height + 100 for HUD
-                    writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), 30, (w, h+100))
-                
-                # Render HUD
-                hud = draw_hud(frame, res['state'], res['score'], False, frames/(time.time()-start_t+1e-6), res['is_night'], res['scene'], res['vlm_info'])
-                
-                writer.write(hud)
-                c_w.writerow([res['frame_idx'], res['state'], f"{res['score']:.3f}"])
-                
-                # Display
-                if args.show:
-                    disp = cv2.resize(hud, (1280, 720)) if w > 1280 else hud
-                    cv2.imshow("Jetson WorkZone SOTA", disp)
-                    if cv2.waitKey(1) == ord('q'):
-                        proc.running = False
-                        break
-                
-                if frames % 30 == 0:
-                    sys.stdout.write(f"\rFrame {res['frame_idx']} | State: {res['state']} | VLM: {res['vlm_info'].get('state') if res['vlm_info'] else 'Wait'}")
-                    sys.stdout.flush()
-                
-                frames += 1
+                # Get perfectly sequential frame from video file
+                frame = decoder.queue.get(timeout=0.5)
             except queue.Empty:
-                pass
+                continue
+                
+            # Send copy to Inference Engine (Overwrite se ocupado)
+            if engine.frame_req.full():
+                try: engine.frame_req.get_nowait()
+                except: pass
+            try: engine.frame_req.put_nowait((frame.copy(), frame_idx))
+            except: pass
+            
+            # --- SYNC PLAYBACK PARA VÍDEOS GRAVADOS ---
+            # Se for arquivo de vídeo e estamos exibindo na tela, 
+            # forçamos a velocidade exata (ex: 30 fps) usando perf_counter.
+            if not decoder.is_camera and args.show:
+                target_time = start_time + (frame_idx * interval)
+                current_time = time.perf_counter()
+                if current_time < target_time:
+                    # Precise sleep
+                    time.sleep(target_time - current_time)
+
+            # Retrieve Latest Known AI Data
+            res = engine.latest_result
+            state, score, is_night, scene, vlm_info, inf_fps = "OUT", 0.0, False, "manual", None, 0.0
+            
+            display_frame = frame.copy()
+            h, w = display_frame.shape[:2]
+
+            if res:
+                state, score, is_night = res["state"], res["score"], res["is_night"]
+                scene, vlm_info, inf_fps = res["scene"], res["vlm_info"], res["inf_fps"]
+                
+                # Draw boxes asynchronously directly on current moving frame
+                for box, label, color in res["plot_boxes"]:
+                    p1, p2 = (int(box[0]), int(box[1])), (int(box[2]), int(box[3]))
+                    cv2.rectangle(display_frame, p1, p2, color, 2)
+                    cv2.putText(display_frame, label, (p1[0], p1[1]-5), 0, 0.5, color, 1)
+
+            # Draw HUD
+            actual_vid_fps = ui_frames_rendered / max((time.perf_counter() - start_time), 1e-6)
+            hud = draw_hud(display_frame, state, score, is_night, scene, vlm_info, actual_vid_fps, inf_fps)
+            
+            # Lazy Init VideoWriter
+            if writer is None:
+                writer = ThreadedVideoWriter(str(out_path), cv2.VideoWriter_fourcc(*'mp4v'), vid_fps, (w, h+100))
+            
+            # Write sequential smooth frame
+            writer.write(hud)
+            c_w.writerow([frame_idx, state, f"{score:.3f}", f"{inf_fps:.1f}"])
+            
+            if args.show:
+                disp = cv2.resize(hud, (1280, 720)) if w > 1280 else hud
+                cv2.imshow("Jetson WorkZone SOTA", disp)
+                if cv2.waitKey(1) == ord('q'):
+                    decoder.running = False
+                    break
+            
+            if frame_idx % 30 == 0:
+                sys.stdout.write(f"\rVideo Frame {frame_idx} | Vid FPS: {actual_vid_fps:.0f} | AI FPS: {inf_fps:.0f} | State: {state} ")
+                sys.stdout.flush()
+            
+            frame_idx += 1
+            ui_frames_rendered += 1
+            
     except KeyboardInterrupt:
         pass
     finally:
-        proc.running = False
-        proc.join()
+        decoder.running = False
+        engine.running = False
+        decoder.join()
+        engine.join()
         if writer: writer.release()
         csv_f.close()
         if args.show: cv2.destroyAllWindows()
@@ -590,9 +532,8 @@ def main():
     
     with open(args.config) as f: config = yaml.safe_load(f)
     m_p, _ = ensure_model(config)
-    model = YOLO(m_p)
+    model = YOLO(m_p, task='detect')
     
-    # Determine Input Sources (Recursive)
     input_path = Path(args.input)
     sources = []
     
@@ -604,14 +545,10 @@ def main():
         for ext in ['*.mp4', '*.avi', '*.mov', '*.mkv']:
             sources.extend(list(input_path.rglob(ext)))
         sources = sorted(list(set(sources)))
-        if not sources:
-            console.print(f"[yellow]No video files found in {input_path}[/yellow]")
-            return
     else:
         console.print(f"[red]Invalid input: {input_path}[/red]")
         return
 
-    # Process All
     for src in sources:
         run_inference_on_source(str(src), config, model, args)
 
