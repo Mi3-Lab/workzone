@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env/
+results/
+.DS_Store
+.pytest_cache/
+
+workzone-main.zip
+workzone-main/
+tmp/
+tmp_*.txt
+ROADWORK_data/
+workzone-setup-yolo-orin.zip
+workzone-setup-yolo-orin/

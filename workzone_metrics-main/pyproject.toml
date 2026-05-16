@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "workzone-metrics"
+version = "0.1.0"
+description = "Metrics evaluation harness for workzone detection/state outputs."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "CVRR" }
+]
+
+[project.scripts]
+wzm-eval = "workzone_metrics.cli:main"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-q"
+pythonpath = ["src"]
