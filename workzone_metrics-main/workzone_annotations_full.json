@@ -1,0 +1,3122 @@
+{
+  "boston_042e1caf93114d3286c11ba14ddaa759_000000_07800_snippet.mp4": {
+    "approaching": [[266, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 265]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000000_23610_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_00180_snippet.mp4": {
+    "approaching": [[151, 228]],
+    "exiting": [[339, 422]],
+    "inside": [[229, 338]],
+    "outside": [[0, 150], [423, 900]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_00210_snippet.mp4": {
+    "approaching": [[130, 229]],
+    "exiting": [[336, 412]],
+    "inside": [[230, 335]],
+    "outside": [[0, 129], [413, 900]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_00300_snippet.mp4": {
+    "approaching": [[125, 206]],
+    "exiting": [[305, 392]],
+    "inside": [[207, 304]],
+    "outside": [[0, 124], [393, 900]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_02790_snippet.mp4": {
+    "approaching": [[397, 743]],
+    "exiting": [[834, 896]],
+    "inside": [[744, 833]],
+    "outside": [[0, 396], [897, 900]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_03510_snippet.mp4": {
+    "approaching": [[0, 51], [1508, 2127]],
+    "exiting": [[390, 607]],
+    "inside": [[52, 389], [2128, 3602]],
+    "outside": [[608, 1507]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_03540_snippet.mp4": {
+    "approaching": [[384, 492]],
+    "exiting": [[81, 123]],
+    "inside": [[0, 80], [493, 898]],
+    "outside": [[124, 383]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_03570_snippet.mp4": {
+    "approaching": [[327, 480]],
+    "exiting": [[55, 86]],
+    "inside": [[0, 54], [481, 899]],
+    "outside": [[87, 326]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_03660_snippet.mp4": {
+    "approaching": [[230, 382]],
+    "exiting": [],
+    "inside": [[383, 900]],
+    "outside": [[0, 229]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_13350_snippet.mp4": {
+    "approaching": [[220, 301]],
+    "exiting": [[463, 560]],
+    "inside": [[302, 462]],
+    "outside": [[0, 219], [561, 899]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_13380_snippet.mp4": {
+    "approaching": [[169, 277]],
+    "exiting": [[436, 541]],
+    "inside": [[278, 435]],
+    "outside": [[0, 168], [542, 899]]
+  },
+  "boston_042e1caf93114d3286c11ba14ddaa759_000001_13410_snippet.mp4": {
+    "approaching": [[158, 263]],
+    "exiting": [[413, 508]],
+    "inside": [[264, 412]],
+    "outside": [[0, 157], [509, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_05940_snippet.mp4": {
+    "approaching": [[383, 486]],
+    "exiting": [],
+    "inside": [[487, 900]],
+    "outside": [[0, 382]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_06000_snippet.mp4": {
+    "approaching": [[339, 422]],
+    "exiting": [],
+    "inside": [[423, 900]],
+    "outside": [[0, 338]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_08460_snippet.mp4": {
+    "approaching": [[446, 656]],
+    "exiting": [[657, 853]],
+    "inside": [],
+    "outside": [[0, 445], [854, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_08550_snippet.mp4": {
+    "approaching": [[408, 532]],
+    "exiting": [[533, 681]],
+    "inside": [],
+    "outside": [[0, 407], [682, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_10740_snippet.mp4": {
+    "approaching": [[361, 442]],
+    "exiting": [[766, 807]],
+    "inside": [[443, 765]],
+    "outside": [[0, 360], [808, 900]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_10770_snippet.mp4": {
+    "approaching": [[320, 409]],
+    "exiting": [[688, 770]],
+    "inside": [[410, 687]],
+    "outside": [[0, 319], [771, 900]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_11520_snippet.mp4": {
+    "approaching": [[446, 613]],
+    "exiting": [[614, 755]],
+    "inside": [],
+    "outside": [[0, 445], [756, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_11610_snippet.mp4": {
+    "approaching": [[396, 525]],
+    "exiting": [[526, 653]],
+    "inside": [],
+    "outside": [[0, 395], [654, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_11640_snippet.mp4": {
+    "approaching": [[315, 493]],
+    "exiting": [[494, 608]],
+    "inside": [],
+    "outside": [[0, 314], [609, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_20160_snippet.mp4": {
+    "approaching": [[846, 900]],
+    "exiting": [[635, 689]],
+    "inside": [[0, 634]],
+    "outside": [[690, 845]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000000_21270_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[591, 649]],
+    "inside": [[0, 590]],
+    "outside": [[650, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_21840_snippet.mp4": {
+    "approaching": [[262, 364]],
+    "exiting": [],
+    "inside": [[365, 900]],
+    "outside": [[0, 261]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22020_snippet.mp4": {
+    "approaching": [[115, 212]],
+    "exiting": [],
+    "inside": [[213, 900]],
+    "outside": [[0, 114]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22200_snippet.mp4": {
+    "approaching": [[0, 61]],
+    "exiting": [[715, 752]],
+    "inside": [[62, 714]],
+    "outside": [[753, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22230_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[661, 717]],
+    "inside": [[0, 660]],
+    "outside": [[718, 899]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22320_snippet.mp4": {
+    "approaching": [[777, 828]],
+    "exiting": [[587, 623]],
+    "inside": [[0, 586], [829, 899]],
+    "outside": [[624, 776]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22830_snippet.mp4": {
+    "approaching": [[287, 322]],
+    "exiting": [[72, 112]],
+    "inside": [[0, 71], [323, 899]],
+    "outside": [[113, 286]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000001_22890_snippet.mp4": {
+    "approaching": [[227, 277]],
+    "exiting": [[0, 52]],
+    "inside": [[278, 900]],
+    "outside": [[53, 226]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000002_00210_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[349, 479]],
+    "inside": [[0, 348]],
+    "outside": [[480, 900]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000003_00030_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000003_00150_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000004_00810_snippet.mp4": {
+    "approaching": [[292, 445]],
+    "exiting": [],
+    "inside": [[446, 899]],
+    "outside": [[0, 291]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000004_10440_snippet.mp4": {
+    "approaching": [[376, 779]],
+    "exiting": [],
+    "inside": [[780, 900]],
+    "outside": [[0, 375]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000004_10710_snippet.mp4": {
+    "approaching": [[197, 535]],
+    "exiting": [[656, 716]],
+    "inside": [[536, 655]],
+    "outside": [[0, 196], [717, 900]]
+  },
+  "boston_10cb4a5e9c0740c8a6ff092bae0d4873_000004_10800_snippet.mp4": {
+    "approaching": [[125, 448], [832, 900]],
+    "exiting": [[567, 631]],
+    "inside": [[449, 566]],
+    "outside": [[0, 124], [632, 831]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000000_03930_snippet.mp4": {
+    "approaching": [[405, 441]],
+    "exiting": [[497, 556]],
+    "inside": [[442, 496]],
+    "outside": [[0, 404], [557, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000000_05400_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000001_19170_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[728, 899]],
+    "inside": [[0, 727]],
+    "outside": []
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000001_19290_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[627, 787]],
+    "inside": [[0, 626]],
+    "outside": [[788, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000002_09990_snippet.mp4": {
+    "approaching": [[350, 469]],
+    "exiting": [[529, 597]],
+    "inside": [[470, 528]],
+    "outside": [[0, 349], [598, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000002_10020_snippet.mp4": {
+    "approaching": [[300, 420]],
+    "exiting": [[498, 536]],
+    "inside": [[421, 497]],
+    "outside": [[0, 299], [537, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000003_19140_snippet.mp4": {
+    "approaching": [[467, 546]],
+    "exiting": [[600, 627]],
+    "inside": [[547, 599]],
+    "outside": [[0, 466], [628, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000003_19170_snippet.mp4": {
+    "approaching": [[439, 514]],
+    "exiting": [[570, 621]],
+    "inside": [[515, 569]],
+    "outside": [[0, 438], [622, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000003_19200_snippet.mp4": {
+    "approaching": [[414, 487]],
+    "exiting": [[537, 580]],
+    "inside": [[488, 536]],
+    "outside": [[0, 413], [581, 899]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000003_19230_snippet.mp4": {
+    "approaching": [[375, 458]],
+    "exiting": [[505, 538]],
+    "inside": [[459, 504]],
+    "outside": [[0, 374], [539, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000004_03360_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[537, 657]],
+    "inside": [[0, 536]],
+    "outside": [[658, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000004_03390_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[504, 622]],
+    "inside": [[0, 503]],
+    "outside": [[623, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000004_03420_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[463, 598]],
+    "inside": [[0, 462]],
+    "outside": [[599, 900]]
+  },
+  "boston_21cce96047dc491bb61f281b08c02569_000005_04410_snippet.mp4": {
+    "approaching": [[367, 491]],
+    "exiting": [[535, 575]],
+    "inside": [[492, 534]],
+    "outside": [[0, 366], [576, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_02640_snippet.mp4": {
+    "approaching": [[309, 415]],
+    "exiting": [],
+    "inside": [[416, 899]],
+    "outside": [[0, 308]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_20520_snippet.mp4": {
+    "approaching": [[439, 458]],
+    "exiting": [[459, 513]],
+    "inside": [],
+    "outside": [[0, 438], [514, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_22920_snippet.mp4": {
+    "approaching": [[330, 443]],
+    "exiting": [[744, 778]],
+    "inside": [[444, 743]],
+    "outside": [[0, 329], [779, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_23010_snippet.mp4": {
+    "approaching": [[250, 375]],
+    "exiting": [[653, 695]],
+    "inside": [[376, 652]],
+    "outside": [[0, 249], [696, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_23040_snippet.mp4": {
+    "approaching": [[234, 346]],
+    "exiting": [[623, 725]],
+    "inside": [[347, 622]],
+    "outside": [[0, 233], [726, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_23100_snippet.mp4": {
+    "approaching": [[178, 282]],
+    "exiting": [[567, 626]],
+    "inside": [[283, 566]],
+    "outside": [[0, 177], [627, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000000_23160_snippet.mp4": {
+    "approaching": [[113, 227]],
+    "exiting": [[512, 569]],
+    "inside": [[228, 511]],
+    "outside": [[0, 112], [570, 899]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_00480_snippet.mp4": {
+    "approaching": [[396, 517]],
+    "exiting": [],
+    "inside": [[518, 899]],
+    "outside": [[0, 395]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_00510_snippet.mp4": {
+    "approaching": [[362, 490]],
+    "exiting": [],
+    "inside": [[491, 900]],
+    "outside": [[0, 361]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_01110_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[545, 650]],
+    "inside": [[0, 544]],
+    "outside": [[651, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_01710_snippet.mp4": {
+    "approaching": [[412, 481]],
+    "exiting": [[506, 558]],
+    "inside": [[482, 505]],
+    "outside": [[0, 411], [559, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_07800_snippet.mp4": {
+    "approaching": [[445, 467]],
+    "exiting": [[485, 514]],
+    "inside": [[468, 484]],
+    "outside": [[0, 444], [515, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_18390_snippet.mp4": {
+    "approaching": [[347, 480]],
+    "exiting": [[481, 519]],
+    "inside": [],
+    "outside": [[0, 346], [520, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_18420_snippet.mp4": {
+    "approaching": [[343, 449]],
+    "exiting": [[450, 503]],
+    "inside": [],
+    "outside": [[0, 342], [504, 900]]
+  },
+  "boston_2bdb5a72602342a5991b402beb8b7ab4_000001_23370_snippet.mp4": {
+    "approaching": [[335, 468]],
+    "exiting": [[670, 767]],
+    "inside": [[469, 669]],
+    "outside": [[0, 334], [768, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_05100_snippet.mp4": {
+    "approaching": [[423, 573]],
+    "exiting": [],
+    "inside": [[574, 900]],
+    "outside": [[0, 422]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_05160_snippet.mp4": {
+    "approaching": [[378, 516]],
+    "exiting": [],
+    "inside": [[517, 900]],
+    "outside": [[0, 377]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_05220_snippet.mp4": {
+    "approaching": [[287, 439]],
+    "exiting": [],
+    "inside": [[440, 900]],
+    "outside": [[0, 286]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_05280_snippet.mp4": {
+    "approaching": [[221, 376]],
+    "exiting": [],
+    "inside": [[377, 900]],
+    "outside": [[0, 220]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_13800_snippet.mp4": {
+    "approaching": [[344, 478]],
+    "exiting": [[559, 609]],
+    "inside": [[479, 558]],
+    "outside": [[0, 343], [610, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_15540_snippet.mp4": {
+    "approaching": [[359, 520]],
+    "exiting": [[692, 775]],
+    "inside": [[521, 691]],
+    "outside": [[0, 358], [776, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_15630_snippet.mp4": {
+    "approaching": [[305, 461]],
+    "exiting": [[606, 638]],
+    "inside": [[462, 605]],
+    "outside": [[0, 304], [639, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_18600_snippet.mp4": {
+    "approaching": [[820, 899]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 819]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_19020_snippet.mp4": {
+    "approaching": [[370, 552]],
+    "exiting": [],
+    "inside": [[553, 899]],
+    "outside": [[0, 369]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_19110_snippet.mp4": {
+    "approaching": [[314, 466]],
+    "exiting": [[846, 900]],
+    "inside": [[467, 845]],
+    "outside": [[0, 313]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_19170_snippet.mp4": {
+    "approaching": [[265, 409]],
+    "exiting": [[784, 853]],
+    "inside": [[410, 783]],
+    "outside": [[0, 264], [854, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_19260_snippet.mp4": {
+    "approaching": [[163, 313]],
+    "exiting": [[681, 740]],
+    "inside": [[314, 680]],
+    "outside": [[0, 162], [741, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000000_19290_snippet.mp4": {
+    "approaching": [[146, 287]],
+    "exiting": [[648, 722]],
+    "inside": [[288, 647]],
+    "outside": [[0, 145], [723, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_05190_snippet.mp4": {
+    "approaching": [[350, 486]],
+    "exiting": [[568, 609]],
+    "inside": [[487, 567]],
+    "outside": [[0, 349], [610, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_05250_snippet.mp4": {
+    "approaching": [[275, 426]],
+    "exiting": [[502, 545]],
+    "inside": [[427, 501]],
+    "outside": [[0, 274], [546, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_06630_snippet.mp4": {
+    "approaching": [[179, 245], [629, 900]],
+    "exiting": [[577, 628]],
+    "inside": [[246, 576]],
+    "outside": [[0, 178]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_06660_snippet.mp4": {
+    "approaching": [[155, 313], [644, 869]],
+    "exiting": [[529, 597], [870, 900]],
+    "inside": [[314, 528]],
+    "outside": [[0, 154], [598, 643]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_06690_snippet.mp4": {
+    "approaching": [[112, 258], [621, 847]],
+    "exiting": [[498, 554], [848, 899]],
+    "inside": [[259, 497]],
+    "outside": [[0, 111], [555, 620]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_08730_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_11250_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_13560_snippet.mp4": {
+    "approaching": [[375, 504], [801, 900]],
+    "exiting": [[550, 591]],
+    "inside": [[505, 549]],
+    "outside": [[0, 374], [592, 800]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_13920_snippet.mp4": {
+    "approaching": [[0, 135], [434, 900]],
+    "exiting": [[193, 220]],
+    "inside": [[136, 192]],
+    "outside": [[221, 433]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_15360_snippet.mp4": {
+    "approaching": [[0, 493]],
+    "exiting": [[636, 687]],
+    "inside": [[494, 635]],
+    "outside": [[688, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_21930_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_22320_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_23550_snippet.mp4": {
+    "approaching": [[343, 446]],
+    "exiting": [],
+    "inside": [[447, 895]],
+    "outside": [[0, 342]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_23610_snippet.mp4": {
+    "approaching": [[283, 398]],
+    "exiting": [],
+    "inside": [[399, 835]],
+    "outside": [[0, 282]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000001_23640_snippet.mp4": {
+    "approaching": [[291, 370]],
+    "exiting": [],
+    "inside": [[371, 805]],
+    "outside": [[0, 290]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_05100_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_12780_snippet.mp4": {
+    "approaching": [[442, 515], [786, 900]],
+    "exiting": [[524, 546]],
+    "inside": [[516, 523]],
+    "outside": [[0, 441], [547, 785]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_12840_snippet.mp4": {
+    "approaching": [[361, 441], [724, 820]],
+    "exiting": [[471, 491], [821, 900]],
+    "inside": [[442, 470]],
+    "outside": [[0, 360], [492, 723]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_13140_snippet.mp4": {
+    "approaching": [[0, 141], [379, 501]],
+    "exiting": [[169, 195], [502, 576]],
+    "inside": [[142, 168]],
+    "outside": [[196, 378], [577, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_13200_snippet.mp4": {
+    "approaching": [[0, 81], [329, 436]],
+    "exiting": [[111, 138], [437, 509]],
+    "inside": [[82, 110]],
+    "outside": [[139, 328], [510, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_17640_snippet.mp4": {
+    "approaching": [[356, 465]],
+    "exiting": [[610, 664]],
+    "inside": [[466, 609]],
+    "outside": [[0, 355], [665, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_17730_snippet.mp4": {
+    "approaching": [[267, 382]],
+    "exiting": [[523, 567]],
+    "inside": [[383, 522]],
+    "outside": [[0, 266], [568, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000002_17760_snippet.mp4": {
+    "approaching": [[226, 345]],
+    "exiting": [[495, 527]],
+    "inside": [[346, 494]],
+    "outside": [[0, 225], [528, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000003_05970_snippet.mp4": {
+    "approaching": [[507, 734]],
+    "exiting": [],
+    "inside": [[735, 899]],
+    "outside": [[0, 506]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000003_06630_snippet.mp4": {
+    "approaching": [[0, 89]],
+    "exiting": [],
+    "inside": [[90, 900]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000003_17070_snippet.mp4": {
+    "approaching": [[0, 446]],
+    "exiting": [[541, 652]],
+    "inside": [[447, 540]],
+    "outside": [[653, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000003_18300_snippet.mp4": {
+    "approaching": [[342, 594]],
+    "exiting": [[595, 801]],
+    "inside": [],
+    "outside": [[0, 341], [802, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_04710_snippet.mp4": {
+    "approaching": [[399, 469]],
+    "exiting": [],
+    "inside": [[470, 900]],
+    "outside": [[0, 398]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_04740_snippet.mp4": {
+    "approaching": [[378, 454]],
+    "exiting": [],
+    "inside": [[455, 900]],
+    "outside": [[0, 377]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_08520_snippet.mp4": {
+    "approaching": [[0, 332]],
+    "exiting": [],
+    "inside": [[333, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_11460_snippet.mp4": {
+    "approaching": [[358, 452]],
+    "exiting": [],
+    "inside": [[453, 883]],
+    "outside": [[0, 357]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_11550_snippet.mp4": {
+    "approaching": [[272, 363]],
+    "exiting": [],
+    "inside": [[364, 900]],
+    "outside": [[0, 271]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_11820_snippet.mp4": {
+    "approaching": [[0, 100]],
+    "exiting": [[691, 900]],
+    "inside": [[101, 690]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_14340_snippet.mp4": {
+    "approaching": [[262, 491]],
+    "exiting": [],
+    "inside": [[492, 899]],
+    "outside": [[0, 261]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_14430_snippet.mp4": {
+    "approaching": [[178, 401]],
+    "exiting": [],
+    "inside": [[402, 899]],
+    "outside": [[0, 177]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_14460_snippet.mp4": {
+    "approaching": [[148, 372]],
+    "exiting": [],
+    "inside": [[373, 899]],
+    "outside": [[0, 147]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_17100_snippet.mp4": {
+    "approaching": [[239, 519]],
+    "exiting": [[892, 900]],
+    "inside": [[520, 891]],
+    "outside": [[0, 238]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_17160_snippet.mp4": {
+    "approaching": [[174, 467]],
+    "exiting": [[821, 900]],
+    "inside": [[468, 820]],
+    "outside": [[0, 173]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000004_17250_snippet.mp4": {
+    "approaching": [[84, 375]],
+    "exiting": [[745, 900]],
+    "inside": [[376, 744]],
+    "outside": [[0, 83]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000005_04200_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[493, 570]],
+    "inside": [[0, 492]],
+    "outside": [[571, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000005_07050_snippet.mp4": {
+    "approaching": [[268, 803]],
+    "exiting": [[804, 900]],
+    "inside": [],
+    "outside": [[0, 267]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000005_18930_snippet.mp4": {
+    "approaching": [[276, 459]],
+    "exiting": [],
+    "inside": [[460, 900]],
+    "outside": [[0, 275]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000005_18990_snippet.mp4": {
+    "approaching": [[267, 436]],
+    "exiting": [[838, 900]],
+    "inside": [[437, 837]],
+    "outside": [[0, 266]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_00390_snippet.mp4": {
+    "approaching": [[1189, 1715]],
+    "exiting": [],
+    "inside": [[1716, 3602]],
+    "outside": [[0, 1188]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_00480_snippet.mp4": {
+    "approaching": [[1142, 1621]],
+    "exiting": [],
+    "inside": [[1622, 3602]],
+    "outside": [[0, 1141]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_00600_snippet.mp4": {
+    "approaching": [[140, 283]],
+    "exiting": [],
+    "inside": [[284, 900]],
+    "outside": [[0, 139]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_00660_snippet.mp4": {
+    "approaching": [[105, 226]],
+    "exiting": [],
+    "inside": [[227, 900]],
+    "outside": [[0, 104]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01260_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01380_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[808, 899]],
+    "inside": [[0, 807]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01470_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[686, 899]],
+    "inside": [[0, 685]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01530_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[635, 899]],
+    "inside": [[0, 634]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01560_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[614, 900]],
+    "inside": [[0, 613]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01620_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[567, 900]],
+    "inside": [[0, 566]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_01680_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[500, 900]],
+    "inside": [[0, 499]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_02850_snippet.mp4": {
+    "approaching": [[243, 525]],
+    "exiting": [[588, 659]],
+    "inside": [[526, 587]],
+    "outside": [[0, 242], [660, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_02910_snippet.mp4": {
+    "approaching": [[230, 470]],
+    "exiting": [[503, 575]],
+    "inside": [[471, 502]],
+    "outside": [[0, 229], [576, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_02940_snippet.mp4": {
+    "approaching": [[204, 439]],
+    "exiting": [[499, 560]],
+    "inside": [[440, 498]],
+    "outside": [[0, 203], [561, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_03150_snippet.mp4": {
+    "approaching": [[0, 243]],
+    "exiting": [[267, 315]],
+    "inside": [[244, 266]],
+    "outside": [[316, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000006_23880_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 567]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000007_09960_snippet.mp4": {
+    "approaching": [[0, 214]],
+    "exiting": [[486, 562]],
+    "inside": [[215, 485]],
+    "outside": [[563, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000008_09810_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000008_09870_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000008_09990_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000008_10140_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000008_10170_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_00240_snippet.mp4": {
+    "approaching": [[716, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 715]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_00480_snippet.mp4": {
+    "approaching": [[698, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 697]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_02160_snippet.mp4": {
+    "approaching": [[156, 388]],
+    "exiting": [[788, 851]],
+    "inside": [[389, 787]],
+    "outside": [[0, 155], [852, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_02190_snippet.mp4": {
+    "approaching": [[98, 354]],
+    "exiting": [[775, 839]],
+    "inside": [[355, 774]],
+    "outside": [[0, 97], [840, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_02220_snippet.mp4": {
+    "approaching": [[63, 346]],
+    "exiting": [[747, 803]],
+    "inside": [[347, 746]],
+    "outside": [[0, 62], [804, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_02250_snippet.mp4": {
+    "approaching": [[39, 283]],
+    "exiting": [[714, 763]],
+    "inside": [[284, 713]],
+    "outside": [[0, 38], [764, 899]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_02280_snippet.mp4": {
+    "approaching": [[90, 1026]],
+    "exiting": [[2729, 2851]],
+    "inside": [[1027, 2728]],
+    "outside": [[0, 89], [2852, 3600]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_13770_snippet.mp4": {
+    "approaching": [[386, 550]],
+    "exiting": [[605, 637]],
+    "inside": [[551, 604]],
+    "outside": [[0, 385], [638, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000009_13830_snippet.mp4": {
+    "approaching": [[331, 473]],
+    "exiting": [[539, 558]],
+    "inside": [[474, 538]],
+    "outside": [[0, 330], [559, 900]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000010_05040_snippet.mp4": {
+    "approaching": [[492, 674]],
+    "exiting": [],
+    "inside": [[675, 900]],
+    "outside": [[0, 491]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000010_05160_snippet.mp4": {
+    "approaching": [[335, 605]],
+    "exiting": [],
+    "inside": [[606, 900]],
+    "outside": [[0, 334]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000010_05340_snippet.mp4": {
+    "approaching": [[193, 427]],
+    "exiting": [],
+    "inside": [[428, 899]],
+    "outside": [[0, 192]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000010_05370_snippet.mp4": {
+    "approaching": [[157, 425]],
+    "exiting": [],
+    "inside": [[426, 900]],
+    "outside": [[0, 156]]
+  },
+  "boston_2d8e13b1a8304d8395dcf6479ca61814_000010_07500_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_02220_snippet.mp4": {
+    "approaching": [[485, 531], [723, 829]],
+    "exiting": [[598, 635]],
+    "inside": [[532, 597], [830, 899]],
+    "outside": [[0, 484], [636, 722]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_02280_snippet.mp4": {
+    "approaching": [[408, 457], [698, 769]],
+    "exiting": [[532, 576]],
+    "inside": [[458, 531], [770, 899]],
+    "outside": [[0, 407], [577, 697]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_02340_snippet.mp4": {
+    "approaching": [[330, 404], [652, 725]],
+    "exiting": [[488, 514]],
+    "inside": [[405, 487], [726, 899]],
+    "outside": [[0, 329], [515, 651]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_02730_snippet.mp4": {
+    "approaching": [[0, 19], [254, 318]],
+    "exiting": [[106, 122]],
+    "inside": [[20, 105], [319, 900]],
+    "outside": [[123, 253]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_03930_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04080_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04140_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04200_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04260_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04320_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04470_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04560_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04620_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04680_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04740_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_04770_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_05490_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_05790_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_05820_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_10950_snippet.mp4": {
+    "approaching": [[628, 724]],
+    "exiting": [[812, 842]],
+    "inside": [[725, 811]],
+    "outside": [[0, 627], [843, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_11100_snippet.mp4": {
+    "approaching": [[511, 558]],
+    "exiting": [[626, 675]],
+    "inside": [[559, 625]],
+    "outside": [[0, 510], [676, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_14070_snippet.mp4": {
+    "approaching": [[414, 619]],
+    "exiting": [[620, 685]],
+    "inside": [],
+    "outside": [[0, 413], [686, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_14160_snippet.mp4": {
+    "approaching": [[325, 538]],
+    "exiting": [[539, 595]],
+    "inside": [],
+    "outside": [[0, 324], [596, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_14190_snippet.mp4": {
+    "approaching": [[304, 493]],
+    "exiting": [[494, 570]],
+    "inside": [],
+    "outside": [[0, 303], [571, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_14220_snippet.mp4": {
+    "approaching": [[254, 477]],
+    "exiting": [[478, 532]],
+    "inside": [],
+    "outside": [[0, 253], [533, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_14250_snippet.mp4": {
+    "approaching": [[236, 446]],
+    "exiting": [[447, 507]],
+    "inside": [],
+    "outside": [[0, 235], [508, 900]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16260_snippet.mp4": {
+    "approaching": [[446, 658]],
+    "exiting": [[659, 755]],
+    "inside": [],
+    "outside": [[0, 445], [756, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16290_snippet.mp4": {
+    "approaching": [[428, 620]],
+    "exiting": [[621, 725]],
+    "inside": [],
+    "outside": [[0, 427], [726, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16320_snippet.mp4": {
+    "approaching": [[409, 596]],
+    "exiting": [[597, 719]],
+    "inside": [],
+    "outside": [[0, 408], [720, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16350_snippet.mp4": {
+    "approaching": [[387, 564]],
+    "exiting": [[565, 669]],
+    "inside": [],
+    "outside": [[0, 386], [670, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16380_snippet.mp4": {
+    "approaching": [[367, 524]],
+    "exiting": [[525, 632]],
+    "inside": [],
+    "outside": [[0, 366], [633, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_16410_snippet.mp4": {
+    "approaching": [[357, 509]],
+    "exiting": [[510, 600]],
+    "inside": [],
+    "outside": [[0, 356], [601, 899]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_20700_snippet.mp4": {
+    "approaching": [[282, 478]],
+    "exiting": [[661, 899]],
+    "inside": [[479, 660]],
+    "outside": [[0, 281]]
+  },
+  "boston_2dacdcbcc3bf42c28eeb08592fc2c325_000002_20790_snippet.mp4": {
+    "approaching": [[0, 354]],
+    "exiting": [[504, 758]],
+    "inside": [[355, 503]],
+    "outside": [[759, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000000_00690_snippet.mp4": {
+    "approaching": [[363, 442]],
+    "exiting": [[585, 703]],
+    "inside": [[443, 584]],
+    "outside": [[0, 362], [704, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000000_15930_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000000_15960_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000000_17280_snippet.mp4": {
+    "approaching": [[412, 490], [751, 845]],
+    "exiting": [[513, 524]],
+    "inside": [[491, 512], [846, 900]],
+    "outside": [[0, 411], [525, 750]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000000_17310_snippet.mp4": {
+    "approaching": [[381, 455], [729, 831]],
+    "exiting": [[482, 501]],
+    "inside": [[456, 481], [832, 900]],
+    "outside": [[0, 380], [502, 728]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_10770_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_11040_snippet.mp4": {
+    "approaching": [[143, 207], [382, 467]],
+    "exiting": [[227, 257], [555, 606]],
+    "inside": [[208, 226], [468, 554]],
+    "outside": [[0, 142], [258, 381], [607, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_20100_snippet.mp4": {
+    "approaching": [[402, 681]],
+    "exiting": [],
+    "inside": [[682, 900]],
+    "outside": [[0, 401]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_20310_snippet.mp4": {
+    "approaching": [[188, 481]],
+    "exiting": [],
+    "inside": [[482, 900]],
+    "outside": [[0, 187]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_20340_snippet.mp4": {
+    "approaching": [[278, 448]],
+    "exiting": [],
+    "inside": [[449, 900]],
+    "outside": [[0, 277]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_20400_snippet.mp4": {
+    "approaching": [[109, 403]],
+    "exiting": [],
+    "inside": [[404, 900]],
+    "outside": [[0, 108]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_21780_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_21810_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_21840_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_22020_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_22230_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[727, 751]],
+    "inside": [[0, 726]],
+    "outside": [[752, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_22260_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[701, 742]],
+    "inside": [[0, 700]],
+    "outside": [[743, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000001_22440_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[515, 548]],
+    "inside": [[0, 514]],
+    "outside": [[549, 899]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_00840_snippet.mp4": {
+    "approaching": [[313, 441]],
+    "exiting": [[540, 560]],
+    "inside": [[442, 539]],
+    "outside": [[0, 312], [561, 899]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_00900_snippet.mp4": {
+    "approaching": [[273, 388], [643, 668]],
+    "exiting": [[486, 502]],
+    "inside": [[389, 485], [669, 900]],
+    "outside": [[0, 272], [503, 642]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_15030_snippet.mp4": {
+    "approaching": [[374, 465]],
+    "exiting": [[495, 518]],
+    "inside": [[466, 494]],
+    "outside": [[0, 373], [519, 899]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_16080_snippet.mp4": {
+    "approaching": [[356, 500]],
+    "exiting": [],
+    "inside": [[501, 899]],
+    "outside": [[0, 355]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_23760_snippet.mp4": {
+    "approaching": [[353, 560]],
+    "exiting": [],
+    "inside": [[561, 684]],
+    "outside": [[0, 352]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_23880_snippet.mp4": {
+    "approaching": [[254, 466]],
+    "exiting": [],
+    "inside": [[467, 564]],
+    "outside": [[0, 253]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000002_23910_snippet.mp4": {
+    "approaching": [[228, 454]],
+    "exiting": [],
+    "inside": [[455, 534]],
+    "outside": [[0, 227]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_00180_snippet.mp4": {
+    "approaching": [[73, 235], [727, 792]],
+    "exiting": [[316, 350]],
+    "inside": [[236, 315], [793, 900]],
+    "outside": [[0, 72], [351, 726]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_00240_snippet.mp4": {
+    "approaching": [[90, 245], [728, 786]],
+    "exiting": [[327, 364]],
+    "inside": [[246, 326], [787, 900]],
+    "outside": [[0, 89], [365, 727]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_00270_snippet.mp4": {
+    "approaching": [[116, 233], [735, 782]],
+    "exiting": [[318, 359]],
+    "inside": [[234, 317], [783, 900]],
+    "outside": [[0, 115], [360, 734]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_00780_snippet.mp4": {
+    "approaching": [[414, 464]],
+    "exiting": [],
+    "inside": [[465, 899]],
+    "outside": [[0, 413]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_00810_snippet.mp4": {
+    "approaching": [[365, 424]],
+    "exiting": [],
+    "inside": [[425, 899]],
+    "outside": [[0, 364]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_03030_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_03120_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_344db257af864142a18c582228d2920a_000003_05910_snippet.mp4": {
+    "approaching": [[141, 230]],
+    "exiting": [[637, 761]],
+    "inside": [[231, 636]],
+    "outside": [[0, 140], [762, 900]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_03540_snippet.mp4": {
+    "approaching": [[204, 442]],
+    "exiting": [[443, 550]],
+    "inside": [],
+    "outside": [[0, 203], [551, 900]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_04110_snippet.mp4": {
+    "approaching": [[361, 451]],
+    "exiting": [[561, 599]],
+    "inside": [[452, 560]],
+    "outside": [[0, 360], [600, 899]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_04170_snippet.mp4": {
+    "approaching": [[329, 429]],
+    "exiting": [[502, 537]],
+    "inside": [[430, 501]],
+    "outside": [[0, 328], [538, 899]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_06150_snippet.mp4": {
+    "approaching": [[409, 520]],
+    "exiting": [],
+    "inside": [[521, 900]],
+    "outside": [[0, 408]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_06240_snippet.mp4": {
+    "approaching": [[329, 444]],
+    "exiting": [],
+    "inside": [[445, 900]],
+    "outside": [[0, 328]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_13500_snippet.mp4": {
+    "approaching": [[317, 470]],
+    "exiting": [],
+    "inside": [[471, 900]],
+    "outside": [[0, 316]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_15570_snippet.mp4": {
+    "approaching": [[0, 199]],
+    "exiting": [],
+    "inside": [[200, 900]],
+    "outside": []
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_15720_snippet.mp4": {
+    "approaching": [[0, 60]],
+    "exiting": [],
+    "inside": [[61, 900]],
+    "outside": []
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_15960_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[871, 900]],
+    "inside": [[0, 870]],
+    "outside": []
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_17040_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[587, 624]],
+    "inside": [[0, 586]],
+    "outside": [[625, 900]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_17160_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[471, 495]],
+    "inside": [[0, 470]],
+    "outside": [[496, 900]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000000_18780_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000001_04350_snippet.mp4": {
+    "approaching": [[222, 415]],
+    "exiting": [],
+    "inside": [[416, 900]],
+    "outside": [[0, 221]]
+  },
+  "boston_3a1d0e6ad25b4f5c8312639dc01c88da_000001_06120_snippet.mp4": {
+    "approaching": [[350, 422]],
+    "exiting": [[498, 547]],
+    "inside": [[423, 497]],
+    "outside": [[0, 349], [548, 900]]
+  },
+  "boston_3d896c9c53dd4852b3f4d9bff20602df_000000_13920_snippet.mp4": {
+    "approaching": [[443, 676]],
+    "exiting": [],
+    "inside": [[677, 900]],
+    "outside": [[0, 442]]
+  },
+  "boston_3d896c9c53dd4852b3f4d9bff20602df_000000_14070_snippet.mp4": {
+    "approaching": [[320, 532]],
+    "exiting": [],
+    "inside": [[533, 899]],
+    "outside": [[0, 319]]
+  },
+  "boston_3d896c9c53dd4852b3f4d9bff20602df_000000_14940_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_07290_snippet.mp4": {
+    "approaching": [[319, 450]],
+    "exiting": [[673, 789]],
+    "inside": [[451, 672]],
+    "outside": [[0, 318], [790, 900]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_07320_snippet.mp4": {
+    "approaching": [[320, 447]],
+    "exiting": [[632, 715]],
+    "inside": [[448, 631]],
+    "outside": [[0, 319], [716, 900]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_07350_snippet.mp4": {
+    "approaching": [[295, 409]],
+    "exiting": [[578, 656]],
+    "inside": [[410, 577]],
+    "outside": [[0, 294], [657, 900]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_12930_snippet.mp4": {
+    "approaching": [[328, 450]],
+    "exiting": [[717, 749]],
+    "inside": [[451, 716]],
+    "outside": [[0, 327], [750, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_12960_snippet.mp4": {
+    "approaching": [[305, 424]],
+    "exiting": [[675, 711]],
+    "inside": [[425, 674]],
+    "outside": [[0, 304], [712, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_13080_snippet.mp4": {
+    "approaching": [[188, 318]],
+    "exiting": [[554, 595]],
+    "inside": [[319, 553]],
+    "outside": [[0, 187], [596, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_13110_snippet.mp4": {
+    "approaching": [[163, 276]],
+    "exiting": [[539, 567]],
+    "inside": [[277, 538]],
+    "outside": [[0, 162], [568, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_19560_snippet.mp4": {
+    "approaching": [[255, 434]],
+    "exiting": [[604, 691]],
+    "inside": [[435, 603]],
+    "outside": [[0, 254], [692, 899]]
+  },
+  "boston_41d35d7ce585406aad2c2b1c8043e340_000000_19620_snippet.mp4": {
+    "approaching": [[150, 370]],
+    "exiting": [[545, 632]],
+    "inside": [[371, 544]],
+    "outside": [[0, 149], [633, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_03840_snippet.mp4": {
+    "approaching": [[409, 429]],
+    "exiting": [[513, 553]],
+    "inside": [[430, 512]],
+    "outside": [[0, 408], [554, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_09510_snippet.mp4": {
+    "approaching": [[276, 495], [739, 900]],
+    "exiting": [[496, 543]],
+    "inside": [],
+    "outside": [[0, 275], [544, 738]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_12960_snippet.mp4": {
+    "approaching": [[393, 468]],
+    "exiting": [[503, 528]],
+    "inside": [[469, 502]],
+    "outside": [[0, 392], [529, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_12990_snippet.mp4": {
+    "approaching": [[357, 448]],
+    "exiting": [[474, 489]],
+    "inside": [[449, 473]],
+    "outside": [[0, 356], [490, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_18270_snippet.mp4": {
+    "approaching": [[243, 396]],
+    "exiting": [[663, 757]],
+    "inside": [[397, 662]],
+    "outside": [[0, 242], [758, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_18390_snippet.mp4": {
+    "approaching": [[153, 286]],
+    "exiting": [[539, 631]],
+    "inside": [[287, 538]],
+    "outside": [[0, 152], [632, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000000_20340_snippet.mp4": {
+    "approaching": [[206, 344]],
+    "exiting": [[549, 597]],
+    "inside": [[345, 548]],
+    "outside": [[0, 205], [598, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000001_00450_snippet.mp4": {
+    "approaching": [[335, 475], [591, 900]],
+    "exiting": [[513, 555]],
+    "inside": [[476, 512]],
+    "outside": [[0, 334], [556, 590]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000001_00780_snippet.mp4": {
+    "approaching": [[0, 140], [618, 839]],
+    "exiting": [[186, 219], [840, 900]],
+    "inside": [[141, 185]],
+    "outside": [[220, 617]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000001_07530_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000002_15120_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 898]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000002_23490_snippet.mp4": {
+    "approaching": [[353, 423]],
+    "exiting": [[472, 521]],
+    "inside": [[424, 471]],
+    "outside": [[0, 352], [522, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000003_03030_snippet.mp4": {
+    "approaching": [[233, 367]],
+    "exiting": [[639, 729]],
+    "inside": [[368, 638]],
+    "outside": [[0, 232], [730, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000003_03120_snippet.mp4": {
+    "approaching": [[137, 261]],
+    "exiting": [[548, 628]],
+    "inside": [[262, 547]],
+    "outside": [[0, 136], [629, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000003_11340_snippet.mp4": {
+    "approaching": [[215, 662]],
+    "exiting": [[663, 795]],
+    "inside": [],
+    "outside": [[0, 214], [796, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_14490_snippet.mp4": {
+    "approaching": [[385, 577]],
+    "exiting": [[644, 675]],
+    "inside": [[578, 643]],
+    "outside": [[0, 384], [676, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_14670_snippet.mp4": {
+    "approaching": [[204, 437]],
+    "exiting": [[471, 508]],
+    "inside": [[438, 470]],
+    "outside": [[0, 203], [509, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_19650_snippet.mp4": {
+    "approaching": [[478, 603]],
+    "exiting": [],
+    "inside": [[604, 899]],
+    "outside": [[0, 477]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_19860_snippet.mp4": {
+    "approaching": [[295, 413]],
+    "exiting": [[756, 899]],
+    "inside": [[414, 755]],
+    "outside": [[0, 294]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_19920_snippet.mp4": {
+    "approaching": [[212, 346]],
+    "exiting": [[665, 784]],
+    "inside": [[347, 664]],
+    "outside": [[0, 211], [785, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000004_23160_snippet.mp4": {
+    "approaching": [[307, 387]],
+    "exiting": [[660, 703]],
+    "inside": [[388, 659]],
+    "outside": [[0, 306], [704, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_08130_snippet.mp4": {
+    "approaching": [[345, 532]],
+    "exiting": [[762, 798]],
+    "inside": [[533, 761]],
+    "outside": [[0, 344], [799, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_08190_snippet.mp4": {
+    "approaching": [[333, 473]],
+    "exiting": [[694, 732]],
+    "inside": [[474, 693]],
+    "outside": [[0, 332], [733, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_08400_snippet.mp4": {
+    "approaching": [[52, 262]],
+    "exiting": [[489, 525]],
+    "inside": [[263, 488]],
+    "outside": [[0, 51], [526, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12360_snippet.mp4": {
+    "approaching": [[233, 385]],
+    "exiting": [],
+    "inside": [[386, 900]],
+    "outside": [[0, 232]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12390_snippet.mp4": {
+    "approaching": [[247, 366]],
+    "exiting": [],
+    "inside": [[367, 900]],
+    "outside": [[0, 246]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12420_snippet.mp4": {
+    "approaching": [[230, 345]],
+    "exiting": [],
+    "inside": [[346, 900]],
+    "outside": [[0, 229]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12660_snippet.mp4": {
+    "approaching": [[0, 105]],
+    "exiting": [],
+    "inside": [[106, 900]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12720_snippet.mp4": {
+    "approaching": [[0, 57]],
+    "exiting": [],
+    "inside": [[58, 900]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_12900_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 899]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_13110_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[698, 789]],
+    "inside": [[0, 697]],
+    "outside": [[790, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_13260_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[569, 736]],
+    "inside": [[0, 568]],
+    "outside": [[737, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_15450_snippet.mp4": {
+    "approaching": [[276, 403]],
+    "exiting": [[642, 671]],
+    "inside": [[404, 641]],
+    "outside": [[0, 275], [672, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_15480_snippet.mp4": {
+    "approaching": [[269, 385]],
+    "exiting": [[600, 633]],
+    "inside": [[386, 599]],
+    "outside": [[0, 268], [634, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_15540_snippet.mp4": {
+    "approaching": [[229, 334]],
+    "exiting": [[550, 582]],
+    "inside": [[335, 549]],
+    "outside": [[0, 228], [583, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_15600_snippet.mp4": {
+    "approaching": [[150, 284]],
+    "exiting": [[483, 516]],
+    "inside": [[285, 482]],
+    "outside": [[0, 149], [517, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_17700_snippet.mp4": {
+    "approaching": [[358, 543]],
+    "exiting": [],
+    "inside": [[544, 899]],
+    "outside": [[0, 357]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_17820_snippet.mp4": {
+    "approaching": [[242, 453]],
+    "exiting": [],
+    "inside": [[454, 899]],
+    "outside": [[0, 241]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_18240_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_18360_snippet.mp4": {
+    "approaching": [[0, 3602]],
+    "exiting": [],
+    "inside": [],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_18420_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[769, 900]],
+    "inside": [[0, 768]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_18720_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[490, 672]],
+    "inside": [[0, 489]],
+    "outside": [[673, 900]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_22440_snippet.mp4": {
+    "approaching": [[117, 300]],
+    "exiting": [[698, 831]],
+    "inside": [[301, 697]],
+    "outside": [[0, 116], [832, 899]]
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_23520_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_23550_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 896]],
+    "outside": []
+  },
+  "boston_4ac05b2379194b7a91e84368b8fd200d_000005_23610_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 836]],
+    "outside": []
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_04620_snippet.mp4": {
+    "approaching": [[420, 451]],
+    "exiting": [[469, 500]],
+    "inside": [[452, 468]],
+    "outside": [[0, 419], [501, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_05790_snippet.mp4": {
+    "approaching": [[188, 319]],
+    "exiting": [],
+    "inside": [[320, 900]],
+    "outside": [[0, 187]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_05970_snippet.mp4": {
+    "approaching": [[31, 137]],
+    "exiting": [],
+    "inside": [[138, 900]],
+    "outside": [[0, 30]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_06120_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[714, 780]],
+    "inside": [[0, 713]],
+    "outside": [[781, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_06240_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[578, 671]],
+    "inside": [[0, 577]],
+    "outside": [[672, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_09030_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_17970_snippet.mp4": {
+    "approaching": [[0, 295]],
+    "exiting": [[789, 834]],
+    "inside": [[296, 788]],
+    "outside": [[835, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18000_snippet.mp4": {
+    "approaching": [[0, 265]],
+    "exiting": [[759, 815]],
+    "inside": [[266, 758]],
+    "outside": [[816, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18030_snippet.mp4": {
+    "approaching": [[0, 232]],
+    "exiting": [[728, 800]],
+    "inside": [[233, 727]],
+    "outside": [[801, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18060_snippet.mp4": {
+    "approaching": [[0, 205]],
+    "exiting": [[692, 739]],
+    "inside": [[206, 691]],
+    "outside": [[740, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18090_snippet.mp4": {
+    "approaching": [[0, 181]],
+    "exiting": [[666, 721]],
+    "inside": [[182, 665]],
+    "outside": [[722, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18120_snippet.mp4": {
+    "approaching": [[0, 145]],
+    "exiting": [[631, 693]],
+    "inside": [[146, 630]],
+    "outside": [[694, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18150_snippet.mp4": {
+    "approaching": [[0, 119]],
+    "exiting": [[609, 657]],
+    "inside": [[120, 608]],
+    "outside": [[658, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18180_snippet.mp4": {
+    "approaching": [[0, 85]],
+    "exiting": [[579, 635]],
+    "inside": [[86, 578]],
+    "outside": [[636, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18270_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[471, 550]],
+    "inside": [[0, 470]],
+    "outside": [[551, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18300_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[446, 533]],
+    "inside": [[0, 445]],
+    "outside": [[534, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000000_18330_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[424, 478]],
+    "inside": [[0, 423]],
+    "outside": [[479, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_05010_snippet.mp4": {
+    "approaching": [[488, 528]],
+    "exiting": [[546, 565]],
+    "inside": [[529, 545]],
+    "outside": [[0, 487], [566, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_20850_snippet.mp4": {
+    "approaching": [[232, 468]],
+    "exiting": [],
+    "inside": [[469, 899]],
+    "outside": [[0, 231]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_20970_snippet.mp4": {
+    "approaching": [[123, 350]],
+    "exiting": [],
+    "inside": [[351, 900]],
+    "outside": [[0, 122]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_21120_snippet.mp4": {
+    "approaching": [[0, 211]],
+    "exiting": [[706, 868]],
+    "inside": [[212, 705]],
+    "outside": [[869, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_21180_snippet.mp4": {
+    "approaching": [[0, 145]],
+    "exiting": [[648, 795]],
+    "inside": [[146, 647]],
+    "outside": [[796, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_21270_snippet.mp4": {
+    "approaching": [[0, 88]],
+    "exiting": [[580, 712]],
+    "inside": [[89, 579]],
+    "outside": [[713, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000001_22020_snippet.mp4": {
+    "approaching": [[401, 446], [891, 900]],
+    "exiting": [[481, 521]],
+    "inside": [[447, 480]],
+    "outside": [[0, 400], [522, 890]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_02100_snippet.mp4": {
+    "approaching": [[1571, 2083]],
+    "exiting": [[2959, 3183]],
+    "inside": [[2084, 2958]],
+    "outside": [[0, 1570], [3184, 3600]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_02160_snippet.mp4": {
+    "approaching": [[325, 463]],
+    "exiting": [[672, 736]],
+    "inside": [[464, 671]],
+    "outside": [[0, 324], [737, 895]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_02250_snippet.mp4": {
+    "approaching": [[254, 363]],
+    "exiting": [[571, 641]],
+    "inside": [[364, 570]],
+    "outside": [[0, 253], [642, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_03360_snippet.mp4": {
+    "approaching": [[2233, 2418]],
+    "exiting": [[2551, 2663]],
+    "inside": [[2419, 2550]],
+    "outside": [[0, 2232], [2664, 3602]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_03420_snippet.mp4": {
+    "approaching": [[453, 549]],
+    "exiting": [[577, 899]],
+    "inside": [[550, 576]],
+    "outside": [[0, 452]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_03450_snippet.mp4": {
+    "approaching": [[415, 516]],
+    "exiting": [[546, 582]],
+    "inside": [[517, 545]],
+    "outside": [[0, 414], [583, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_03510_snippet.mp4": {
+    "approaching": [[372, 463]],
+    "exiting": [[489, 507]],
+    "inside": [[464, 488]],
+    "outside": [[0, 371], [508, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_07800_snippet.mp4": {
+    "approaching": [[374, 455]],
+    "exiting": [[513, 532]],
+    "inside": [[456, 512]],
+    "outside": [[0, 373], [533, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_07830_snippet.mp4": {
+    "approaching": [[330, 433]],
+    "exiting": [[476, 494]],
+    "inside": [[434, 475]],
+    "outside": [[0, 329], [495, 900]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_19530_snippet.mp4": {
+    "approaching": [[439, 492]],
+    "exiting": [[525, 552]],
+    "inside": [[493, 524]],
+    "outside": [[0, 438], [553, 899]]
+  },
+  "boston_4d91f8efe4d44a4694ecb0e440c74dc4_000002_19560_snippet.mp4": {
+    "approaching": [[394, 444]],
+    "exiting": [[489, 534]],
+    "inside": [[445, 488]],
+    "outside": [[0, 393], [535, 899]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000000_05520_snippet.mp4": {
+    "approaching": [[0, 346]],
+    "exiting": [],
+    "inside": [[347, 900]],
+    "outside": []
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000000_05610_snippet.mp4": {
+    "approaching": [[0, 245]],
+    "exiting": [],
+    "inside": [[246, 900]],
+    "outside": []
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000000_07710_snippet.mp4": {
+    "approaching": [[627, 720]],
+    "exiting": [[495, 552]],
+    "inside": [[0, 494], [721, 899]],
+    "outside": [[553, 626]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000000_08430_snippet.mp4": {
+    "approaching": [[325, 460]],
+    "exiting": [[234, 324], [540, 572]],
+    "inside": [[0, 233], [461, 539]],
+    "outside": [[573, 900]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000000_15240_snippet.mp4": {
+    "approaching": [[313, 453], [750, 878]],
+    "exiting": [[454, 507]],
+    "inside": [[879, 899]],
+    "outside": [[0, 312], [508, 749]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14670_snippet.mp4": {
+    "approaching": [[363, 455]],
+    "exiting": [],
+    "inside": [[456, 899]],
+    "outside": [[0, 362]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14700_snippet.mp4": {
+    "approaching": [[307, 431]],
+    "exiting": [],
+    "inside": [[432, 899]],
+    "outside": [[0, 306]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14760_snippet.mp4": {
+    "approaching": [[199, 366]],
+    "exiting": [],
+    "inside": [[367, 899]],
+    "outside": [[0, 198]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14820_snippet.mp4": {
+    "approaching": [[133, 307]],
+    "exiting": [],
+    "inside": [[308, 899]],
+    "outside": [[0, 132]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14850_snippet.mp4": {
+    "approaching": [[134, 282]],
+    "exiting": [],
+    "inside": [[283, 899]],
+    "outside": [[0, 133]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14880_snippet.mp4": {
+    "approaching": [[109, 247]],
+    "exiting": [],
+    "inside": [[248, 899]],
+    "outside": [[0, 108]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14910_snippet.mp4": {
+    "approaching": [[104, 215]],
+    "exiting": [],
+    "inside": [[216, 899]],
+    "outside": [[0, 103]]
+  },
+  "boston_6f6b6d546957437fbb153b7e78c4514a_000001_14940_snippet.mp4": {
+    "approaching": [[50, 191]],
+    "exiting": [],
+    "inside": [[192, 899]],
+    "outside": [[0, 49]]
+  },
+  "boston_702b9cb0054549a08a50aadd7812a3d6_000000_10740_snippet.mp4": {
+    "approaching": [[414, 537]],
+    "exiting": [[749, 900]],
+    "inside": [[538, 748]],
+    "outside": [[0, 413]]
+  },
+  "boston_702b9cb0054549a08a50aadd7812a3d6_000000_10800_snippet.mp4": {
+    "approaching": [[311, 473]],
+    "exiting": [[680, 771]],
+    "inside": [[474, 679]],
+    "outside": [[0, 310], [772, 900]]
+  },
+  "boston_702b9cb0054549a08a50aadd7812a3d6_000000_10830_snippet.mp4": {
+    "approaching": [[247, 452]],
+    "exiting": [[665, 728]],
+    "inside": [[453, 664]],
+    "outside": [[0, 246], [729, 900]]
+  },
+  "boston_702b9cb0054549a08a50aadd7812a3d6_000000_11010_snippet.mp4": {
+    "approaching": [[127, 272]],
+    "exiting": [[487, 542]],
+    "inside": [[273, 486]],
+    "outside": [[0, 126], [543, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000000_05790_snippet.mp4": {
+    "approaching": [[370, 458]],
+    "exiting": [[482, 501]],
+    "inside": [[459, 481]],
+    "outside": [[0, 369], [502, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000000_06510_snippet.mp4": {
+    "approaching": [[245, 377]],
+    "exiting": [[641, 696]],
+    "inside": [[378, 640]],
+    "outside": [[0, 244], [697, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000000_06570_snippet.mp4": {
+    "approaching": [[191, 332]],
+    "exiting": [[630, 754]],
+    "inside": [[333, 629]],
+    "outside": [[0, 190], [755, 899]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000000_06630_snippet.mp4": {
+    "approaching": [[130, 272]],
+    "exiting": [[521, 557]],
+    "inside": [[273, 520]],
+    "outside": [[0, 129], [558, 899]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000000_06660_snippet.mp4": {
+    "approaching": [[100, 241]],
+    "exiting": [[477, 529]],
+    "inside": [[242, 476]],
+    "outside": [[0, 99], [530, 898]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_01290_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_02670_snippet.mp4": {
+    "approaching": [[356, 471]],
+    "exiting": [[774, 900]],
+    "inside": [[472, 773]],
+    "outside": [[0, 355]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_02700_snippet.mp4": {
+    "approaching": [[299, 463]],
+    "exiting": [[637, 900]],
+    "inside": [[464, 636]],
+    "outside": [[0, 298]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_02730_snippet.mp4": {
+    "approaching": [[289, 428]],
+    "exiting": [[654, 863]],
+    "inside": [[429, 653]],
+    "outside": [[0, 288], [864, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_02760_snippet.mp4": {
+    "approaching": [[227, 400]],
+    "exiting": [[630, 828]],
+    "inside": [[401, 629]],
+    "outside": [[0, 226], [829, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000001_02790_snippet.mp4": {
+    "approaching": [[243, 373]],
+    "exiting": [[606, 801]],
+    "inside": [[374, 605]],
+    "outside": [[0, 242], [802, 899]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000003_12990_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000005_16440_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_14070_snippet.mp4": {
+    "approaching": [[433, 524]],
+    "exiting": [[544, 573]],
+    "inside": [[525, 543]],
+    "outside": [[0, 432], [574, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_14130_snippet.mp4": {
+    "approaching": [[325, 451]],
+    "exiting": [[485, 499]],
+    "inside": [[452, 484]],
+    "outside": [[0, 324], [500, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_14160_snippet.mp4": {
+    "approaching": [[347, 423]],
+    "exiting": [[456, 480]],
+    "inside": [[424, 455]],
+    "outside": [[0, 346], [481, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_16080_snippet.mp4": {
+    "approaching": [[256, 492]],
+    "exiting": [[567, 597]],
+    "inside": [[493, 566]],
+    "outside": [[0, 255], [598, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_16170_snippet.mp4": {
+    "approaching": [[274, 397]],
+    "exiting": [[461, 514]],
+    "inside": [[398, 460]],
+    "outside": [[0, 273], [515, 899]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_17010_snippet.mp4": {
+    "approaching": [[230, 331]],
+    "exiting": [[575, 693]],
+    "inside": [[332, 574]],
+    "outside": [[0, 229], [694, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_17040_snippet.mp4": {
+    "approaching": [[185, 285]],
+    "exiting": [[546, 622]],
+    "inside": [[286, 545]],
+    "outside": [[0, 184], [623, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000006_17070_snippet.mp4": {
+    "approaching": [[165, 259]],
+    "exiting": [[489, 571]],
+    "inside": [[260, 488]],
+    "outside": [[0, 164], [572, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_05460_snippet.mp4": {
+    "approaching": [[548, 899]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 547]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_05490_snippet.mp4": {
+    "approaching": [[495, 899]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 494]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_05550_snippet.mp4": {
+    "approaching": [[460, 899]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 459]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_06720_snippet.mp4": {
+    "approaching": [[0, 422]],
+    "exiting": [],
+    "inside": [[423, 899]],
+    "outside": []
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_07020_snippet.mp4": {
+    "approaching": [[0, 132]],
+    "exiting": [],
+    "inside": [[133, 899]],
+    "outside": []
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000007_08100_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000009_12600_snippet.mp4": {
+    "approaching": [[0, 302]],
+    "exiting": [[666, 721]],
+    "inside": [[303, 665]],
+    "outside": [[722, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000009_12630_snippet.mp4": {
+    "approaching": [[0, 290]],
+    "exiting": [[641, 689]],
+    "inside": [[291, 640]],
+    "outside": [[690, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000009_12660_snippet.mp4": {
+    "approaching": [[0, 258]],
+    "exiting": [[671, 706]],
+    "inside": [[259, 670]],
+    "outside": [[707, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000010_08250_snippet.mp4": {
+    "approaching": [[398, 457]],
+    "exiting": [[738, 843]],
+    "inside": [[458, 737]],
+    "outside": [[0, 397], [844, 900]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000010_08340_snippet.mp4": {
+    "approaching": [[320, 385]],
+    "exiting": [[639, 728]],
+    "inside": [[386, 638]],
+    "outside": [[0, 319], [729, 899]]
+  },
+  "boston_7b34288a75284083a1d9174adcf34be4_000010_08490_snippet.mp4": {
+    "approaching": [[166, 230]],
+    "exiting": [[458, 592]],
+    "inside": [[231, 457]],
+    "outside": [[0, 165], [593, 899]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_03300_snippet.mp4": {
+    "approaching": [[186, 326]],
+    "exiting": [[678, 900]],
+    "inside": [[327, 677]],
+    "outside": [[0, 185]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_03330_snippet.mp4": {
+    "approaching": [[140, 290]],
+    "exiting": [[727, 899]],
+    "inside": [[291, 726]],
+    "outside": [[0, 139]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_03360_snippet.mp4": {
+    "approaching": [[89, 260]],
+    "exiting": [[691, 900]],
+    "inside": [[261, 690]],
+    "outside": [[0, 88]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_07590_snippet.mp4": {
+    "approaching": [[324, 683]],
+    "exiting": [],
+    "inside": [[684, 900]],
+    "outside": [[0, 323]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_07620_snippet.mp4": {
+    "approaching": [[252, 658]],
+    "exiting": [],
+    "inside": [[659, 900]],
+    "outside": [[0, 251]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_13800_snippet.mp4": {
+    "approaching": [[317, 413], [751, 900]],
+    "exiting": [[474, 518]],
+    "inside": [[414, 473]],
+    "outside": [[0, 316], [519, 750]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_14490_snippet.mp4": {
+    "approaching": [[91, 268]],
+    "exiting": [[576, 899]],
+    "inside": [[269, 575]],
+    "outside": [[0, 90]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_17310_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21570_snippet.mp4": {
+    "approaching": [[420, 501]],
+    "exiting": [],
+    "inside": [[502, 900]],
+    "outside": [[0, 419]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21600_snippet.mp4": {
+    "approaching": [[372, 495]],
+    "exiting": [],
+    "inside": [[496, 900]],
+    "outside": [[0, 371]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21630_snippet.mp4": {
+    "approaching": [[355, 489]],
+    "exiting": [],
+    "inside": [[490, 900]],
+    "outside": [[0, 354]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21660_snippet.mp4": {
+    "approaching": [[310, 452]],
+    "exiting": [],
+    "inside": [[453, 900]],
+    "outside": [[0, 309]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21690_snippet.mp4": {
+    "approaching": [[296, 406]],
+    "exiting": [],
+    "inside": [[407, 900]],
+    "outside": [[0, 295]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21720_snippet.mp4": {
+    "approaching": [[273, 383]],
+    "exiting": [],
+    "inside": [[384, 900]],
+    "outside": [[0, 272]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21750_snippet.mp4": {
+    "approaching": [[249, 351]],
+    "exiting": [],
+    "inside": [[352, 900]],
+    "outside": [[0, 248]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21780_snippet.mp4": {
+    "approaching": [[224, 331]],
+    "exiting": [],
+    "inside": [[332, 900]],
+    "outside": [[0, 223]]
+  },
+  "boston_7fc8c152a8714a31ad7fbf41db2adead_000003_21810_snippet.mp4": {
+    "approaching": [[169, 286]],
+    "exiting": [],
+    "inside": [[287, 900]],
+    "outside": [[0, 168]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000000_21120_snippet.mp4": {
+    "approaching": [[351, 800]],
+    "exiting": [],
+    "inside": [[801, 900]],
+    "outside": [[0, 350]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000000_21210_snippet.mp4": {
+    "approaching": [[301, 650]],
+    "exiting": [],
+    "inside": [[651, 900]],
+    "outside": [[0, 300]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_01500_snippet.mp4": {
+    "approaching": [[0, 275]],
+    "exiting": [[651, 900]],
+    "inside": [[276, 650]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_08910_snippet.mp4": {
+    "approaching": [[101, 525]],
+    "exiting": [],
+    "inside": [[526, 900]],
+    "outside": [[0, 100]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_09030_snippet.mp4": {
+    "approaching": [[51, 450]],
+    "exiting": [[801, 900]],
+    "inside": [[451, 800]],
+    "outside": [[0, 50]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_09270_snippet.mp4": {
+    "approaching": [[0, 200]],
+    "exiting": [[551, 900]],
+    "inside": [[201, 550]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_10290_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[401, 700]],
+    "inside": [[0, 400]],
+    "outside": [[701, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_15660_snippet.mp4": {
+    "approaching": [[151, 350]],
+    "exiting": [],
+    "inside": [[351, 900]],
+    "outside": [[0, 150]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_15870_snippet.mp4": {
+    "approaching": [[0, 100]],
+    "exiting": [[851, 900]],
+    "inside": [[101, 850]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_15930_snippet.mp4": {
+    "approaching": [[0, 40]],
+    "exiting": [[801, 850]],
+    "inside": [[41, 800]],
+    "outside": [[851, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_16050_snippet.mp4": {
+    "approaching": [[0, 70]],
+    "exiting": [[651, 700]],
+    "inside": [[71, 650]],
+    "outside": [[701, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_16200_snippet.mp4": {
+    "approaching": [[0, 140]],
+    "exiting": [[501, 550]],
+    "inside": [[141, 500]],
+    "outside": [[551, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000001_23850_snippet.mp4": {
+    "approaching": [[301, 593]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 300]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000002_00360_snippet.mp4": {
+    "approaching": [[0, 450]],
+    "exiting": [],
+    "inside": [[451, 901]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000002_00480_snippet.mp4": {
+    "approaching": [[0, 300]],
+    "exiting": [],
+    "inside": [[301, 900]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000002_00540_snippet.mp4": {
+    "approaching": [[0, 300]],
+    "exiting": [[851, 900]],
+    "inside": [[301, 850]],
+    "outside": []
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000002_01080_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[451, 550]],
+    "inside": [[0, 450]],
+    "outside": [[551, 901]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000002_20970_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000003_07230_snippet.mp4": {
+    "approaching": [[351, 420]],
+    "exiting": [[601, 650]],
+    "inside": [[421, 600]],
+    "outside": [[0, 350], [651, 900]]
+  },
+  "seattle_04cdadc91fc343c99670be0478aedff9_000003_12030_snippet.mp4": {
+    "approaching": [[351, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": [[0, 350]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000000_22470_snippet.mp4": {
+    "approaching": [[401, 540]],
+    "exiting": [],
+    "inside": [[541, 900]],
+    "outside": [[0, 400]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000000_22620_snippet.mp4": {
+    "approaching": [[251, 375]],
+    "exiting": [],
+    "inside": [[376, 900]],
+    "outside": [[0, 250]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000001_06720_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000001_13440_snippet.mp4": {
+    "approaching": [[351, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": [[0, 350]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000002_10590_snippet.mp4": {
+    "approaching": [[401, 650]],
+    "exiting": [],
+    "inside": [[651, 900]],
+    "outside": [[0, 400]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000002_10920_snippet.mp4": {
+    "approaching": [[51, 300]],
+    "exiting": [],
+    "inside": [[301, 900]],
+    "outside": [[0, 50]]
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000002_11040_snippet.mp4": {
+    "approaching": [[0, 200]],
+    "exiting": [],
+    "inside": [[201, 900]],
+    "outside": []
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000002_11250_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_04eaf53df027407cb8f4c3a7aa806442_000002_11430_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_058413b03fa54cf9b28ddc89dda3bca5_000001_12060_snippet.mp4": {
+    "approaching": [[850, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 850]]
+  },
+  "seattle_058413b03fa54cf9b28ddc89dda3bca5_000001_22680_snippet.mp4": {
+    "approaching": [[0, 650]],
+    "exiting": [],
+    "inside": [[651, 900]],
+    "outside": []
+  },
+  "seattle_058413b03fa54cf9b28ddc89dda3bca5_000002_12570_snippet.mp4": {
+    "approaching": [[201, 580]],
+    "exiting": [],
+    "inside": [[581, 900]],
+    "outside": [[0, 200]]
+  },
+  "seattle_058413b03fa54cf9b28ddc89dda3bca5_000002_23640_snippet.mp4": {
+    "approaching": [[0, 350]],
+    "exiting": [[551, 630]],
+    "inside": [[351, 550]],
+    "outside": [[631, 900]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000000_17850_snippet.mp4": {
+    "approaching": [[401, 450]],
+    "exiting": [[531, 560]],
+    "inside": [[451, 530]],
+    "outside": [[0, 400], [561, 900]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_05130_snippet.mp4": {
+    "approaching": [[301, 370]],
+    "exiting": [],
+    "inside": [[371, 900]],
+    "outside": [[0, 300]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_05190_snippet.mp4": {
+    "approaching": [[261, 340]],
+    "exiting": [],
+    "inside": [[341, 900]],
+    "outside": [[0, 260]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_10020_snippet.mp4": {
+    "approaching": [[51, 450]],
+    "exiting": [],
+    "inside": [[451, 900]],
+    "outside": [[0, 50]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_18090_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[751, 900]],
+    "inside": [[0, 750]],
+    "outside": []
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_19980_snippet.mp4": {
+    "approaching": [[501, 700]],
+    "exiting": [[875, 900]],
+    "inside": [[701, 875]],
+    "outside": [[0, 500]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000001_20220_snippet.mp4": {
+    "approaching": [[241, 450]],
+    "exiting": [[601, 675]],
+    "inside": [[451, 600]],
+    "outside": [[0, 240], [676, 900]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_04200_snippet.mp4": {
+    "approaching": [[166, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": [[0, 165]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_04290_snippet.mp4": {
+    "approaching": [[101, 400]],
+    "exiting": [],
+    "inside": [[401, 900]],
+    "outside": [[0, 100]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_04560_snippet.mp4": {
+    "approaching": [[0, 110]],
+    "exiting": [],
+    "inside": [[111, 900]],
+    "outside": []
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_04620_snippet.mp4": {
+    "approaching": [[0, 50]],
+    "exiting": [[851, 900]],
+    "inside": [[51, 850]],
+    "outside": []
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_04710_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[721, 870]],
+    "inside": [[0, 720]],
+    "outside": [[871, 900]]
+  },
+  "seattle_0cd5195bd3784d9eada8e8bbcccfef1f_000003_19410_snippet.mp4": {
+    "approaching": [[351, 750]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 350], [751, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000000_08700_snippet.mp4": {
+    "approaching": [[351, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 350]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000000_13080_snippet.mp4": {
+    "approaching": [[0, 300]],
+    "exiting": [[701, 800]],
+    "inside": [[301, 700]],
+    "outside": [[801, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000001_14430_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000002_07140_snippet.mp4": {
+    "approaching": [[331, 460]],
+    "exiting": [[581, 650]],
+    "inside": [[461, 580]],
+    "outside": [[0, 330], [651, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000002_09210_snippet.mp4": {
+    "approaching": [[301, 675]],
+    "exiting": [],
+    "inside": [[676, 900]],
+    "outside": [[0, 300]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000002_09420_snippet.mp4": {
+    "approaching": [[121, 450]],
+    "exiting": [],
+    "inside": [[451, 900]],
+    "outside": [[0, 120]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000002_09570_snippet.mp4": {
+    "approaching": [[0, 320]],
+    "exiting": [[821, 900]],
+    "inside": [[321, 820]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000002_09720_snippet.mp4": {
+    "approaching": [[0, 160]],
+    "exiting": [[651, 900]],
+    "inside": [[161, 650]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_04290_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_06360_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_18390_snippet.mp4": {
+    "approaching": [[0, 460]],
+    "exiting": [],
+    "inside": [[461, 900]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_18570_snippet.mp4": {
+    "approaching": [[0, 300]],
+    "exiting": [],
+    "inside": [[301, 900]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_18810_snippet.mp4": {
+    "approaching": [[0, 50]],
+    "exiting": [],
+    "inside": [[51, 900]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_20730_snippet.mp4": {
+    "approaching": [[61, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": [[0, 60]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_21240_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[451, 520]],
+    "inside": [[0, 450]],
+    "outside": [[521, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000003_23340_snippet.mp4": {
+    "approaching": [[0, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000004_05190_snippet.mp4": {
+    "approaching": [[0, 550]],
+    "exiting": [[881, 900]],
+    "inside": [[551, 880]],
+    "outside": []
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000004_05490_snippet.mp4": {
+    "approaching": [[0, 250], [851, 900]],
+    "exiting": [[551, 600]],
+    "inside": [[251, 550]],
+    "outside": [[601, 850]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000004_06420_snippet.mp4": {
+    "approaching": [[0, 350]],
+    "exiting": [[501, 550]],
+    "inside": [[351, 500]],
+    "outside": [[551, 900]]
+  },
+  "seattle_11a6d1c0ae1944ec9bfe1ef71377be7a_000004_15540_snippet.mp4": {
+    "approaching": [[151, 450]],
+    "exiting": [],
+    "inside": [[451, 900]],
+    "outside": [[0, 150]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_06450_snippet.mp4": {
+    "approaching": [[251, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": [[0, 250]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_06510_snippet.mp4": {
+    "approaching": [[201, 475]],
+    "exiting": [],
+    "inside": [[476, 900]],
+    "outside": [[0, 200]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_07080_snippet.mp4": {
+    "approaching": [[0, 575]],
+    "exiting": [[851, 900]],
+    "inside": [[576, 850]],
+    "outside": []
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_07170_snippet.mp4": {
+    "approaching": [[0, 475]],
+    "exiting": [[766, 820]],
+    "inside": [[476, 765]],
+    "outside": [[821, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_10860_snippet.mp4": {
+    "approaching": [[651, 865]],
+    "exiting": [[866, 900]],
+    "inside": [],
+    "outside": [[0, 650]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000000_21360_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000001_11910_snippet.mp4": {
+    "approaching": [[401, 600]],
+    "exiting": [],
+    "inside": [[601, 900]],
+    "outside": [[0, 400]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000001_12450_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000002_01500_snippet.mp4": {
+    "approaching": [[501, 740]],
+    "exiting": [],
+    "inside": [[741, 900]],
+    "outside": [[0, 500]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000002_01680_snippet.mp4": {
+    "approaching": [[301, 550]],
+    "exiting": [],
+    "inside": [[551, 900]],
+    "outside": [[0, 300]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000002_02070_snippet.mp4": {
+    "approaching": [[0, 150]],
+    "exiting": [],
+    "inside": [[151, 900]],
+    "outside": []
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000002_02850_snippet.mp4": {
+    "approaching": [[0, 100]],
+    "exiting": [[576, 650]],
+    "inside": [[101, 575]],
+    "outside": [[651, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000002_23400_snippet.mp4": {
+    "approaching": [[301, 375]],
+    "exiting": [[751, 780]],
+    "inside": [[376, 750]],
+    "outside": [[0, 300], [781, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_00690_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_04020_snippet.mp4": {
+    "approaching": [[401, 485]],
+    "exiting": [],
+    "inside": [[486, 900]],
+    "outside": [[0, 400]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_04350_snippet.mp4": {
+    "approaching": [[0, 150]],
+    "exiting": [],
+    "inside": [[151, 900]],
+    "outside": []
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_04590_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[776, 900]],
+    "inside": [[0, 775]],
+    "outside": []
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_04830_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[551, 700]],
+    "inside": [[0, 550]],
+    "outside": [[701, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_05010_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[421, 550]],
+    "inside": [[0, 420]],
+    "outside": [[551, 900]]
+  },
+  "seattle_3bbd7b04f14c40a68c82daeb81d5e492_000003_06750_snippet.mp4": {
+    "approaching": [[401, 700]],
+    "exiting": [[701, 750]],
+    "inside": [],
+    "outside": [[0, 400], [751, 900]]
+  },
+  "seattle_51db45759c024d419f21fc0d33840c5e_000000_02400_snippet.mp4": {
+    "approaching": [[401, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 400]]
+  },
+  "seattle_51db45759c024d419f21fc0d33840c5e_000000_19650_snippet.mp4": {
+    "approaching": [[0, 600]],
+    "exiting": [[741, 780]],
+    "inside": [[601, 740]],
+    "outside": [[781, 900]]
+  },
+  "seattle_51db45759c024d419f21fc0d33840c5e_000001_07050_snippet.mp4": {
+    "approaching": [[0, 700]],
+    "exiting": [],
+    "inside": [[701, 900]],
+    "outside": []
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000000_18270_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000000_23250_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000001_00330_snippet.mp4": {
+    "approaching": [[351, 500]],
+    "exiting": [[781, 850]],
+    "inside": [[501, 780]],
+    "outside": [[0, 350], [851, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000001_00750_snippet.mp4": {
+    "approaching": [[0, 200]],
+    "exiting": [[401, 530]],
+    "inside": [[201, 400]],
+    "outside": [[531, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000001_03420_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000001_19710_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[841, 900]],
+    "inside": [[0, 840]],
+    "outside": []
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000002_05040_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000002_18630_snippet.mp4": {
+    "approaching": [[201, 400]],
+    "exiting": [],
+    "inside": [[401, 900]],
+    "outside": [[0, 200]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000002_19470_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000003_07710_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[651, 730]],
+    "inside": [[0, 650]],
+    "outside": [[731, 900]]
+  },
+  "seattle_7922c49d982c424183c69b803d0208eb_000003_20910_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_00030_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_15420_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_20100_snippet.mp4": {
+    "approaching": [[351, 900]],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 350]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_21210_snippet.mp4": {
+    "approaching": [[0, 450]],
+    "exiting": [],
+    "inside": [[451, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_21420_snippet.mp4": {
+    "approaching": [[0, 250]],
+    "exiting": [[731, 780]],
+    "inside": [[251, 730]],
+    "outside": [[781, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000000_22440_snippet.mp4": {
+    "approaching": [[301, 400]],
+    "exiting": [],
+    "inside": [[401, 900]],
+    "outside": [[0, 300]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_00120_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [[0, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_02760_snippet.mp4": {
+    "approaching": [],
+    "exiting": [],
+    "inside": [],
+    "outside": [[0, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_11100_snippet.mp4": {
+    "approaching": [[121, 240]],
+    "exiting": [[811, 850]],
+    "inside": [[241, 810]],
+    "outside": [[0, 120], [851, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_11220_snippet.mp4": {
+    "approaching": [[0, 120]],
+    "exiting": [[671, 740]],
+    "inside": [[121, 670]],
+    "outside": [[741, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_11280_snippet.mp4": {
+    "approaching": [[0, 65]],
+    "exiting": [[621, 685]],
+    "inside": [[66, 620]],
+    "outside": [[686, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_11310_snippet.mp4": {
+    "approaching": [[0, 30]],
+    "exiting": [[581, 650]],
+    "inside": [[31, 580]],
+    "outside": [[651, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_11370_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[526, 600]],
+    "inside": [[0, 525]],
+    "outside": [[601, 900]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_13770_snippet.mp4": {
+    "approaching": [[0, 560]],
+    "exiting": [],
+    "inside": [[561, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000001_13830_snippet.mp4": {
+    "approaching": [[0, 500]],
+    "exiting": [],
+    "inside": [[501, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000002_17670_snippet.mp4": {
+    "approaching": [[0, 500]],
+    "exiting": [[801, 900]],
+    "inside": [[501, 800]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000003_03600_snippet.mp4": {
+    "approaching": [[421, 850]],
+    "exiting": [],
+    "inside": [[851, 900]],
+    "outside": [[0, 420]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000003_03870_snippet.mp4": {
+    "approaching": [[201, 580]],
+    "exiting": [],
+    "inside": [[581, 900]],
+    "outside": [[0, 200]]
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000003_04200_snippet.mp4": {
+    "approaching": [[0, 250]],
+    "exiting": [],
+    "inside": [[251, 900]],
+    "outside": []
+  },
+  "seattle_83d7f710e54b48f5a7730576be90ddfc_000003_05670_snippet.mp4": {
+    "approaching": [],
+    "exiting": [[801, 900]],
+    "inside": [[0, 800]],
+    "outside": []
+  }
+}
